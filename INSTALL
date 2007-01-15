@@ -1,0 +1,25 @@
+=====================
+Installing Whitetrash
+=====================
+
+Checkout the code:
+
+  svn co https://whitetrash.svn.sourceforge.net/svnroot/whitetrash/trunk
+
+The packages you will need (this is an Ubuntu/debian command line, but other distros will be similar) are:
+
+sudo apt-get install \
+squid \
+python2.4-dev \
+mysql-server
+
+You should certainly be able to use another database.  There are only a small number of interactions with the database in the code, and (I think) it is pretty vanilla SQL.
+
+Create a database called 'proxy'.
+Run the db_setup script to create the single table.
+
+============
+Squid Config
+============
+
+
