@@ -4,22 +4,121 @@ Installing Whitetrash
 
 Checkout the code:
 
-  svn co https://whitetrash.svn.sourceforge.net/svnroot/whitetrash/trunk
+  svn co https://whitetrash.svn.sourceforge.net/svnroot/whitetrash/trunk whitetrash
 
 The packages you will need (this is an Ubuntu/debian command line, but other distros will be similar) are:
 
 sudo apt-get install \
 squid \
 python2.4-dev \
-mysql-server
+mysql-server \
+apache
 
 You should certainly be able to use another database.  There are only a small number of interactions with the database in the code, and (I think) it is pretty vanilla SQL.
 
-Create a database called 'proxy'.
-Run the db_setup script to create the single table.
+Create a database called 'proxy'.  In mysql::
+    
+    mysql -u root -p
+    create database proxy;
+    quit
+
+Run the db_setup script to create the single table.  In mysql::
+
+    mysql -u root -p passwd proxy < db_setup
 
 ============
 Squid Config
 ============
 
+You will want to add the following lines to your squid.conf
+
+Cache Peers
+~~~~~~~~~~~
+
+#Need to do this to get the auth info passed to my our whitetrash listener
+cache_peer whitelistproxy parent 8000 0 no-query no-digest login=PASS 
+#This is the domain of the webserver that will serve the static whitelist page
+cache_peer viewwhitelist parent 80 0 no-query no-digest 
+
+#Our upstream parent (if any).  If you don't have to go through an upstream proxy you don't need this line.
+cache_peer 10.10.10.254 parent 8008 0 no-query no-digest
+
+Domains
+~~~~~~~
+
+#This tells squid to send requests for the whitelistproxy domain to the whitelistproxy cache_peer as above
+cache_peer_domain whitelistproxy whitelistproxy
+#This tells squid to send requests for the viewwhitelist domain to the viewwhitelist cache_peer as above
+cache_peer_domain viewwhitelist viewwhitelist
+
+#I have the viewwhitelist and whitelistproxy domains in /etc/hosts pointing to localhost.
+#You can do the same or use real DNS entries.  If you do the latter you don't need this line.
+hosts_file /etc/hosts
+
+Redirector
+~~~~~~~~~~
+
+#This is the most important line - tell squid about our redirector
+redirect_program /usr/share/squid/whitelist.py
+
+#By default squid will fire up 5 instances of the redirector, you can change this:
+redirect_children 5
+
+Authentication
+~~~~~~~~~~~~~~
+
+#You need to turn on authentication, it doesn't matter which method.  For digest I use:
+#auth_param digest program /usr/lib/squid/digest_pw_auth /etc/squid/digest_passwords
+#auth_param digest children 5
+#auth_param digest realm Squid proxy-caching web server
+#auth_param digest nonce_garbage_interval 5 minutes
+#auth_param digest nonce_max_duration 240 minutes
+
+Access Controls
+~~~~~~~~~~~~~~~
+
+acl password proxy_auth REQUIRED
+http_access deny !password
+#Always go through this proxy.  If you have internal web servers might want to make them direct.
+never_direct allow all
+
+#Allow the domains that manage the whitelist for us.
+acl cgi_server dstdomain whitelistproxy viewwhitelist
+http_access allow cgi_server
+
+http_access allow localhost
+
+#let the redirector handle everything else
+http_access allow all
+
+#Send everything we don't trust to the redirector to be compared against the whitelist.
+redirector_access allow !cgi_server !localhost 
+
+============
+Python Files
+============
+
+cp generate_form.py servecgi.py whitelist_add.py whitelist.py whitelist_report.py /usr/share/squid/
+
+Run the python webserver::
+
+    python servecgi.py
+
+Create a cronjob to generate the html whitelist (modify whitelist_report.py to write to you webroot)::
+
+    crontab -e
+    0 * * * * /usr/share/squid/whitelist_report.py
+
+Install apache to serve the static webpage.
+
+==========
+The result
+==========
+
+netstat -plant should show you the following listeners:
+
+- whitelist.py      127.0.0.1:8000
+- mysqld            127.0.0.1:3306
+- apache            127.0.0.1:80
+- squid             0.0.0.0:3128
 
