@@ -108,7 +108,7 @@ while 1:
             #os.system("logger failed"+url_domain_only+fail_url)
 
     except Exception,e:
-        os.system("logger whitelist.py db connection failed attempting to reconnect")
+        os.system("logger whitetrash.py db connection failed attempting to reconnect")
         os.write(1,"http://database_error"+"\n")
         try:
             cursor=db_connect()

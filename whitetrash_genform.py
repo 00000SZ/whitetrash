@@ -43,7 +43,7 @@ print """
 
   <body>
     <h1>Internet Access Request</h1>    
-    <form action="http://whitelistproxy/cgi-bin/whitelist_add.py" method="post">
+    <form action="http://whitelistproxy/cgi-bin/whitetrash_add.py" method="post">
 
       <p><b>Host Requested (edit if necessary): </b><input type="text" name="domain" value="%s" maxlength=70 size=70></p>
       <p><b>Full Request: </b>%s</p>
@@ -56,15 +56,7 @@ print """
       <input type="submit" name="consent" value="I Agree" class="LgnBtn">
     </form>
 
-
-    <hr>
-    <address><a href="mailto:cnvt@ubuntu">cnvt</a></address>
-<!-- Created: Mon Jul  3 20:28:18 EST 2006 -->
-<!-- hhmts start -->
-Last modified: Fri Jul  7 00:17:53 EST 2006
-<!-- hhmts end -->
-  </body>
-</html>
+   </html>
 <HTML>
 """ % (form.getfirst("domain"),form.getfirst("url"),form.getfirst("clientaddr"),form.getfirst("clientident"),form.getfirst("url"))
 
