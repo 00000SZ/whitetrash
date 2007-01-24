@@ -1,4 +1,4 @@
-#!/usr/env/python
+#!/usr/bin/env python
 
 # Author: gregsfdev@users.sourceforge.net
 # License: GPL

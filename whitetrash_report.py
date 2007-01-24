@@ -1,4 +1,4 @@
-#!/usr/env/python
+#!/usr/bin/env python
 
 # Author: gregsfdev@users.sourceforge.net
 # License: GPL
@@ -68,10 +68,7 @@ try:
     </BODY>
     </HTML>""" % (str(dateobj.datetime.now()),table)
 
-    handle=open("/var/www/whitelist.html","w")
-    os.system("chmod 744 /var/www/whitelist.html")
-    handle.write(htmlpage)
-    handle.close()
+    print htmlpage
 
 except Exception,e:
     print "Error running whitelist html page generation: %s" %e

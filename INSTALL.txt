@@ -45,7 +45,6 @@ The whitetrash server process is started with the init script::
 
     sudo /etc/init.d/whitetrash start
 
-Install apache to serve the static webpage.
 
 Optional
 ~~~~~~~~
@@ -54,11 +53,12 @@ In ubuntu you can make sure this server gets started in the default runlevels by
 
     sudo update-rc.d whitetrash defaults
 
-Create a cronjob to generate the html whitelist (modify whitetrash_report.py to
-write to your webroot)::
+Create a cronjob to generate the static html whitelist::
 
     crontab -e
-    0 * * * * whitetrash_report.py
+    0 * * * * whitetrash_report.py > /var/www/whitelist.html && chmod 744 /var/www/whitelist.html
+
+Install apache to serve the static webpage whitelist as above.
 
 ============
 Squid Config
@@ -95,7 +95,7 @@ Redirector
 ~~~~~~~~~~
 
 #This is the most important line - tell squid about our redirector
-redirect_program /usr/share/squid/whitetrash/whitetrash.py
+redirect_program /usr/bin/whitetrash.py
 
 #By default squid will fire up 5 instances of the redirector, you can change this:
 redirect_children 5

@@ -1,4 +1,4 @@
-#!/usr/env/python
+#!/usr/bin/env python
 
 # Author: gregsfdev@users.sourceforge.net
 # License: GPL
@@ -100,7 +100,7 @@ class WhitelistCGIRequestHandler(CGIHTTPServer.CGIHTTPRequestHandler):
                 #This is a simple check
                 #Username is alpha-numeric
                 os.environ['REMOTE_USER']=uname
-                self.cgi_info = "./", "whitetrash_add.py"
+                self.cgi_info = "/usr/bin/", "whitetrash_add.py"
                 self.run_cgi()
             else:
                 #User name invalid
@@ -115,7 +115,7 @@ class WhitelistCGIRequestHandler(CGIHTTPServer.CGIHTTPRequestHandler):
             param_start=self.path.index("?")
 
             if param_start>0:
-                self.cgi_info = "./", "whitetrash_genform.py?" + self.path[param_start+1:].replace("?","%3F")
+                self.cgi_info = "/usr/bin/" , "whitetrash_genform.py?" + self.path[param_start+1:].replace("?","%3F")
                 #print self.cgi_info
                 self.run_cgi()
 
