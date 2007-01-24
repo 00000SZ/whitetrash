@@ -16,15 +16,13 @@ apache
 
 You should certainly be able to use another database.  There are only a small number of interactions with the database in the code, and (I think) it is pretty vanilla SQL.
 
-Create a database called 'proxy'.  In mysql::
+Create and populate a database called 'proxy'.  In mysql::
     
     mysql -u root -p
     create database proxy;
+    use proxy;
+    source db_setup;
     quit
-
-Run the db_setup script to create the single table.  In mysql::
-
-    mysql -u root -p passwd proxy < db_setup
 
 ============
 Squid Config
@@ -41,7 +39,7 @@ cache_peer whitelistproxy parent 8000 0 no-query no-digest login=PASS
 cache_peer viewwhitelist parent 80 0 no-query no-digest 
 
 #Our upstream parent (if any).  If you don't have to go through an upstream proxy you don't need this line.
-cache_peer 10.10.10.254 parent 8008 0 no-query no-digest
+#cache_peer 10.10.10.254 parent 8008 0 no-query no-digest
 
 Domains
 ~~~~~~~
@@ -51,7 +49,9 @@ cache_peer_domain whitelistproxy whitelistproxy
 #This tells squid to send requests for the viewwhitelist domain to the viewwhitelist cache_peer as above
 cache_peer_domain viewwhitelist viewwhitelist
 
-#I have the viewwhitelist and whitelistproxy domains in /etc/hosts pointing to localhost.
+#I have the viewwhitelist and whitelistproxy domains in /etc/hosts pointing to
+#localhost like:
+# 127.0.0.1       localhost viewwhitelist whitelistproxy
 #You can do the same or use real DNS entries.  If you do the latter you don't need this line.
 hosts_file /etc/hosts
 
@@ -59,7 +59,7 @@ Redirector
 ~~~~~~~~~~
 
 #This is the most important line - tell squid about our redirector
-redirect_program /usr/share/squid/whitelist.py
+redirect_program /usr/share/squid/whitetrash/whitetrash.py
 
 #By default squid will fire up 5 instances of the redirector, you can change this:
 redirect_children 5
@@ -98,16 +98,19 @@ redirector_access allow !cgi_server !localhost
 Python Files
 ============
 
-cp generate_form.py servecgi.py whitelist_add.py whitelist.py whitelist_report.py /usr/share/squid/
+This will install the whitetrash python files into /usr/bin::
 
-Run the python webserver::
+    sudo python setup.py install
 
-    python servecgi.py
+Run the python webserver (TODO make this an init script)::
 
-Create a cronjob to generate the html whitelist (modify whitelist_report.py to write to you webroot)::
+    python whitetrash_serve.py
+
+Create a cronjob to generate the html whitelist (modify whitetrash_report.py to
+write to your webroot)::
 
     crontab -e
-    0 * * * * /usr/share/squid/whitelist_report.py
+    0 * * * * whitetrash_report.py
 
 Install apache to serve the static webpage.
 
@@ -117,8 +120,8 @@ The result
 
 netstat -plant should show you the following listeners:
 
-- whitelist.py      127.0.0.1:8000
-- mysqld            127.0.0.1:3306
-- apache            127.0.0.1:80
-- squid             0.0.0.0:3128
+- whitetrash_serve.py 127.0.0.1:8000
+- mysqld             127.0.0.1:3306
+- apache             127.0.0.1:80
+- squid              0.0.0.0:3128
 

@@ -22,8 +22,16 @@
 
 import CGIHTTPServer
 import BaseHTTPServer
-import os,re
+import os,re,sys,time
 from base64 import decodestring
+
+class Log:
+    """ The class for logging to a file.  Contains a flush after every write to ensure everything is logged even during an unexpected exit."""
+    def __init__(self, f):
+        self.f = f
+    def write(self, s):
+        self.f.write(s)
+        self.f.flush()
 
 
 class WhitelistCGIRequestHandler(CGIHTTPServer.CGIHTTPRequestHandler):
@@ -118,6 +126,43 @@ def run(server_class=BaseHTTPServer.HTTPServer,
         handler_class=WhitelistCGIRequestHandler):
     server_address = ('127.0.0.1', 8000)
     httpd = server_class(server_address, handler_class)
+    
+    PIDFILE = '/var/run/whitetrash.pid'
+    DAEMON = True 
+    LOGFILE = '/var/log/whitetrash.log'
+
+    if (DAEMON):
+        # Unix double-fork magic
+        try:
+            pid = os.fork()
+            if pid > 0:
+                # exit first parent
+                sys.exit(0)
+        except OSError, e:
+            print >>sys.stderr, "fork #1 failed: %d (%s)" % (e.errno, e.strerror)
+            sys.exit(1)
+
+        # decouple from parent environment
+        os.chdir("/")   # don't prevent unmounting
+        os.setsid()
+        os.umask(0)
+
+        # do second fork
+        try:
+            pid = os.fork()
+            if pid > 0:
+                # exit from second parent, print eventual PID before
+                open(PIDFILE,'w').write("%d"%pid)
+                sys.exit(0)
+        except OSError, e:
+            print >>sys.stderr, "fork #2 failed: %d (%s)" % (e.errno, e.strerror)
+            sys.exit(1)
+    
+    
+        # redirect outputs to a log file
+        sys.stdout = sys.stderr = Log(open(LOGFILE, 'a+'))
+	print "***** Whitetrash Server Started - " + str(time.asctime()) + " *****\n"
+
     httpd.serve_forever()
 
 run()

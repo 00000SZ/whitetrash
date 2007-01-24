@@ -28,7 +28,7 @@ import MySQLdb.cursors
 
 #I use os.write(1,"string") to write to standard out to avoid the python buffering on print statements.
 
-new_fail_url="http://whitelistproxy/generate_form.cgi?"
+new_fail_url="http://whitelistproxy/whitetrash_genform.py?"
 www=re.compile("^www[0-9]?\.")
 
 def db_connect():
