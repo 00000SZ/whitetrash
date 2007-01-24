@@ -33,7 +33,7 @@ CREATE TABLE `whitelist` (
 --
 -- Create new user
 --
-GRANT INSERT,SELECT on proxy.whitelist TO unpriv IDENTIFIED BY 'passwd'
+GRANT INSERT,SELECT on proxy.whitelist TO whitetrash IDENTIFIED BY 'passwd'
 
 
 

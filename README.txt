@@ -14,7 +14,7 @@ Generally whitelisting is defined as having a default deny policy, and only allo
 
 Whitetrash whitelists web traffic at the domain level, and is a powerful technique to eliminate communications for a lot of malware. 
 
-See INSTALL for installation instructions.  Further documentation is available from http://whitetrash.sf.net
+See INSTALL.txt for installation instructions.  Further documentation is available from http://whitetrash.sf.net
 
 Contact the author at: gregsfdev@users.sourceforge.net
 

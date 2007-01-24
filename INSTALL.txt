@@ -16,6 +16,12 @@ apache
 
 You should certainly be able to use another database.  There are only a small number of interactions with the database in the code, and (I think) it is pretty vanilla SQL.
 
+Change the default password in db_setup.  Edit the following files to update the database connection password:
+
+- whitetrash_add.py
+- whitetrash.py
+- whitetrash_report.py
+
 Create and populate a database called 'proxy'.  In mysql::
     
     mysql -u root -p
@@ -24,12 +30,35 @@ Create and populate a database called 'proxy'.  In mysql::
     source db_setup;
     quit
 
-Create a whitetrash system user::
-    
-    sudo adduser --system whitetrash
+Create a whitetrash system user than can write to it's pid dir in /var/run/whitetrash::
+   
+    sudo adduser --shell /bin/false --home /var/run/whitetrash --disabled-password --disabled-login whitetrash
 
 sudo touch /var/log/whitetrash.log
-sudo chown whitetrash:adm /var/log/whitetrash.log
+sudo chown whitetrash:root /var/log/whitetrash.log
+
+This will install the whitetrash python files into /usr/bin, and the init script into /etc/init.d::
+
+    sudo python setup.py install
+
+The whitetrash server process is started with the init script::
+
+    sudo /etc/init.d/whitetrash start
+
+Install apache to serve the static webpage.
+
+Optional
+~~~~~~~~
+
+In ubuntu you can make sure this server gets started in the default runlevels by::
+
+    sudo update-rc.d whitetrash defaults
+
+Create a cronjob to generate the html whitelist (modify whitetrash_report.py to
+write to your webroot)::
+
+    crontab -e
+    0 * * * * whitetrash_report.py
 
 ============
 Squid Config
@@ -101,33 +130,13 @@ http_access allow all
 #Send everything we don't trust to the redirector to be compared against the whitelist.
 redirector_access allow !cgi_server !localhost 
 
-============
-Python Files
-============
-
-This will install the whitetrash python files into /usr/bin::
-
-    sudo python setup.py install
-
-Run the python webserver (TODO make this an init script)::
-
-    python whitetrash_serve.py
-
-Create a cronjob to generate the html whitelist (modify whitetrash_report.py to
-write to your webroot)::
-
-    crontab -e
-    0 * * * * whitetrash_report.py
-
-Install apache to serve the static webpage.
-
 ==========
 The result
 ==========
 
 netstat -plant should show you the following listeners:
 
-- whitetrash_serve.py 127.0.0.1:8000
+- whitetrash_serv    127.0.0.1:8000
 - mysqld             127.0.0.1:3306
 - apache             127.0.0.1:80
 - squid              0.0.0.0:3128
