@@ -29,7 +29,7 @@ def setup_args():
         'author_email': 'gregsfdev@users.sourceforge.net',
         'license': 'GPL',
         'platforms': 'Linux',
-        'scripts' : ['whitetrash_serve.py',
+        'scripts' : ['whitetrash_serve',
                     'whitetrash_genform.py',
                     'whitetrash_add.py',
                     'whitetrash.py',

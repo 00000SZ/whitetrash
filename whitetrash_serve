@@ -127,7 +127,7 @@ def run(server_class=BaseHTTPServer.HTTPServer,
     server_address = ('127.0.0.1', 8000)
     httpd = server_class(server_address, handler_class)
     
-    PIDFILE = '/var/run/whitetrash.pid'
+    PIDFILE = '/var/run/whitetrash_serve.pid'
     DAEMON = True 
     LOGFILE = '/var/log/whitetrash.log'
 

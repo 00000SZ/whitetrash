@@ -23,7 +23,7 @@ set -e
 
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 DESC="Whitetrash - Dynamic Web Whitelisting for Squid"
-NAME=whitetrash_serve
+NAME=whitetrash_serv
 DAEMON=/usr/bin/$NAME
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
@@ -41,6 +41,7 @@ test -x $DAEMON || exit 0
 #	Function that starts the daemon/service.
 #
 d_start() {
+    touch $PIDFILE
     chown whitetrash $PIDFILE
 	start-stop-daemon --start --chuid whitetrash --quiet --pidfile $PIDFILE \
 		--exec $DAEMON \

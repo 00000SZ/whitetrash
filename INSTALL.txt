@@ -24,6 +24,13 @@ Create and populate a database called 'proxy'.  In mysql::
     source db_setup;
     quit
 
+Create a whitetrash system user::
+    
+    sudo adduser --system whitetrash
+
+sudo touch /var/log/whitetrash.log
+sudo chown whitetrash:adm /var/log/whitetrash.log
+
 ============
 Squid Config
 ============
