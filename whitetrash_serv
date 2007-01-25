@@ -20,10 +20,14 @@
 #     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # 
 
-import CGIHTTPServer
-import BaseHTTPServer
-import os,re,sys,time
+import BaseHTTPServer, SimpleHTTPServer, SocketServer
+import os,sys,time,cgi
 from base64 import decodestring
+import re,urllib
+import datetime
+import MySQLdb
+import MySQLdb.cursors
+
 
 class Log:
     """ The class for logging to a file.  Contains a flush after every write to ensure everything is logged even during an unexpected exit."""
@@ -34,7 +38,115 @@ class Log:
         self.f.flush()
 
 
-class WhitelistCGIRequestHandler(CGIHTTPServer.CGIHTTPRequestHandler):
+class WhitelistCGIRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+
+
+    def failed(self,e):
+        self.wfile.write("""
+        <HTML>
+
+        <HEAD>
+        <TITLE>Error - Cannot add domain to whitelist</TITLE>
+        </HEAD>
+
+        <BODY>
+
+        <h1>Could not add domain to whitelist</h1>
+        <p>
+        Please contact your friendly sysadmin.  Error details as follows
+        <p>
+        <hr>
+        <p>%s</p>
+
+        </BODY>
+
+        </HTML>
+
+        """ % (e))
+
+    def success(self,orig_url,user,domain):
+        dateobj=datetime
+        self.wfile.write(""" 
+        <HTML>
+
+        <HEAD>
+        <TITLE>Access Granted</TITLE>
+        <META HTTP-EQUIV=\"refresh\" CONTENT=\"1;URL=%s\">
+        </HEAD>
+
+        <BODY>
+
+        <h1>Thank you %s</h1>
+        <p>
+        Your access request has been granted.  Your browser should automatically take you to the website. If it doesn't you can use this link: <a href=\"%s\">%s</a>
+        <p>
+
+        <p>The following information was recorded:</p>
+
+        <table border=1 frame=box>
+
+        <tr><td><b>TimeStamp</b></td><td><b>Username</b></td><td><b>Whitelist site added</b></td><td><b>Original Request</b></td></tr>
+
+        <tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>
+
+        </table>
+
+
+        </BODY>
+
+        </HTML>
+
+        """ % (orig_url,user,orig_url,orig_url,str(dateobj.datetime.now()),user,domain,orig_url))
+
+
+    def add_to_whitelist(self,form):
+
+        try:
+            #All of these fields need to be sanitised.
+            orig_comment=str(form.getfirst("comment"))[:99]
+            orig_url=str(form.getfirst("url"))[:254]
+            user=str(form.getfirst("user"))
+            domain=str(form.getfirst("domain"))[:70]
+            if orig_url and user and domain:
+                if not orig_comment:
+                    orig_comment="None"
+
+                #Quote the url to get rid of any dangerous stuff for the DB, but still display the proper text when viewed in a browser.
+                url=urllib.quote(orig_url.lower())
+                #Only allow sane text in the comment.
+                comment=re.sub("[^a-zA-Z0-9- .,!]+","",orig_comment)
+
+                #sanitise domain
+                domain=form.getfirst("domain").lower()
+                #Make sure it is of something.com format
+                domain_sanitise=re.compile("^([a-z0-9-]{1,50}\.){1,6}[a-z]{2,6}$")
+                domain_res=domain_sanitise.match(domain)
+                if domain_res:
+                    #Domain is valid.
+                    domain=domain_res.group()
+                    domain=re.sub("^www[0-9]?\.","",domain,1)
+                    dbh = MySQLdb.Connect(user = "unpriv",
+                                                passwd = "passwd",
+                                                db = "proxy",
+                                                unix_socket = "/var/run/mysqld/mysqld.sock", 
+                                                use_unicode = False
+                                                )
+
+                    try:
+                        cursor=dbh.cursor()
+                        #Normalise www2 to www
+                        cursor.execute("insert into whitelist set domain=%s,timestamp=NOW(),username=%s,originalrequest=%s,comment=%s", (domain,user,url,comment))
+                        self.success(orig_url,user,domain)
+                    except Exception,e:
+                        self.failed(e)
+                else:
+                    #Decided to fail rather than change to a valid domain name.
+                    self.failed("Bad domain name")
+            else:
+                self.failed("Incomplete fields")
+        except Exception,e:
+            self.failed("Invalid input:%s" % e)
+
 
     def invalid_auth(self):
         self.wfile.write("""
@@ -83,6 +195,45 @@ class WhitelistCGIRequestHandler(CGIHTTPServer.CGIHTTPRequestHandler):
         
         """ % params)
 
+    def strp(self,string):
+        """A tiny function to stip out string junk from cgi.qs"""
+        return str(string)[2:-2]
+
+    def write_form(self,request):
+
+        domain=self.strp(request["domain"])
+        url=self.strp(request["url"])
+        clientaddr=self.strp(request["clientaddr"])
+        clientident=self.strp(request["clientident"])
+
+        self.wfile.write("""
+        <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+        <html>
+        <head>
+            <title>Internet Access Request Form</title>
+        </head>
+
+        <body>
+            <h1>Internet Access Request</h1>    
+            <form action="http://whitelistproxy" method="post">
+
+            <p><b>Host Requested (edit if necessary): </b><input type="text" name="domain" value="%s" maxlength=70 size=70></p>
+            <p><b>Full Request: </b>%s</p>
+            <p><b>Client IP: </b>%s</p>
+            <p><b>Client Username: </b>%s</p>
+            <p><b>Enter business requirement or comment for this domain: </b><input type="text" name="comment" maxlength=100 size=100></p>
+            
+            <p>By clicking "I Agree" below you are agreeing to have the information above stored on a list of whitelisted websites with YOUR UNIQUE USERNAME at <a href="http://viewwhitelist/whitelist.html">this address</a></p>
+            <input type="hidden" name="user2" value="%s">
+            <input type="hidden" name="url" value="%s">
+            <input type="hidden" name="user" value="%s">
+            <input type="submit" name="consent" value="I Agree" class="LgnBtn">
+            </form>
+
+        </html>
+        <HTML>
+        """ % (domain,url,clientaddr,clientident,clientident,url,clientident))
+
 
     def do_POST(self):
         try:
@@ -99,30 +250,47 @@ class WhitelistCGIRequestHandler(CGIHTTPServer.CGIHTTPRequestHandler):
             if uname.isalnum():
                 #This is a simple check
                 #Username is alpha-numeric
-                os.environ['REMOTE_USER']=uname
-                self.cgi_info = "/usr/bin/", "whitetrash_add.py"
-                self.run_cgi()
+                env = {}
+                env['GATEWAY_INTERFACE'] = 'CGI/1.1'
+                env['SERVER_PROTOCOL'] = self.protocol_version
+                env['REQUEST_METHOD'] = self.command
+                if self.headers.typeheader is None:
+                    env['CONTENT_TYPE'] = self.headers.type
+                else:
+                    env['CONTENT_TYPE'] = self.headers.typeheader
+
+                length = self.headers.getheader('content-length')
+                if length:
+                    env['CONTENT_LENGTH'] = length
+
+                form = cgi.FieldStorage(fp=self.rfile,headers = None, environ=env)
+                if uname==form.getfirst("user"):
+                    self.add_to_whitelist(form)
+                    #self.cgi_info = "/usr/bin/", "whitetrash_add.py"
+                    #self.run_cgi()
+                else:
+                    self.invalid_auth()
             else:
                 #User name invalid
                 self.invalid_auth()
-        except:
-            self.invalid_auth()
+        except Exception,e:
+            self.failed(e) 
+            #self.invalid_auth()
         
         
     def do_GET(self):
 
         try:
             param_start=self.path.index("?")
-
-            if param_start>0:
-                self.cgi_info = "/usr/bin/" , "whitetrash_genform.py?" + self.path[param_start+1:].replace("?","%3F")
-                #print self.cgi_info
-                self.run_cgi()
-
+            results=cgi.parse_qs(self.path[param_start+1:].replace("?","%3F"))
+            self.write_form(results)
         except:
             self.invalid_request(self.path)
 
-def run(server_class=BaseHTTPServer.HTTPServer,
+class WhitetrashHTTPServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
+    pass
+
+def run(server_class=WhitetrashHTTPServer,
         handler_class=WhitelistCGIRequestHandler):
     server_address = ('127.0.0.1', 8000)
     httpd = server_class(server_address, handler_class)

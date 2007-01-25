@@ -42,6 +42,26 @@ def db_connect():
 
     return dbh.cursor()
 
+def insert_into_db(url_domain_only):
+
+    url_domain_only_wild=re.sub("^[a-z0-9-]+\.","",url_domain_only,1)
+    if www.match(url_domain_only):
+        #Do this query whereever possible, more efficient than with the or.
+        #This is a www or www2 query
+        cursor.execute("select id from whitelist where domain=%s", url_domain_only_wild)
+    else:
+        #If we are checking images.slashdot.org and www.slashdot.org is listed, we let it through.  If we don't do this pretty much every big site is trashed because images are served from a subdomain.  Believe it is more efficient to do an OR than two separate queries.  Only want this behaviour for www - we don't want to throw away the start of every domain because users won't expect this.
+        #os.system("logger wild:"+url_domain_only_wild)
+        cursor.execute("select id from whitelist where domain=%s or domain=%s", (url_domain_only,url_domain_only_wild))
+
+    if cursor.fetchone():
+        os.write(1,"\n")
+        #os.system("logger passed"+url_domain_only)
+    else:
+        os.write(1,fail_url+"\n")
+        #os.system("logger failed"+url_domain_only+fail_url)
+
+
 cursor=db_connect()
 
 #Strip out everything except the domain
@@ -90,30 +110,18 @@ while 1:
         continue
 
     try:
-        url_domain_only_wild=re.sub("^[a-z0-9-]+\.","",url_domain_only,1)
-        if www.match(url_domain_only):
-            #Do this query whereever possible, more efficient than with the or.
-            #This is a www or www2 query
-            cursor.execute("select id from whitelist where domain=%s", url_domain_only_wild)
-        else:
-            #If we are checking images.slashdot.org and www.slashdot.org is listed, we let it through.  If we don't do this pretty much every big site is trashed because images are served from a subdomain.  Believe it is more efficient to do an OR than two separate queries.  Only want this behaviour for www - we don't want to throw away the start of every domain because users won't expect this.
-            #os.system("logger wild:"+url_domain_only_wild)
-            cursor.execute("select id from whitelist where domain=%s or domain=%s", (url_domain_only,url_domain_only_wild))
 
-        if cursor.fetchone():
-            os.write(1,"\n")
-            #os.system("logger passed"+url_domain_only)
-        else:
-            os.write(1,fail_url+"\n")
-            #os.system("logger failed"+url_domain_only+fail_url)
+        insert_into_db(url_domain_only)
 
     except Exception,e:
-        os.system("logger whitetrash.py db connection failed attempting to reconnect")
-        os.write(1,"http://database_error"+"\n")
+        #Our database handle has probably timed out.
         try:
             cursor=db_connect()
+            insert_into_db(url_domain_only)
         except:
-            pass
+            #Something weird has happened, tell the user.
+            os.system("logger whitetrash.py db connection failed attempting to reconnect")
+            os.write(1,"http://database_error"+"\n")
 
 
 
