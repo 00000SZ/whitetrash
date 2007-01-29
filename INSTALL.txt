@@ -32,7 +32,7 @@ Create and populate a database called 'proxy'.  In mysql::
 
 Create a whitetrash system user than can write to it's pid dir in /var/run/whitetrash::
    
-    sudo adduser --shell /bin/false --home /var/run/whitetrash --disabled-password --disabled-login whitetrash
+    sudo adduser --shell /bin/false --no-create-home --disabled-password --disabled-login whitetrash
 
 sudo touch /var/log/whitetrash.log
 sudo chown whitetrash:root /var/log/whitetrash.log
