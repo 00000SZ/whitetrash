@@ -18,7 +18,7 @@ You should certainly be able to use another database.  There are only a small nu
 
 Change the default password in db_setup.  Edit the following files to update the database connection password:
 
-- whitetrash_add.py
+- whitetrash_serv.py
 - whitetrash.py
 - whitetrash_report.py
 

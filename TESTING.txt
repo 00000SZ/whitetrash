@@ -1,0 +1,30 @@
+I have built a suite of tests for use with the "funkload" tester: http://funkload.nuxeo.org/
+
+Currently a patch is required to change the form post encoding, but I have submitted this to the funkload author, so hopefully it will be mainstream soon.  I have included the funkload.diff for the time being.
+
+=================
+Running the Tests
+=================
+
+Set your proxy environment variable:
+
+  export http_proxy=http://10.10.10.10:3128
+
+To run just one test:
+
+  fl-run-test -d test_whitelist.py whitelist.test_addtowhitelist
+
+To run all the tests:
+
+  fl-run-test -d test_whitelist.py
+
+To benchmark:
+
+  fl-run-bench whitelist.py whitelist.test_addtowhitelist
+
+To build a fancy report:
+
+  fl-build-report --html whitelist_bench.xml
+
+
+I hope to get some of these reports onto the website soon.

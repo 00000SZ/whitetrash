@@ -24,9 +24,10 @@ set -e
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 DESC="Whitetrash - Dynamic Web Whitelisting for Squid"
 NAME=whitetrash_serv
+PROCESS=python
 DAEMON=/usr/bin/$NAME
 PIDFILE=/var/run/$NAME.pid
-SCRIPTNAME=/etc/init.d/$NAME
+SCRIPTNAME=/etc/init.d/whitetrash
 
 # Gracefully exit if the package has been removed.
 test -x $DAEMON || exit 0
@@ -41,11 +42,11 @@ test -x $DAEMON || exit 0
 #	Function that starts the daemon/service.
 #
 d_start() {
+    touch $PIDFILE
+    chown whitetrash:whitetrash $PIDFILE
 	start-stop-daemon --start --chuid whitetrash --quiet --pidfile $PIDFILE \
 		--exec $DAEMON \
 		|| echo -n " already running"
-    touch $PIDFILE
-    chown whitetrash:whitetrash $PIDFILE
 }
 
 #
@@ -53,7 +54,7 @@ d_start() {
 #
 d_stop() {
 	start-stop-daemon --stop --quiet --pidfile $PIDFILE \
-		--name $NAME \
+		--name $PROCESS \
 		|| echo -n " not running"
     rm -f $PIDFILE
 }
