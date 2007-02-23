@@ -27,10 +27,10 @@ class whitelist(FunkLoadTestCase):
         nb_time = self.conf_getInt('test_viewwebpages', 'nb_time')
         urls = self.conf_getList('test_viewwebpages', 'urls')
 
+        self.addHeader("Proxy-Authorization","Basic %s" % self.basic_auth)
         for i in range(nb_time):
             self.logd('Try %i' % i)
             for url in urls:
-                self.addHeader("Proxy-Authorization","Basic %s" % self.basic_auth)
                 response=self.get("http://"+url, description='Get %s' % url)
                 self.assert_(response.body.find("<img")>=0,"Page returned with no <img> tags.  Probably means the request failed.")
 
@@ -43,9 +43,9 @@ class whitelist(FunkLoadTestCase):
         nb_time = self.conf_getInt('test_viewwhitelist', 'nb_time')
         whitelist_url = self.conf_get('test_viewwhitelist', 'url')
 
+        self.addHeader("Proxy-Authorization","Basic %s" % self.basic_auth)
         for i in range(nb_time):
             self.logd('Try %i' % i)
-            self.addHeader("Proxy-Authorization","Basic %s" % self.basic_auth)
             response=self.get(whitelist_url, description='Get whitelist')
             self.assertEquals(response.getDOM().getByName('title')[0][0],"HTTP Whitelist Report","Expected 'HTTP Whitelist Report' in HTML title'")
 
@@ -59,6 +59,12 @@ class whitelist(FunkLoadTestCase):
         suffix = self.conf_get('test_addtowhitelist', 'suffix')
         
         for i in range(num_pages):
+            self.addHeader("Accept","text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5")
+            self.addHeader("Accept-Language","en-us,en;q=0.5")
+            self.addHeader("Accept-Encoding","gzip,deflate")
+            self.addHeader("Accept-Charset","ISO-8859-1,utf-8;q=0.7,*;q=0.7")
+            self.addHeader("Keep-Alive","300")
+            self.addHeader("Proxy-Connection","keep-alive")
             self.setHeader("Proxy-Authorization","Basic %s" % self.basic_auth)
 
             page = self.lipsum.getUniqWord(length_min=5,length_max=40)
