@@ -81,9 +81,9 @@ class whitelist(FunkLoadTestCase):
                         ['consent','I+Agree']]
             
             self.logd('Adding page %i: %s' % (i,postparams))
-            response=self.post("http://whitelistproxy/",params=postparams,description='Post params:%s' % postparams,postformat='application/x-www-form-urlencoded')
+            response=self.post("http://whitelistproxy/",params=postparams,description='Post params:%s' % postparams)
             self.assertEquals(response.getDOM().getByName('title')[0][0],"Access Granted","Expected 'Access Granted' in HTML title'")
-            self.assert_(response.body.find(url)>=0,"URL %s expected but not found in response" % url)
+            self.assert_(response.body.find(urllib.quote_plus(url))>=0,"URL %s expected but not found in response" % urllib.quote_plus(url))
             self.assert_(response.body.find(self.user)>=0,"Username %s expected but not found in response" % self.user)
 
         # end of test -----------------------------------------------
