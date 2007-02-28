@@ -39,7 +39,7 @@ import syslog
 db_connections=0
 
 DBUSER="unpriv"
-DBPASSWD="Easy(Peasy!)aSES"
+DBPASSWD="passwd"
 DATABASE="proxy"
 DBUNIXSOCKET="/var/run/mysqld/mysqld.sock"
 STRICTSQL=False
