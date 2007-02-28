@@ -28,13 +28,14 @@ import urllib
 import datetime
 import MySQLdb
 import MySQLdb.cursors
+import whitetrash_db.DB as DB
 
-dbh = MySQLdb.Connect(user = "unpriv",
-                                      passwd = "passwd",
-                                      db = "proxy",
-                                      unix_socket = "/var/run/mysqld/mysqld.sock", 
-                                      use_unicode = False
-                                      )
+dbh = MySQLdb.Connect(user = DB.DBUSER,
+                            passwd = DB.DBPASSWD,
+                            db = DB.DATABASE,
+                            unix_socket = DB.DBUNIXSOCKET, 
+                            use_unicode = False
+                            )
 
 table=""
 

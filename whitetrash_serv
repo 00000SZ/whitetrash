@@ -27,6 +27,7 @@ import re,urllib
 import datetime
 import MySQLdb
 import MySQLdb.cursors
+import whitetrash_db.DB as DB
 
 
 class Log:
@@ -125,17 +126,11 @@ class WhitelistCGIRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                     #Domain is valid.
                     domain=domain_res.group()
                     domain=re.sub("^www[0-9]?\.","",domain,1)
-                    dbh = MySQLdb.Connect(user = "unpriv",
-                                                passwd = "passwd",
-                                                db = "proxy",
-                                                unix_socket = "/var/run/mysqld/mysqld.sock", 
-                                                use_unicode = False
-                                                )
 
                     try:
-                        cursor=dbh.cursor()
-                        #Normalise www2 to www
-                        cursor.execute("insert into whitelist set domain=%s,timestamp=NOW(),username=%s,originalrequest=%s,comment=%s", (domain,user,url,comment))
+                        dbh=DB.DBO(case="proxy")
+                        dbh.execute("insert into whitelist set domain=%r,timestamp=NOW(),username=%r,originalrequest=%r,comment=%r", (domain,user,url,comment))
+
                         self.success(orig_url,user,domain)
                     except Exception,e:
                         self.failed(e)

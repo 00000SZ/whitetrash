@@ -25,6 +25,7 @@ import urllib
 import re
 import MySQLdb
 import MySQLdb.cursors
+import whitetrash_db.DB as DB
 
 #I use os.write(1,"string") to write to standard out to avoid the python buffering on print statements.
 
@@ -33,12 +34,12 @@ www=re.compile("^www[0-9]?\.")
 
 def db_connect():
 
-    dbh = MySQLdb.Connect(user = "unpriv",
-                                      passwd = "passwd",
-                                      db = "proxy",
-                                      unix_socket = "/var/run/mysqld/mysqld.sock", 
-                                      use_unicode = False
-                                      )
+    dbh = MySQLdb.Connect(user = DB.DBUSER,
+                                passwd = DB.DBPASSWD,
+                                db = DB.DATABASE,
+                                unix_socket = DB.DBUNIXSOCKET, 
+                                use_unicode = False
+                                )
 
     return dbh.cursor()
 
