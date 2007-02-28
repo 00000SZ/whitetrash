@@ -31,8 +31,6 @@ def setup_args():
         'platforms': 'Linux',
         'packages': ['whitetrash_db'],
         'scripts' : ['whitetrash_serv',
-                    'whitetrash_genform.py',
-                    'whitetrash_add.py',
                     'whitetrash.py',
                     'whitetrash_report.py'],
         'classifiers' : [
