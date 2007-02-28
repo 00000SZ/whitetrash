@@ -18,7 +18,7 @@ class whitelist(FunkLoadTestCase):
         self.logd("Setting up test: %s\n" % self.title)
         self.user = self.conf_get('main', 'proxy_username')
         self.passwd = self.conf_get('main', 'proxy_password')
-        self.basic_auth=encodestring(self.user+":"+self.passwd)
+        self.basic_auth=encodestring(self.user+":"+self.passwd).strip()
         self.lipsum = Lipsum()
 
     def test_viewwebpages(self):

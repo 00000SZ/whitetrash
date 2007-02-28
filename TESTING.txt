@@ -1,7 +1,5 @@
 I have built a suite of tests for use with the "funkload" tester: http://funkload.nuxeo.org/
 
-Currently a patch is required to change the form post encoding, but I have submitted this to the funkload author, so hopefully it will be mainstream soon.  I have included the funkload.diff for the time being.
-
 =================
 Running the Tests
 =================
@@ -20,7 +18,7 @@ To run all the tests:
 
 To benchmark:
 
-  fl-run-bench whitelist.py whitelist.test_addtowhitelist
+  fl-run-bench test_whitelist.py whitelist.test_addtowhitelist
 
 To build a fancy report:
 

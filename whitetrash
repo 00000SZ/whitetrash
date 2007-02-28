@@ -24,7 +24,6 @@ set -e
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 DESC="Whitetrash - Dynamic Web Whitelisting for Squid"
 NAME=whitetrash_serv
-PROCESS=python
 DAEMON=/usr/bin/$NAME
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/whitetrash
@@ -54,7 +53,6 @@ d_start() {
 #
 d_stop() {
 	start-stop-daemon --stop --quiet --pidfile $PIDFILE \
-		--name $PROCESS \
 		|| echo -n " not running"
     rm -f $PIDFILE
 }
