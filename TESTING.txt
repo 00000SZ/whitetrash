@@ -20,9 +20,25 @@ To benchmark:
 
   fl-run-bench test_whitelist.py whitelist.test_addtowhitelist
 
+Note that you probably want to limit the stack size if you are going to benchmark, so your box can run up enough threads.  Use "ulimit -s 2048".
+
 To build a fancy report:
 
   fl-build-report --html whitelist_bench.xml
 
 
 I hope to get some of these reports onto the website soon.
+
+=======
+Results
+=======
+
+I ran some performance testing with whitetrash running in a VMware on my desktop machine with specs below:
+
+MemTotal:      2072560 kB
+Dual Intel(R) Pentium(R) D CPU 3.00GHz
+
+It handled 2000 simultaneous gets for websites already in the whitelist and 600 simultaneous inserts into the whitelist with no problems.  The size of the whitelist was approximate 23k entries.  No perceptible slowdown, and both CPUs were nowhere near maxed despite running also running three different VMWare's and plenty of X apps.  This shows that whitetrash should scale to reasonably large installations quite easily with dedicated server hardware.
+
+
+

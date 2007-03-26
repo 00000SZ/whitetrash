@@ -26,6 +26,7 @@ Create and populate a database called 'proxy'.  In mysql::
     source db_setup;
     quit
 
+
 Create a whitetrash system user than can write to it's pid dir in /var/run/whitetrash::
    
     sudo adduser --shell /bin/false --no-create-home --disabled-password --disabled-login whitetrash
@@ -55,6 +56,49 @@ Create a cronjob to generate the static html whitelist::
     0 * * * * whitetrash_report.py > /var/www/whitelist.html && chmod 744 /var/www/whitelist.html
 
 Install apache to serve the static webpage whitelist as above.
+
+If you have a lot of users, you will want to look at tweaking your mysql install, in particular the max number of connections (100 by default).  Set max_connections in my.cnf or test on the commandline temporarily like this::
+
+  set global max_connections=200;
+
+Performance
+-----------
+
+If you have a lot of users, you will have to make the standard system modifications to allow squid to consume lots of system resources::
+
+    echo 8192 > /proc/sys/fs/file-max
+
+Edit /etc/init.d/squid and put this at the very start::
+
+    ulimit -HSn 8192
+
+Edit /etc/default/squid (this is probably ubuntu/debian specific, you might find it in /etc/squid/squid.conf)::
+
+    SQUID_MAXFD=8192
+
+And go for lots of redirector processes in squid.conf::
+
+    redirect_children 100
+
+You may get complaints about too many connections being tracked, so::
+
+    # This tell you how many sessions arte open right now.
+    cat /proc/net/ip_conntrack | wc -l
+
+    # This tells you the maximum number of conntrack entries you can have in total
+    cat /proc/sys/net/ipv4/ip_conntrack_max
+
+    echo 70000 > /proc/sys/net/ipv4/ip_conntrack_max
+
+Edit /usr/include/bits/typesizes.h::
+
+    #define _FD_SETSIZE            8192
+
+And finally recompile::
+
+    ./configure --with-maxfd=8192
+
+Unfortunately despite doing all of this, I couldn't get squid to use more than 4096 file descriptors!  Look at syslog for any errors and warnings.
 
 ============
 Squid Config
@@ -93,7 +137,7 @@ Redirector
 #This is the most important line - tell squid about our redirector
 redirect_program /usr/bin/whitetrash.py
 
-#By default squid will fire up 5 instances of the redirector, you can change this:
+#By default squid will fire up 5 instances of the redirector, you can change this, and if you have many users you will need a lot more.  Note that if you make this a large number you will probably want to increase the maximum number of mysql connections your mysql server will allow (100 by default).
 redirect_children 5
 
 Authentication
