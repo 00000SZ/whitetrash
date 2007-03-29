@@ -12,7 +12,6 @@ sudo apt-get install \
 squid \
 python2.4-dev \
 mysql-server \
-apache
 
 You should certainly be able to use another database with a small number of modifications.  There are only a small number of interactions with the database in the code, and (I think) it is pretty vanilla SQL.
 
@@ -49,13 +48,6 @@ Optional
 In ubuntu you can make sure this server gets started in the default runlevels by::
 
     sudo update-rc.d whitetrash defaults
-
-Create a cronjob to generate the static html whitelist::
-
-    crontab -e
-    0 * * * * whitetrash_report.py > /var/www/whitelist.html && chmod 744 /var/www/whitelist.html
-
-Install apache to serve the static webpage whitelist as above.
 
 If you have a lot of users, you will want to look at tweaking your mysql install, in particular the max number of connections (100 by default).  Set max_connections in my.cnf or test on the commandline temporarily like this::
 
@@ -111,8 +103,6 @@ Cache Peers
 
 #Need to do this to get the auth info passed to my our whitetrash listener
 cache_peer whitelistproxy parent 8000 0 no-query no-digest login=PASS 
-#This is the domain of the webserver that will serve the static whitelist page
-cache_peer viewwhitelist parent 80 0 no-query no-digest 
 
 #Our upstream parent (if any).  If you don't have to go through an upstream proxy you don't need this line.
 #cache_peer 10.10.10.254 parent 8008 0 no-query no-digest
@@ -120,10 +110,8 @@ cache_peer viewwhitelist parent 80 0 no-query no-digest
 Domains
 ~~~~~~~
 
-#This tells squid to send requests for the whitelistproxy domain to the whitelistproxy cache_peer as above
-cache_peer_domain whitelistproxy whitelistproxy
-#This tells squid to send requests for the viewwhitelist domain to the viewwhitelist cache_peer as above
-cache_peer_domain viewwhitelist viewwhitelist
+#This tells squid to send requests for the whitelistproxy and viewwhitelist domains to the whitelistproxy cache_peer as above
+cache_peer_domain whitelistproxy viewwhitelist whitelistproxy
 
 #I have the viewwhitelist and whitelistproxy domains in /etc/hosts pointing to
 #localhost like:
@@ -178,6 +166,5 @@ netstat -plant should show you the following listeners:
 
 - whitetrash_serv    127.0.0.1:8000
 - mysqld             127.0.0.1:3306
-- apache             127.0.0.1:80
 - squid              0.0.0.0:3128
 

@@ -21,6 +21,7 @@
 #
 
 import sys,os
+import syslog
 import urllib
 import re
 import MySQLdb
@@ -29,8 +30,10 @@ import whitetrash_db.DB as DB
 
 #I use os.write(1,"string") to write to standard out to avoid the python buffering on print statements.
 
-new_fail_url="http://whitelistproxy/whitetrash_genform.py?"
+http_fail_url="http://whitelistproxy/whitetrash_genform.py?"
+ssl_fail_url="whitelistproxy:80/whitetrash_genform.py?"
 www=re.compile("^www[0-9]?\.")
+syslog.openlog('whitetrash.py',0,syslog.LOG_USER)
 
 def db_connect():
 
@@ -43,24 +46,24 @@ def db_connect():
 
     return dbh.cursor()
 
-def insert_into_db(url_domain_only):
+def check_whitelist_db(url_domain_only,protocol):
 
     url_domain_only_wild=re.sub("^[a-z0-9-]+\.","",url_domain_only,1)
     if www.match(url_domain_only):
         #Do this query whereever possible, more efficient than with the or.
         #This is a www or www2 query
-        cursor.execute("select id from whitelist where domain=%s", url_domain_only_wild)
+        cursor.execute("select whitelist_id from whitelist where domain=%s and protocol=%s", (url_domain_only_wild,protocol))
     else:
         #If we are checking images.slashdot.org and www.slashdot.org is listed, we let it through.  If we don't do this pretty much every big site is trashed because images are served from a subdomain.  Believe it is more efficient to do an OR than two separate queries.  Only want this behaviour for www - we don't want to throw away the start of every domain because users won't expect this.
-        #os.system("logger wild:"+url_domain_only_wild)
-        cursor.execute("select id from whitelist where domain=%s or domain=%s", (url_domain_only,url_domain_only_wild))
+        #syslog.syslog("logger wild:"+url_domain_only_wild)
+        cursor.execute("select whitelist_id from whitelist where (domain=%s and protocol=%s) or (domain=%s and protocol=%s)", (url_domain_only,protocol,url_domain_only_wild,protocol))
 
     if cursor.fetchone():
         os.write(1,"\n")
-        #os.system("logger passed"+url_domain_only)
+        #syslog.syslog("domain in whitelist: %s" % url_domain_only)
     else:
         os.write(1,fail_url+"\n")
-        #os.system("logger failed"+url_domain_only+fail_url)
+        #syslog.syslog("domain not in whitelist: %s.  Writing fail url:%s" % (url_domain_only,fail_url))
 
 
 cursor=db_connect()
@@ -77,26 +80,39 @@ while 1:
 
     try:
  
-        fail_url=new_fail_url
         #The squidurl is of the form: 
         #http://www.microsoft.com/ 10.10.9.60/- greg GET
         #Or for SSL
         #www.microsoft.com:443 10.10.9.60/- greg CONNECT
         squidurl=sys.stdin.readline()
-        #os.system("logger squidurl:"+squidurl)
+        #syslog.syslog("String received from squid: %s" % squidurl)
+
+        spliturl=squidurl.strip().split(" ")
+        if spliturl[3]=="GET":
+            #syslog.syslog("Protocol=HTTP")
+            protocol="HTTP"
+            newurl=spliturl[0]
+            fail_url=http_fail_url
+        elif spliturl[3]=="CONNECT":
+            #syslog.syslog("Protocol=SSL")
+            protocol="SSL"
+            newurl="http://"+spliturl[0].split(":")[0]
+            fail_url=ssl_fail_url
+        else:
+            syslog.syslog("Only understand CONNECT and GET statements, got:%s" % squidurl)
+            raise TypeError("Only understand CONNECT and GET statements, got:%s" % spliturl[3])
 
         #The full url as passed by squid
-        newurl=squidurl.split(" ")[0]
         #urlencode it to make it safe to hand around in forms
-        newurl_safe=urllib.quote(newurl)
+        newurl_safe=urllib.quote(spliturl[0])
 
         #Get just the client IP
-        clientaddr=squidurl.split(" ")[1].split("/")[0]
-        #os.system("logger clientadd"+clientaddr)
+        clientaddr=spliturl[1].split("/")[0]
+        #syslog.syslog("client address: %s" % clientaddr)
 
         #Get the client username
-        clientident=squidurl.split(" ")[2]
-        #os.system("logger clientident"+clientident)
+        clientident=spliturl[2]
+        #syslog.syslog("client username:%s " % clientident)
 
         fail_url+="url=%s&clientaddr=%s&clientident=%s&" % (newurl_safe,clientaddr,clientident)
         #strip out the domain.
@@ -104,24 +120,24 @@ while 1:
         #sanitise it
         url_domain_only=domain_sanitise.match(url_domain_only_unsafe).group()
         fail_url+="domain=%s" % url_domain_only
-        #os.system("logger failurl2"+fail_url)
-        #os.system("logger domainonly"+url_domain_only)
+        #syslog.syslog("domainonly: %s" % url_domain_only)
     except Exception,e:
+        #syslog.syslog("Exception:%s" % e)
         os.write(1,fail_url+"domain=invalid_try_again\n")
         continue
 
     try:
 
-        insert_into_db(url_domain_only)
+        check_whitelist_db(url_domain_only,protocol)
 
     except Exception,e:
         #Our database handle has probably timed out.
         try:
             cursor=db_connect()
-            insert_into_db(url_domain_only)
+            check_whitelist_db(url_domain_only)
         except:
-            #Something weird has happened, tell the user.
-            os.system("logger whitetrash.py db connection failed attempting to reconnect")
+            #Something weird/bad has happened, tell the user.
+            syslog.syslog("Error when checking domain in whitelist. Exception: %s" %e)
             os.write(1,"http://database_error"+"\n")
 
 

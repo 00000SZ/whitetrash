@@ -21,19 +21,21 @@
 -- Table structure for table `whitelist`
 -- 
 CREATE TABLE `whitelist` (
-  `id` int(11) NOT NULL auto_increment,
+  `whitelist_id` int(11) NOT NULL auto_increment,
   `domain` varchar(150) UNIQUE NOT NULL,
   `timestamp` datetime NOT NULL,
+  `protocol` ENUM('SSL', 'HTTP') NOT NULL,
   `username` varchar(50) NOT NULL,
   `originalrequest` varchar(255) NOT NULL,
   `comment` varchar(100) default NULL,
-  PRIMARY KEY `id` (`id`)
+  PRIMARY KEY `whitelist_id` (`whitelist_id`)
 ) TYPE=MyISAM;
 
 --
 -- Create new user
 --
-GRANT INSERT,SELECT on proxy.whitelist TO whitetrash IDENTIFIED BY 'passwd'
+CREATE USER 'whitetrash_user'@'localhost' IDENTIFIED BY 'passwd';
+GRANT INSERT,SELECT on whitetrash.whitelist TO whitetrash_user;
 
 
 

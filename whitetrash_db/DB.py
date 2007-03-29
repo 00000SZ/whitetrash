@@ -38,9 +38,9 @@ import syslog
 
 db_connections=0
 
-DBUSER="unpriv"
+DBUSER="whitetrash_user"
 DBPASSWD="passwd"
-DATABASE="proxy"
+DATABASE="whitetrash"
 DBUNIXSOCKET="/var/run/mysqld/mysqld.sock"
 STRICTSQL=False
 MYSQL_BIN="/usr/bin/mysql"
