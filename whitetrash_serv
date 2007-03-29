@@ -111,55 +111,60 @@ class WhitelistCGIRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def generate_whitelist_webpage(self):
         
         try:
+
             global last_generated
             global whitelist_webpage_timeout
             global whitelist_htmlpage
-            if time.time() > (last_generated + whitelist_webpage_timeout):
 
-                if lock.locked():
+            if lock.locked():
 
-                    #syslog.syslog("Serving cached whitelist webpage")
-                    self.wfile.write(whitelist_htmlpage)
+                #The page is being updated, so we have to wait for it to finish
+                lock.acquire_lock()
+                #syslog.syslog("Serving cached whitelist webpage")
+                self.wfile.write(whitelist_htmlpage)
+                lock.release_lock()
 
-                else:
+            #The lock isn't active so we can read global vars safely
+            elif time.time() > (last_generated + whitelist_webpage_timeout):
 
-                    lock.acquire_lock()
-                    #syslog.syslog("Regenerating whitelist webpage")
-                    dbh=DB.DBO()
-                    dbh.execute("select whitelist_id,domain,timestamp,username,protocol,comment,originalrequest from whitelist order by username,whitelist_id")
-                    dateobj=datetime
-                    table=""
-                    #Table is id,domain,time,username,orig request,comment
-                    #I don't unquote the original domain urllib.unquote(row[4]) due to the potential for code injection.
-                    for row in dbh:
-                        table+="<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n" %(row['whitelist_id'],row['domain'],row['timestamp'],row['username'],row['protocol'],row['comment'],row['originalrequest'])
-                    whitelist_htmlpage="""
+                lock.acquire_lock()
+                #syslog.syslog("Regenerating whitelist webpage")
+                dbh=DB.DBO()
+                dbh.execute("select whitelist_id,domain,timestamp,username,protocol,comment,originalrequest from whitelist order by username,whitelist_id")
+                dateobj=datetime
+                table=""
+                #Table is id,domain,time,username,orig request,comment
+                #I don't unquote the original domain urllib.unquote(row[4]) due to the potential for code injection.
+                for row in dbh:
+                    table+="<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n" %(row['whitelist_id'],row['domain'],row['timestamp'],row['username'],row['protocol'],row['comment'],row['originalrequest'])
+                whitelist_htmlpage="""
 
-                    <HTML>
-                    <HEAD>
-                    <TITLE>HTTP Whitelist Report</TITLE>
-                    </HEAD>
+                <HTML>
+                <HEAD>
+                <TITLE>HTTP Whitelist Report</TITLE>
+                </HEAD>
 
-                    <BODY>
+                <BODY>
 
-                    <h1>Whitelist</h1>
-                    <p>
-                    Report generated at %s.
-                    <p>
-                    
-                    <table border=1 frame=box>
-                    <tr><td><b>ID</b></td><td><b>Whitelisted Domain</b></td><td><b>Timestamp (local)</b></td><td><b>Username</b></td><td><b>Protocol</b></td><td><b>Comment</b></td><td><b>Original Request</b></td></tr>
-                    %s
-                    </table>
+                <h1>Whitelist</h1>
+                <p>
+                Report generated at %s.
+                <p>
+                
+                <table border=1 frame=box>
+                <tr><td><b>ID</b></td><td><b>Whitelisted Domain</b></td><td><b>Timestamp (local)</b></td><td><b>Username</b></td><td><b>Protocol</b></td><td><b>Comment</b></td><td><b>Original Request</b></td></tr>
+                %s
+                </table>
 
-                    </BODY>
-                    </HTML>""" % (str(dateobj.datetime.now()),table)
-                    self.wfile.write(whitelist_htmlpage)
-                    last_generated=time.time()
-                    lock.release_lock()
+                </BODY>
+                </HTML>""" % (str(dateobj.datetime.now()),table)
+                self.wfile.write(whitelist_htmlpage)
+                last_generated=time.time()
+                lock.release_lock()
             else:
                 #syslog.syslog("Serving cached whitelist webpage")
                 self.wfile.write(whitelist_htmlpage)
+
 
         except Exception,e:
             self.failed("Error running whitelist html page generation: %s" %e)
@@ -350,8 +355,7 @@ class WhitelistCGIRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             except:
                 self.invalid_request(self.path)
 
-#class WhitetrashHTTPServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
-class WhitetrashHTTPServer(BaseHTTPServer.HTTPServer):
+class WhitetrashHTTPServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
     pass
 
 def run_http(server_class=WhitetrashHTTPServer,

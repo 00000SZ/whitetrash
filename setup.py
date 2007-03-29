@@ -31,8 +31,7 @@ def setup_args():
         'platforms': 'Linux',
         'packages': ['whitetrash_db'],
         'scripts' : ['whitetrash_serv',
-                    'whitetrash.py',
-                    'whitetrash_report.py'],
+                    'whitetrash.py'],
         'classifiers' : [
             'License :: OSI-Approved Open Source :: GNU General Public License (GPL)',
             'Intended Audience :: by End-User Class :: System Administrators',
