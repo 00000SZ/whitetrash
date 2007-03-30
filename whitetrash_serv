@@ -37,8 +37,6 @@ whitelist_webpage_timeout=3600
 whitelist_htmlpage=""
 #When did we last generate the page
 last_generated=0.0
-#Use this lock to protect the global variables from the threads
-lock=threading.Lock()
 
 class Log:
     """ The class for logging to a file.  Contains a flush after every write to ensure everything is logged even during an unexpected exit."""
@@ -109,25 +107,18 @@ class WhitelistCGIRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         """ % (orig_url,user,orig_url,orig_url,str(dateobj.datetime.now()),user,domain,orig_url))
 
     def generate_whitelist_webpage(self):
-        
+        """There are threading issues with this code, since I am using globals.  However the worst that will happen 
+        is that a user will get an incomplete page.  The risk of this is low since requests for this page will be
+        comparatively low, and I am only regenerating every hour."""
+
         try:
 
             global last_generated
             global whitelist_webpage_timeout
             global whitelist_htmlpage
 
-            if lock.locked():
+            if time.time() > (last_generated + whitelist_webpage_timeout):
 
-                #The page is being updated, so we have to wait for it to finish
-                lock.acquire_lock()
-                #syslog.syslog("Serving cached whitelist webpage")
-                self.wfile.write(whitelist_htmlpage)
-                lock.release_lock()
-
-            #The lock isn't active so we can read global vars safely
-            elif time.time() > (last_generated + whitelist_webpage_timeout):
-
-                lock.acquire_lock()
                 #syslog.syslog("Regenerating whitelist webpage")
                 dbh=DB.DBO()
                 dbh.execute("select whitelist_id,domain,timestamp,username,protocol,comment,originalrequest from whitelist order by username,whitelist_id")
@@ -160,15 +151,13 @@ class WhitelistCGIRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 </HTML>""" % (str(dateobj.datetime.now()),table)
                 self.wfile.write(whitelist_htmlpage)
                 last_generated=time.time()
-                lock.release_lock()
             else:
                 #syslog.syslog("Serving cached whitelist webpage")
                 self.wfile.write(whitelist_htmlpage)
 
-
         except Exception,e:
             self.failed("Error running whitelist html page generation: %s" %e)
-
+        
     def add_to_whitelist(self,form):
 
         try:
