@@ -30,13 +30,8 @@ import MySQLdb
 import MySQLdb.cursors
 import whitetrash_db.DB as DB
 import threading
-    
-#How long we cache the whitelist webpage for in seconds
-whitelist_webpage_timeout=3600
-#The cached whitelist webpage
-whitelist_htmlpage=""
-#When did we last generate the page
-last_generated=0.0
+   
+last_modified="Thu, 01 Jan 1970 00:00:00 GMT"
 
 class Log:
     """ The class for logging to a file.  Contains a flush after every write to ensure everything is logged even during an unexpected exit."""
@@ -106,54 +101,108 @@ class WhitelistCGIRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         """ % (orig_url,user,orig_url,orig_url,str(dateobj.datetime.now()),user,domain,orig_url))
 
+    def convert_epoch(self,timestring):
+        return time.mktime(time.strptime(timestring.strip(), "%a, %d %b %Y %H:%M:%S %Z"))
+
+    def send_200(self,new_time,cache_age_secs,length):
+        self.send_response(200, 'OK')
+        syslog.syslog("Sending 200, Last-Modified:%s" % new_time)
+        self.send_header('Content-type','text/html')
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Cache-Control","max-age=%s" % cache_age_secs)
+        
+        ##Add an expires header for http 1.0 caches
+        #convert to epoch and add cache age in seconds
+        epoch=self.convert_epoch(new_time)+cache_age_secs
+        age=time.strftime("%a, %d %b %Y %H:%M:%S",time.localtime(epoch))+" GMT"
+        self.send_header("Expires",age)
+
+        self.send_header('Content-length', length)
+        self.send_header("Last-Modified",new_time)
+        self.end_headers()
+
+    def send_304(self,last_modified):
+        self.send_response(304,"Not Modified")
+        syslog.syslog("Sending 304 Not Modified")
+        self.send_header("Date",self.date_time_string())
+        self.send_header("Last-Modified",last_modified)
+        self.end_headers()
+
+    def regenerate_whitelist(self,cache_age_in_seconds):
+        """Create the html representing the whitelist from the database"""
+
+        global last_modified
+
+        syslog.syslog("Regenerating whitelist webpage")
+        dbh=DB.DBO()
+        dbh.execute("select whitelist_id,domain,timestamp,username,protocol,comment,originalrequest from whitelist order by username,whitelist_id")
+        table=""
+        #I don't unquote the original domain urllib.unquote(row[4]) due to the potential for code injection.
+        for row in dbh:
+            table+="<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n" %(row['whitelist_id'],row['domain'],row['timestamp'],row['username'],row['protocol'],row['comment'],row['originalrequest'])
+        whitelist_htmlpage="""
+
+        <HTML>
+        <HEAD>
+        <TITLE>HTTP Whitelist Report</TITLE>
+        </HEAD>
+
+        <BODY>
+
+        <h1>Whitelist</h1>
+        <p>
+        Report generated at %s.
+        <p>
+        
+        <table border=1 frame=box>
+        <tr><td><b>ID</b></td><td><b>Whitelisted Domain</b></td><td><b>Timestamp (local)</b></td><td><b>Username</b></td><td><b>Protocol</b></td><td><b>Comment</b></td><td><b>Original Request</b></td></tr>
+        %s
+        </table>
+
+        </BODY>
+        </HTML>""" % (time.asctime(),table)
+        current_time=self.date_time_string()    
+        last_modified=current_time
+        self.send_200(current_time,cache_age_in_seconds,len(whitelist_htmlpage))
+
+        self.wfile.write(whitelist_htmlpage)
+
     def generate_whitelist_webpage(self):
-        """There are threading issues with this code, since I am using globals.  However the worst that will happen 
-        is that a user will get an incomplete page.  The risk of this is low since requests for this page will be
-        comparatively low, and I am only regenerating every hour."""
+        """I was originally caching this page locally, but it is much simpler and performs better if I just set the If-Modified-Since header and let squid do the caching!
+        This approach is much better, as the page only gets regenerated if it has been requested.  Before I was using a cron which always ran, regardless of whether anyone
+        was actually interested.
+
+        This is mainly for my benefit to remember how this works:
+
+        - Firefox respects the max-age caching directive and will not ask squid for a new copy of the page unless the time has expired, OR the user hits refresh.  If the user
+        refreshes, firefox adds a "Cache-Control: max-age=0" header to the request.
+        - Squid will always treat a max-age=0 as a MISS and ask the server for a new copy.  If there is no max-age=0 and the cache time hasn't expired, squid will treat
+        it as a HIT.
+        - Firefox only supplies a IMS header with the request if it receive a Last-Modified header with the last response. IMS *is sent* with a refresh. 
+        
+        """
 
         try:
+            global last_modified
+            cache_age_in_seconds=3600
 
-            global last_generated
-            global whitelist_webpage_timeout
-            global whitelist_htmlpage
+            #syslog.syslog("Full Request Headers: %s" % self.headers)
+            try:
+            
+                if (time.time() + time.timezone - self.convert_epoch(last_modified) > cache_age_in_seconds):
+                    #syslog.syslog("Time difference:%s"% (time.time() +time.timezone - self.convert_epoch(last_modified)))
+                    #Time to refresh
+                    last_modified="Thu, 01 Jan 1970 00:00:00 GMT"
+                    
+                #syslog.syslog("IMS from request: %s.  Our last modified time: %s" % (self.headers['If-Modified-Since'],last_modified))
 
-            if time.time() > (last_generated + whitelist_webpage_timeout):
-
-                #syslog.syslog("Regenerating whitelist webpage")
-                dbh=DB.DBO()
-                dbh.execute("select whitelist_id,domain,timestamp,username,protocol,comment,originalrequest from whitelist order by username,whitelist_id")
-                dateobj=datetime
-                table=""
-                #Table is id,domain,time,username,orig request,comment
-                #I don't unquote the original domain urllib.unquote(row[4]) due to the potential for code injection.
-                for row in dbh:
-                    table+="<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n" %(row['whitelist_id'],row['domain'],row['timestamp'],row['username'],row['protocol'],row['comment'],row['originalrequest'])
-                whitelist_htmlpage="""
-
-                <HTML>
-                <HEAD>
-                <TITLE>HTTP Whitelist Report</TITLE>
-                </HEAD>
-
-                <BODY>
-
-                <h1>Whitelist</h1>
-                <p>
-                Report generated at %s.
-                <p>
-                
-                <table border=1 frame=box>
-                <tr><td><b>ID</b></td><td><b>Whitelisted Domain</b></td><td><b>Timestamp (local)</b></td><td><b>Username</b></td><td><b>Protocol</b></td><td><b>Comment</b></td><td><b>Original Request</b></td></tr>
-                %s
-                </table>
-
-                </BODY>
-                </HTML>""" % (str(dateobj.datetime.now()),table)
-                self.wfile.write(whitelist_htmlpage)
-                last_generated=time.time()
-            else:
-                #syslog.syslog("Serving cached whitelist webpage")
-                self.wfile.write(whitelist_htmlpage)
+                if self.headers['If-Modified-Since']==last_modified:
+                    self.send_304(last_modified)
+                else:
+                    self.regenerate_whitelist(cache_age_in_seconds)
+            except KeyError:
+                #No IMS header so we have to regenerate
+                self.regenerate_whitelist(cache_age_in_seconds)
 
         except Exception,e:
             self.failed("Error running whitelist html page generation: %s" %e)
@@ -334,8 +383,9 @@ class WhitelistCGIRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def do_GET(self):
         #syslog.syslog(self.path)
         if "viewwhitelist" in self.path:
-            #syslog.syslog("Serving whitelist webpage")
+            
             self.generate_whitelist_webpage()
+
         else:
             try:
                 param_start=self.path.index("?")
