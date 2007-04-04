@@ -42,12 +42,22 @@ class whitelist(FunkLoadTestCase):
         # begin of test ---------------------------------------------
         nb_time = self.conf_getInt('test_viewwhitelist', 'nb_time')
         whitelist_url = self.conf_get('test_viewwhitelist', 'url')
-
         self.addHeader("Proxy-Authorization","Basic %s" % self.basic_auth)
+
+        #Add a refresh header to really test the server and proxy caching
+        self.addHeader("Cache-Control","max-age=0")
+
+        first_timestamp=""
         for i in range(nb_time):
             self.logd('Try %i' % i)
             response=self.get(whitelist_url, description='Get whitelist')
             self.assertEquals(response.getDOM().getByName('title')[0][0],"HTTP Whitelist Report","Expected 'HTTP Whitelist Report' in HTML title'")
+            self.assert_(response.body.find("</table>"),"Page returned with no closing </table>.  We may have got an incomplete table.")
+            #Check page is being cached
+            timestamp=response.getDOM().getByName('p')[0][0]
+            if not first_timestamp:
+                first_timestamp=timestamp
+            self.assertEquals(timestamp,first_timestamp,"Caching check failed.  Page should not have regenerated.  Timestamp should be %s, but got %s" % (first_timestamp,timestamp))
 
         # end of test -----------------------------------------------
 

@@ -17,11 +17,11 @@ You should certainly be able to use another database with a small number of modi
 
 Change the default password in db_setup.  Edit whitetrash_db/DB.py and change DBPASSWD.
 
-Create and populate a database called 'proxy'.  In mysql::
+Create and populate a database called 'whitetrash'.  In mysql::
     
     mysql -u root -p
-    create database proxy;
-    use proxy;
+    create database whitetrash;
+    use whitetrash;
     source db_setup;
     quit
 
