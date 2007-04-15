@@ -11,22 +11,26 @@ The packages you will need (this is an Ubuntu/debian command line, but other dis
 sudo apt-get install \
 squid \
 python2.4-dev \
+python2.4-mysqldb \
 mysql-server \
 
 You should certainly be able to use another database with a small number of modifications.  There are only a small number of interactions with the database in the code, and (I think) it is pretty vanilla SQL.
 
 Change the default password in db_setup.  Edit whitetrash_db/DB.py and change DBPASSWD.
 
-Create and populate a database called 'whitetrash'.  In mysql::
+Create and populate a database called 'whitetrash'. If this is a new mysql install, please set a root password::
+
+  mysqladmin -u root password NEWPASSWORD
+
+In mysql::
     
     mysql -u root -p
     create database whitetrash;
     use whitetrash;
-    source db_setup;
+    source db_setup.mysql;
     quit
 
-
-Create a whitetrash system user than can write to it's pid dir in /var/run/whitetrash::
+Create a whitetrash linux user::
    
     sudo adduser --shell /bin/false --no-create-home --disabled-password --disabled-login whitetrash
 
@@ -101,7 +105,7 @@ You will want to add the following lines to your squid.conf
 Cache Peers
 ~~~~~~~~~~~
 
-#Need to do this to get the auth info passed to my our whitetrash listener
+#Need to do this to get the auth info passed to our whitetrash listener
 cache_peer whitelistproxy parent 8000 0 no-query no-digest login=PASS 
 
 #Our upstream parent (if any).  If you don't have to go through an upstream proxy you don't need this line.
@@ -123,10 +127,13 @@ Redirector
 ~~~~~~~~~~
 
 #This is the most important line - tell squid about our redirector
+#This seems to have been renamed "url_rewrite_program" in newer versions of squid.
 redirect_program /usr/bin/whitetrash.py
 
 #By default squid will fire up 5 instances of the redirector, you can change this, and if you have many users you will need a lot more.  Note that if you make this a large number you will probably want to increase the maximum number of mysql connections your mysql server will allow (100 by default).
 redirect_children 5
+
+#There is a new option called url_rewrite_concurrency which you can set if your redirector is multithreaded.  At the moment mine is not, but this might be something I look at in the future.
 
 Authentication
 ~~~~~~~~~~~~~~
@@ -141,22 +148,29 @@ Authentication
 Access Controls
 ~~~~~~~~~~~~~~~
 
+#Force authentication
 acl password proxy_auth REQUIRED
 http_access deny !password
-#Always go through this proxy.  If you have internal web servers might want to make them direct.
+
+#If you have an upstream cache parent you want traffic to go through, you should use never_direct for all.  This means it will always use a cache parent and never try to contact the server itself.
 never_direct allow all
+#If your whitetrash box is the last thing between you and the internet you will want it to go and get all the requests for you.  The stuff for the whitelist will still need to go through our cache peer however, so use:
+never_direct allow cgi_server
 
 #Allow the domains that manage the whitelist for us.
 acl cgi_server dstdomain whitelistproxy viewwhitelist
 http_access allow cgi_server
 
-http_access allow localhost
+#This is important to protect webservers (such as whitetrash_serv) listening on localhost.
+acl to_localhost dst 127.0.0.0/8
+http_access deny to_localhost
 
 #let the redirector handle everything else
 http_access allow all
 
 #Send everything we don't trust to the redirector to be compared against the whitelist.
-redirector_access allow !cgi_server !localhost 
+#Renamed "url_rewrite_access" in new versions of squid.
+redirector_access allow !cgi_server 
 
 ==========
 The result

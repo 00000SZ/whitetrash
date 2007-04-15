@@ -31,7 +31,7 @@ import whitetrash_db.DB as DB
 #I use os.write(1,"string") to write to standard out to avoid the python buffering on print statements.
 
 http_fail_url="http://whitelistproxy/whitetrash_genform.py?"
-ssl_fail_url="whitelistproxy:80/whitetrash_genform.py?"
+ssl_fail_url="whitelistproxy:443/whitetrash_genform.py?"
 www=re.compile("^www[0-9]?\.")
 syslog.openlog('whitetrash.py',0,syslog.LOG_USER)
 

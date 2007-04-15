@@ -34,6 +34,7 @@ CREATE TABLE `whitelist` (
 --
 -- Create new user
 --
+
 CREATE USER 'whitetrash_user'@'localhost' IDENTIFIED BY 'passwd';
 GRANT INSERT,SELECT on whitetrash.whitelist TO whitetrash_user;
 
