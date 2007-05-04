@@ -31,7 +31,7 @@ import whitetrash_db.DB as DB
 #I use os.write(1,"string") to write to standard out to avoid the python buffering on print statements.
 
 http_fail_url="http://whitelistproxy/whitetrash_genform.py?"
-ssl_fail_url="whitelistproxy:443/whitetrash_genform.py?"
+ssl_fail_url="sslwhitelist:8001"
 www=re.compile("^www[0-9]?\.")
 syslog.openlog('whitetrash.py',0,syslog.LOG_USER)
 
@@ -91,39 +91,41 @@ while 1:
         if spliturl[3]=="GET":
             #syslog.syslog("Protocol=HTTP")
             protocol="HTTP"
-            newurl=spliturl[0]
             fail_url=http_fail_url
+
+            #The full url as passed by squid
+            #urlencode it to make it safe to hand around in forms
+            newurl_safe=urllib.quote(spliturl[0])
+
+            #Get just the client IP
+            clientaddr=spliturl[1].split("/")[0]
+            #syslog.syslog("client address: %s" % clientaddr)
+
+            #Get the client username
+            clientident=spliturl[2]
+            #syslog.syslog("client username:%s " % clientident)
+
+            fail_url+="url=%s&clientaddr=%s&clientident=%s&" % (newurl_safe,clientaddr,clientident)
+            #strip out the domain.
+            url_domain_only_unsafe=domain_regex.match(spliturl[0].lower().replace("http://","",1)).group()[:70]
+    
+            #sanitise it
+            url_domain_only=domain_sanitise.match(url_domain_only_unsafe).group()
+            fail_url+="domain=%s" % url_domain_only
+            #syslog.syslog("domainonly: %s" % url_domain_only)
+
         elif spliturl[3]=="CONNECT":
             #syslog.syslog("Protocol=SSL")
             protocol="SSL"
-            newurl="http://"+spliturl[0].split(":")[0]
+            url_domain_only=domain_sanitise.match(spliturl[0].split(":")[0]).group()
             fail_url=ssl_fail_url
         else:
             syslog.syslog("Only understand CONNECT and GET statements, got:%s" % squidurl)
             raise TypeError("Only understand CONNECT and GET statements, got:%s" % spliturl[3])
-
-        #The full url as passed by squid
-        #urlencode it to make it safe to hand around in forms
-        newurl_safe=urllib.quote(spliturl[0])
-
-        #Get just the client IP
-        clientaddr=spliturl[1].split("/")[0]
-        #syslog.syslog("client address: %s" % clientaddr)
-
-        #Get the client username
-        clientident=spliturl[2]
-        #syslog.syslog("client username:%s " % clientident)
-
-        fail_url+="url=%s&clientaddr=%s&clientident=%s&" % (newurl_safe,clientaddr,clientident)
-        #strip out the domain.
-        url_domain_only_unsafe=domain_regex.match(newurl.lower().replace("http://","",1)).group()[:70]
-        #sanitise it
-        url_domain_only=domain_sanitise.match(url_domain_only_unsafe).group()
-        fail_url+="domain=%s" % url_domain_only
-        #syslog.syslog("domainonly: %s" % url_domain_only)
+      
     except Exception,e:
         #syslog.syslog("Exception:%s" % e)
-        os.write(1,fail_url+"domain=invalid_try_again\n")
+        os.write(1,http_fail_url+"domain=invalid_try_again\n")
         continue
 
     try:
