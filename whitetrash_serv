@@ -44,9 +44,9 @@ class Log:
         self.f.write(s)
         self.f.flush()
 
-def print_form(domain=None, url=None, clientaddr=None, username=None, protocol="HTTP"):
+def print_http_form(domain=None, url=None, clientaddr=None, username=None):
 
-    result = """
+    return """
     <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
     <html>
     <head>
@@ -58,28 +58,52 @@ def print_form(domain=None, url=None, clientaddr=None, username=None, protocol="
         <form action="http://whitelistproxy" method="post">
 
         <p><b>Host Requested (edit if necessary): </b><input type="text" name="domain" value="%s" maxlength=70 size=70></p>
-        <p><b>Protocol: </b>%s</p>
+        <p><b>Protocol: </b>HTTP</p>
         <p><b>Full Request: </b>%s</p>
-        <input type="hidden" name="url" value="%s">
-        """ % (domain,protocol,url,url)
-
-    if protocol=="HTTP":
-        result=join([result,"""
         <p><b>Client IP: </b>%s</p>
         <p><b>Client Username: </b>%s</p>
-        <input type="hidden" name="user" value="%s">
-        """ % (clientaddr,username,username)],"")
-
-    return join([result,"""
-        <input type="hidden" name="protocol" value="%s">
         <p><b>Enter business requirement or comment for this domain: </b><input type="text" name="comment" maxlength=100 size=100></p>
         <p>By clicking "I Agree" below you are agreeing to have the information above stored on a list of whitelisted websites with YOUR UNIQUE USERNAME at <a href="http://viewwhitelist/whitelist.html">this address</a></p>
+        <input type="hidden" name="url" value="%s">
+        <input type="hidden" name="user" value="%s">
+        <input type="hidden" name="protocol" value="HTTP">
         <input type="submit" name="consent" value="I Agree" class="LgnBtn">
         </form>
     </html>
-    <HTML>""" % (protocol)],"")
+    <HTML>""" % (domain,url,clientaddr,username,url,username)
+
+def print_ssl_form(domain=None, url=None, clientaddr=None, username=None):
+
+    return """
+    <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+    <html>
+    <head>
+        <title>Internet Access Request Form</title>
+    </head>
+
+    <body>
+        <h1>Internet Access Request</h1>    
+        <form action="https://whitelistproxy" method="post">
+
+        <p><b>Host Requested (edit if necessary): </b><input type="text" name="domain" value="%s" maxlength=70 size=70></p>
+        <p><b>Protocol: </b>SSL</p>
+        <p><b>Full Request: </b>%s</p>
+        <p><b>Enter business requirement or comment for this domain: </b><input type="text" name="comment" maxlength=100 size=100></p>
+        <p>By clicking "I Agree" below you are agreeing to have the information above stored on a list of whitelisted websites with YOUR UNIQUE USERNAME at <a href="http://viewwhitelist/whitelist.html">this address</a></p>
+        <input type="hidden" name="url" value="%s">
+        <input type="hidden" name="user" value="%s">
+        <input type="hidden" name="protocol" value="SSL">
+        <input type="submit" name="consent" value="I Agree" class="LgnBtn">
+        </form>
+    </html>
+    <HTML>""" % (domain,url,url,username)
 
 class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+
+    def setup(self):
+        SimpleHTTPServer.SimpleHTTPRequestHandler.setup(self)
+        self.protocol="HTTP"
+        self.auth_string=""
 
     def failed(self,e):
         self.wfile.write("""
@@ -252,7 +276,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             orig_url=str(form.getfirst("url"))[:254]
             user=str(form.getfirst("user"))
             domain=str(form.getfirst("domain"))[:70]
-            protocol=str(form.getfirst("protocol"))
+            protocol=str(form.getfirst("protocol")).upper()
             if orig_url and domain and protocol:
 
                 if protocol !="HTTP" and protocol!="SSL":
@@ -347,11 +371,6 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         
         """ % params)
 
-    def strp(self,string):
-        """A tiny function to strip out string junk from cgi.qs"""
-        return str(string)[2:-2]
-
-
 
     def do_POST(self):
         try:
@@ -360,7 +379,10 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             
             #Basic header:
             #Header looks like: "Basic sldkfjlssjd\r\n"
-            uname=decodestring(self.headers['Proxy-Authorization'].split(" ")[1]).split(":")[0]
+            if self.protocol=="SSL":
+                uname=decodestring(self.auth_string.split(" ")[1]).split(":")[0]
+            else:
+                uname=decodestring(self.headers['Proxy-Authorization'].split(" ")[1]).split(":")[0]
             
             #Digest header
             #uname_pos=split_header.index("Digest username")
@@ -383,8 +405,6 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
                 form = cgi.FieldStorage(fp=self.rfile,headers = None, environ=env)
                 self.add_to_whitelist(form,uname)
-                    #self.cgi_info = "/usr/bin/", "whitetrash_add.py"
-                    #self.run_cgi()
             else:
                 #User name invalid
                 self.invalid_auth()
@@ -394,25 +414,40 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         
         
     def do_GET(self):
-        #syslog.syslog(self.path)
+        #print self.path
         if "viewwhitelist" in self.path:
             
             self.generate_whitelist_webpage()
 
         else:
             try:
-                param_start=self.path.index("?")
-                results=cgi.parse_qs(self.path[param_start+1:].replace("?","%3F"))
-                self.wfile.write(print_form(url=results["url"][0],domain=results["domain"][0],clientaddr=results["clientaddr"][0],username=results["clientident"][0]))
+                if self.protocol=="SSL":
+                    self.wfile.write(print_ssl_form(domain=self.headers["Host"],url="https://"+self.headers["Host"],clientaddr="0.0.0.0",username="ssl"))
+                else:
+                    param_start=self.path.index("?")
+                    results=cgi.parse_qs(self.path[param_start+1:].replace("?","%3F"))
+                    self.wfile.write(print_http_form(url=results["url"][0],domain=results["domain"][0],clientaddr=results["clientaddr"][0],username=results["clientident"][0]))
             except Exception,e:
                 self.invalid_request("Error:%s. Path:%s" % (e,self.path))
 
     def do_CONNECT(self):
-        # This does get called if you point squid at it.
-        # Wasn't happy about just serving a file however.
-        # Presumably because the browser expects a response to its request
-        # Firefox tells me the connection was interrupted.
-        pass
+       
+        self.auth_string=self.headers['Proxy-Authorization']
+        self.send_response(200, 'OK')
+        self.end_headers()
+
+        ctx = SSL.Context(SSL.SSLv23_METHOD)
+        #server.pem's location (containing the server private key and
+        #the server certificate).
+        fpem = '/etc/server.pem'
+        ctx.use_privatekey_file (fpem)
+        ctx.use_certificate_file(fpem)
+        ssl_socket = SSL.Connection(ctx, self.wfile)
+        self.rfile = socket._fileobject(ssl_socket, "rb", self.rbufsize)
+        self.wfile = socket._fileobject(ssl_socket, "wb", self.wbufsize)
+        ssl_socket.set_accept_state()
+        self.protocol="SSL"
+        self.handle()
 
 
 class WhitetrashServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
@@ -422,10 +457,10 @@ def run_http(server_class=WhitetrashServer,
         handler_class=HTTPRequestHandler):
     server_address = ('127.0.0.1', 8000)
     httpd = server_class(server_address, handler_class)
-    syslog.openlog('whitetrash_http_serv',0,syslog.LOG_DAEMON)     
-    PIDFILE = '/var/run/whitetrash_http_serv.pid'
-    DAEMON = True 
-    LOGFILE = '/var/log/whitetrash_http.log'
+    syslog.openlog('whitetrash_serv',0,syslog.LOG_DAEMON)     
+    PIDFILE = '/var/run/whitetrash_serv.pid'
+    DAEMON = False 
+    LOGFILE = '/var/log/whitetrash.log'
 
     if (DAEMON):
         # Unix double-fork magic
@@ -449,7 +484,6 @@ def run_http(server_class=WhitetrashServer,
             if pid > 0:
                 # exit from second parent, print eventual PID before
                 open(PIDFILE,'w').write("%d"%pid)
-                run_ssl()
                 sys.exit(0)
         except OSError, e:
             print >>sys.stderr, "fork #2 failed: %d (%s)" % (e.errno, e.strerror)
@@ -462,80 +496,7 @@ def run_http(server_class=WhitetrashServer,
 
     httpd.serve_forever()
 
-class SSLServer(WhitetrashServer):
-    def __init__(self, server_address, HandlerClass):
-        SocketServer.BaseServer.__init__(self, server_address, HandlerClass)
-        ctx = SSL.Context(SSL.SSLv23_METHOD)
-        #server.pem's location (containing the server private key and
-        #the server certificate).
-        fpem = '/etc/server.pem'
-        ctx.use_privatekey_file (fpem)
-        ctx.use_certificate_file(fpem)
-        self.socket = SSL.Connection(ctx, socket.socket(self.address_family,
-                                                        self.socket_type))
-        self.server_bind()
-        self.server_activate()
-
-class SSLRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
-    """This is for my benefit to remember how SSL setup works:
-
-    Client sends HTTP CONNECT to squid
-    Squid sends HTTP CONNECT to cache peer
-    Cache peer sends back HTTP 200 OK - squid sends HTTP 200 OK to client
-    Client sends SSL client hello - squid now just forwards traffic to/from cache peer
-
-    """
-    def setup(self):
-        self.connection = self.request
-        self.rfile = socket._fileobject(self.request, "rb", self.rbufsize)
-        self.wfile = socket._fileobject(self.request, "wb", self.wbufsize)
-
-    def do_GET(self):
-        self.wfile.write(print_form(domain=self.headers["Host"],url="https://"+self.headers["Host"],clientaddr="0.0.0.0",username="ssl",protocol="SSL"))
-
-def run_ssl(HandlerClass = SSLRequestHandler,
-         ServerClass = SSLServer):
-    server_address = ('127.0.0.1', 8001) # (address, port)
-    httpsd = ServerClass(server_address, HandlerClass)
-    
-    syslog.openlog('whitetrash_ssl_serv',0,syslog.LOG_DAEMON)     
-    PIDFILE = '/var/run/whitetrash_ssl_serv.pid'
-    DAEMON = True
-    LOGFILE = '/var/log/whitetrash_ssl.log'
-
-    if (DAEMON):
-        # Unix double-fork magic
-        try:
-            pid = os.fork()
-            if pid > 0:
-                # exit first parent
-                sys.exit(0)
-        except OSError, e:
-            print >>sys.stderr, "fork #1 failed: %d (%s)" % (e.errno, e.strerror)
-            sys.exit(1)
-
-        # decouple from parent environment
-        os.chdir("/")   # don't prevent unmounting
-        os.setsid()
-        os.umask(0)
-
-        # do second fork
-        try:
-            pid = os.fork()
-            if pid > 0:
-                # exit from second parent, print eventual PID before
-                open(PIDFILE,'w').write("%d"%pid)
-                sys.exit(0)
-        except OSError, e:
-            print >>sys.stderr, "fork #2 failed: %d (%s)" % (e.errno, e.strerror)
-            sys.exit(1)
-    
-    
-        # redirect outputs to a log file
-        sys.stdout = sys.stderr = Log(open(LOGFILE, 'a+'))
-	syslog.syslog("***** Whitetrash SSL Server Started - " + str(time.asctime()) + " *****")
-    httpsd.serve_forever()
-
-#This forks and also kicks off the ssl server.
 run_http()
-#run_ssl()
+
+
+

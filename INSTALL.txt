@@ -12,7 +12,10 @@ sudo apt-get install \
 squid \
 python2.4-dev \
 python2.4-mysqldb \
+python-pyopenssl \
 mysql-server \
+
+
 
 You should certainly be able to use another database with a small number of modifications.  There are only a small number of interactions with the database in the code, and (I think) it is pretty vanilla SQL.
 
@@ -41,9 +44,17 @@ This will install the whitetrash python files into /usr/bin, and the init script
 
     sudo python setup.py install
 
+If you intend to whitelist SSL you will need a certificate.  You can use the line below to create one, or buy one from a CA (this is better because then it will be automatically trusted by users).  The code expects the cert to be in /etc/server.pem.  You will want to make the common name something meaningful because users will get a popup as they are redirected::
+
+    openssl req -new -x509 -keyout server.pem -out server.pem -days 365 -nodes
+
 The whitetrash server process is started with the init script::
 
     sudo /etc/init.d/whitetrash start
+
+For testing/debug purposes you can run it directly from the commandline as a regular user::
+
+    python whitetrash_serv
 
 
 Optional
