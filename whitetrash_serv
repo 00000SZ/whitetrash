@@ -279,7 +279,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             protocol=str(form.getfirst("protocol")).upper()
             if orig_url and domain and protocol:
 
-                if protocol !="HTTP" and protocol!="SSL":
+                if (protocol !="HTTP" and protocol!="SSL") or (self.protocol != protocol):
                     self.failed("Bad protocol, only HTTP and SSL handled")
                 
                 if (protocol=="HTTP") and (authenticated_user != user):
