@@ -426,7 +426,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         else:
             try:
                 if self.protocol=="SSL":
-                    self.wfile.write(print_ssl_form(domain=self.headers["Host"],url="https://"+self.headers["Host"],clientaddr="0.0.0.0",username="ssl"))
+                    self.wfile.write(print_ssl_form(domain=self.headers["Host"],url="https://%s%s" % (self.headers["Host"],self.path),clientaddr="0.0.0.0",username="ssl"))
                 else:
                     param_start=self.path.index("?")
                     results=cgi.parse_qs(self.path[param_start+1:].replace("?","%3F"))
@@ -462,7 +462,7 @@ def run_http(server_class=WhitetrashServer,
     httpd = server_class(server_address, handler_class)
     syslog.openlog('whitetrash_serv',0,syslog.LOG_DAEMON)     
     PIDFILE = '/var/run/whitetrash_serv.pid'
-    DAEMON = False 
+    DAEMON = True 
     LOGFILE = '/var/log/whitetrash.log'
 
     if (DAEMON):
@@ -495,7 +495,7 @@ def run_http(server_class=WhitetrashServer,
     
         # redirect outputs to a log file
         sys.stdout = sys.stderr = Log(open(LOGFILE, 'a+'))
-	syslog.syslog("***** Whitetrash Server Started - " + str(time.asctime()) + " *****")
+	syslog.syslog("***** Whitetrash Server Started - %s *****" % (str(time.asctime())))
 
     httpd.serve_forever()
 
