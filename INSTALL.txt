@@ -44,7 +44,7 @@ This will install the whitetrash python files into /usr/bin, and the init script
 
 If you intend to whitelist SSL you will need a certificate.  You can use the line below to create one, or buy one from a CA (this is better because then it will be automatically trusted by users).  The code expects the cert to be in /etc/server.pem.  You will want to make the common name something meaningful because users will get a popup as they are redirected::
 
-    openssl req -new -x509 -keyout server.pem -out server.pem -days 365 -nodes
+    openssl req -new -x509 -keyout /etc/server.pem -out /etc/server.pem -days 365 -nodes
 
 The whitetrash server process is started with the init script::
 

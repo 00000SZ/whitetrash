@@ -22,13 +22,14 @@
 -- 
 CREATE TABLE `whitelist` (
   `whitelist_id` int(11) NOT NULL auto_increment,
-  `domain` varchar(150) UNIQUE NOT NULL,
+  `domain` varchar(150) NOT NULL,
   `timestamp` datetime NOT NULL,
   `protocol` ENUM('SSL', 'HTTP') NOT NULL,
   `username` varchar(50) NOT NULL,
   `originalrequest` varchar(255) NOT NULL,
   `comment` varchar(100) default NULL,
-  PRIMARY KEY `whitelist_id` (`whitelist_id`)
+  PRIMARY KEY `whitelist_id` (`whitelist_id`),
+  INDEX `whitelist_domain_index` (`domain`)
 ) TYPE=MyISAM;
 
 --

@@ -49,7 +49,8 @@ class whitelist(FunkLoadTestCase):
             self.logd('Try %i' % i)
             response=self.get(whitelist_url, description='Get whitelist')
             self.assertEquals(response.getDOM().getByName('title')[0][0],"HTTP Whitelist Report","Expected 'HTTP Whitelist Report' in HTML title'")
-            self.assert_(response.body.find("</table>"),"Page returned with no closing </table>.  We may have got an incomplete table.")
+            #Removing this until I think of a better way of doing things.
+            #self.assert_(response.body.find("</table>"),"Page returned with no closing </table>.  We may have got an incomplete table.")
             #Check page is being cached
             timestamp=response.getDOM().getByName('p')[0][0]
             if not first_timestamp:

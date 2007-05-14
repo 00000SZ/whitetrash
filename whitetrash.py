@@ -53,10 +53,12 @@ def check_whitelist_db(url_domain_only,protocol):
         #Do this query whereever possible, more efficient than with the or.
         #This is a www or www2 query
         cursor.execute("select whitelist_id from whitelist where domain=%s and protocol=%s", (url_domain_only_wild,protocol))
+        print ("select whitelist_id from whitelist where domain=%s and protocol=%s", (url_domain_only_wild,protocol))
     else:
         #If we are checking images.slashdot.org and www.slashdot.org is listed, we let it through.  If we don't do this pretty much every big site is trashed because images are served from a subdomain.  Believe it is more efficient to do an OR than two separate queries.  Only want this behaviour for www - we don't want to throw away the start of every domain because users won't expect this.
         #syslog.syslog("logger wild:"+url_domain_only_wild)
         cursor.execute("select whitelist_id from whitelist where (domain=%s and protocol=%s) or (domain=%s and protocol=%s)", (url_domain_only,protocol,url_domain_only_wild,protocol))
+        print ("select whitelist_id from whitelist where (domain=%s and protocol=%s) or (domain=%s and protocol=%s)", (url_domain_only,protocol,url_domain_only_wild,protocol))
 
     if cursor.fetchone():
         os.write(1,"\n")
@@ -88,7 +90,13 @@ while 1:
         #syslog.syslog("String received from squid: %s" % squidurl)
 
         spliturl=squidurl.strip().split(" ")
-        if spliturl[3]=="GET":
+        if spliturl[3]=="CONNECT":
+            #syslog.syslog("Protocol=SSL")
+            protocol="SSL"
+            url_domain_only=domain_sanitise.match(spliturl[0].split(":")[0]).group()
+            fail_url=ssl_fail_url
+
+        else:
             #syslog.syslog("Protocol=HTTP")
             protocol="HTTP"
             fail_url=http_fail_url
@@ -114,15 +122,6 @@ while 1:
             fail_url+="domain=%s" % url_domain_only
             #syslog.syslog("domainonly: %s" % url_domain_only)
 
-        elif spliturl[3]=="CONNECT":
-            #syslog.syslog("Protocol=SSL")
-            protocol="SSL"
-            url_domain_only=domain_sanitise.match(spliturl[0].split(":")[0]).group()
-            fail_url=ssl_fail_url
-        else:
-            syslog.syslog("Only understand CONNECT and GET statements, got:%s" % squidurl)
-            raise TypeError("Only understand CONNECT and GET statements, got:%s" % spliturl[3])
-      
     except Exception,e:
         #syslog.syslog("Exception:%s" % e)
         os.write(1,http_fail_url+"domain=invalid_try_again\n")

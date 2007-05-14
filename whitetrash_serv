@@ -279,45 +279,49 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             protocol=str(form.getfirst("protocol")).upper()
             if orig_url and domain and protocol:
 
-                if (protocol !="HTTP" and protocol!="SSL") or (self.protocol != protocol):
+                if (protocol !="HTTP" and protocol!="SSL"):
                     self.failed("Bad protocol, only HTTP and SSL handled")
-                
-                if (protocol=="HTTP") and (authenticated_user != user):
-                    # We don't get this info for SSL, so just check if it is HTTP
-                    # Doesn't matter too much since we ignore the form value anyway
-                    self.invalid_auth()
 
-                #Only trust the user provided by squid, not the one from the form.    
-                user=authenticated_user
-
-                if not orig_comment:
-                    orig_comment="None"
-
-                #Quote the url to get rid of any dangerous stuff for the DB, but still display the proper text when viewed in a browser.
-                url=urllib.quote(orig_url.lower())
-                #Only allow sane text in the comment.
-                comment=re.sub("[^a-zA-Z0-9- .,!]+","",orig_comment)
-
-                #sanitise domain
-                domain=form.getfirst("domain").lower()
-                #Make sure it is of something.com format
-                domain_sanitise=re.compile("^([a-z0-9-]{1,50}\.){1,6}[a-z]{2,6}$")
-                domain_res=domain_sanitise.match(domain)
-                if domain_res:
-                    #Domain is valid.
-                    domain=domain_res.group()
-                    domain=re.sub("^www[0-9]?\.","",domain,1)
-
-                    try:
-                        dbh=DB.DBO()
-                        dbh.execute("insert into whitelist set domain=%r,timestamp=NOW(),username=%r,protocol=%r,originalrequest=%r,comment=%r", (domain,user,protocol,url,comment))
-
-                        self.success(orig_url,user,domain)
-                    except Exception,e:
-                        self.failed(e)
                 else:
-                    #Decided to fail rather than change to a valid domain name.
-                    self.failed("Bad domain name")
+                
+                    if (protocol=="HTTP") and (authenticated_user != user):
+                        # We don't get this info for SSL, so just check if it is HTTP
+                        # Doesn't matter too much since we ignore the form value anyway
+                        self.invalid_auth()
+
+                    else:
+
+                        #Only trust the user provided by squid, not the one from the form.    
+                        user=authenticated_user
+
+                        if not orig_comment:
+                            orig_comment="None"
+
+                        #Quote the url to get rid of any dangerous stuff for the DB, but still display the proper text when viewed in a browser.
+                        url=urllib.quote(orig_url.lower())
+                        #Only allow sane text in the comment.
+                        comment=re.sub("[^a-zA-Z0-9- .,!]+","",orig_comment)
+
+                        #sanitise domain
+                        domain=form.getfirst("domain").lower()
+                        #Make sure it is of something.com format
+                        domain_sanitise=re.compile("^([a-z0-9-]{1,50}\.){1,6}[a-z]{2,6}$")
+                        domain_res=domain_sanitise.match(domain)
+                        if domain_res:
+                            #Domain is valid.
+                            domain=domain_res.group()
+                            domain=re.sub("^www[0-9]?\.","",domain,1)
+
+                            try:
+                                dbh=DB.DBO()
+                                dbh.execute("insert into whitelist set domain=%r,timestamp=NOW(),username=%r,protocol=%r,originalrequest=%r,comment=%r", (domain,user,protocol,url,comment))
+
+                                self.success(orig_url,user,domain)
+                            except Exception,e:
+                                self.failed(e)
+                        else:
+                            #Decided to fail rather than change to a valid domain name.
+                            self.failed("Bad domain name")
             else:
                 self.failed("Incomplete fields")
         except Exception,e:
@@ -431,7 +435,6 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 self.invalid_request("Error:%s. Path:%s" % (e,self.path))
 
     def do_CONNECT(self):
-       
         self.auth_string=self.headers['Proxy-Authorization']
         self.send_response(200, 'OK')
         self.end_headers()
