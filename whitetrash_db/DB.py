@@ -40,6 +40,13 @@ db_connections=0
 
 DBUSER="whitetrash_user"
 DBPASSWD="passwd"
+
+#Sanitisation params
+DOMAIN_LEN=70
+USER_LEN=50
+URL_LEN=255
+COMMENT_LEN=100
+
 DATABASE="whitetrash"
 DBUNIXSOCKET="/var/run/mysqld/mysqld.sock"
 STRICTSQL=False

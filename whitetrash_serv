@@ -36,6 +36,22 @@ from string import join
 
 last_modified="Thu, 01 Jan 1970 00:00:00 GMT"
 
+stylesheet="""
+<style type="text/css" title="currentStyle" media="screen">
+
+body{
+    font-family:Arial, Helvetica, sans-serif;
+    background:#000000;
+    font-size:1em;
+    color:#fff;
+    font-weight:normal;
+    margin:0;
+    padding:0;
+    }
+
+</style>
+"""
+
 class Log:
     """ The class for logging to a file.  Contains a flush after every write to ensure everything is logged even during an unexpected exit."""
     def __init__(self, f):
@@ -51,18 +67,20 @@ def print_http_form(domain=None, url=None, clientaddr=None, username=None):
     <html>
     <head>
         <title>Internet Access Request Form</title>
+        %s
     </head>
 
     <body>
-        <h1>Internet Access Request</h1>    
+        <h1>Whitetrash: Internet Access Request Form</h1>
+        <div id="pageHeader"></div>
         <form action="http://whitelistproxy" method="post">
 
-        <p><b>Host Requested (edit if necessary): </b><input type="text" name="domain" value="%s" maxlength=70 size=70></p>
+        <p><b>Host Requested (edit if necessary): </b><input type="text" name="domain" value="%s" maxlength=70 size=30></p>
         <p><b>Protocol: </b>HTTP</p>
         <p><b>Full Request: </b>%s</p>
         <p><b>Client IP: </b>%s</p>
         <p><b>Client Username: </b>%s</p>
-        <p><b>Enter business requirement or comment for this domain: </b><input type="text" name="comment" maxlength=100 size=100></p>
+        <p><b>Enter business requirement or comment for this domain: </b><input type="text" name="comment" maxlength=100 size=40></p>
         <p>By clicking "I Agree" below you are agreeing to have the information above stored on a list of whitelisted websites with YOUR UNIQUE USERNAME at <a href="http://viewwhitelist/whitelist.html">this address</a></p>
         <input type="hidden" name="url" value="%s">
         <input type="hidden" name="user" value="%s">
@@ -70,7 +88,7 @@ def print_http_form(domain=None, url=None, clientaddr=None, username=None):
         <input type="submit" name="consent" value="I Agree" class="LgnBtn">
         </form>
     </html>
-    <HTML>""" % (domain,url,clientaddr,username,url,username)
+    <HTML>""" % (stylesheet,domain,url,clientaddr,username,url,username)
 
 def print_ssl_form(domain=None, url=None, clientaddr=None, username=None):
 
@@ -272,10 +290,11 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         try:
             #All of these fields need to be sanitised.
-            orig_comment=str(form.getfirst("comment"))[:99]
-            orig_url=str(form.getfirst("url"))[:254]
+            orig_comment=str(form.getfirst("comment"))[:DB.COMMENT_LEN]
+            orig_url=str(form.getfirst("url"))[:DB.URL_LEN]
+            #User comes from squid so we trust it
             user=str(form.getfirst("user"))
-            domain=str(form.getfirst("domain"))[:70]
+            domain=str(form.getfirst("domain"))[:DB.DOMAIN_LEN]
             protocol=str(form.getfirst("protocol")).upper()
             if orig_url and domain and protocol:
 
@@ -462,7 +481,7 @@ def run_http(server_class=WhitetrashServer,
     httpd = server_class(server_address, handler_class)
     syslog.openlog('whitetrash_serv',0,syslog.LOG_DAEMON)     
     PIDFILE = '/var/run/whitetrash_serv.pid'
-    DAEMON = True 
+    DAEMON = False 
     LOGFILE = '/var/log/whitetrash.log'
 
     if (DAEMON):

@@ -19,17 +19,17 @@
 --     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 --
 -- Table structure for table `whitelist`
--- 
+-- 30 chars should be enough to get uniqueness for a domain 
 CREATE TABLE `whitelist` (
-  `whitelist_id` int(11) NOT NULL auto_increment,
-  `domain` varchar(150) NOT NULL,
+  `whitelist_id` int(11) UNSIGNED UNIQUE NOT NULL auto_increment,
+  `domain` varchar(70) NOT NULL,
   `timestamp` datetime NOT NULL,
   `protocol` ENUM('SSL', 'HTTP') NOT NULL,
   `username` varchar(50) NOT NULL,
   `originalrequest` varchar(255) NOT NULL,
   `comment` varchar(100) default NULL,
   PRIMARY KEY `whitelist_id` (`whitelist_id`),
-  INDEX `whitelist_domain_index` (`domain`)
+  CONSTRAINT `onedom_oneprotocol` UNIQUE INDEX `whitelist_domain_index` (domain,protocol)
 ) TYPE=MyISAM;
 
 --

@@ -52,13 +52,12 @@ def check_whitelist_db(url_domain_only,protocol):
     if www.match(url_domain_only):
         #Do this query whereever possible, more efficient than with the or.
         #This is a www or www2 query
-        cursor.execute("select whitelist_id from whitelist where domain=%s and protocol=%s", (url_domain_only_wild,protocol))
-        print ("select whitelist_id from whitelist where domain=%s and protocol=%s", (url_domain_only_wild,protocol))
+        #Just select 1 because we only care if it exists or not.
+        cursor.execute("select 1 from whitelist where domain=%s and protocol=%s", (url_domain_only_wild,protocol))
     else:
         #If we are checking images.slashdot.org and www.slashdot.org is listed, we let it through.  If we don't do this pretty much every big site is trashed because images are served from a subdomain.  Believe it is more efficient to do an OR than two separate queries.  Only want this behaviour for www - we don't want to throw away the start of every domain because users won't expect this.
         #syslog.syslog("logger wild:"+url_domain_only_wild)
-        cursor.execute("select whitelist_id from whitelist where (domain=%s and protocol=%s) or (domain=%s and protocol=%s)", (url_domain_only,protocol,url_domain_only_wild,protocol))
-        print ("select whitelist_id from whitelist where (domain=%s and protocol=%s) or (domain=%s and protocol=%s)", (url_domain_only,protocol,url_domain_only_wild,protocol))
+        cursor.execute("select 1 from whitelist where (domain=%s and protocol=%s) or (domain=%s and protocol=%s)", (url_domain_only,protocol,url_domain_only_wild,protocol))
 
     if cursor.fetchone():
         os.write(1,"\n")
@@ -93,7 +92,7 @@ while 1:
         if spliturl[3]=="CONNECT":
             #syslog.syslog("Protocol=SSL")
             protocol="SSL"
-            url_domain_only=domain_sanitise.match(spliturl[0].split(":")[0]).group()
+            url_domain_only=domain_sanitise.match(spliturl[0].split(":")[0]).group()[:DB.DOMAIN_LEN]
             fail_url=ssl_fail_url
 
         else:
@@ -115,7 +114,7 @@ while 1:
 
             fail_url+="url=%s&clientaddr=%s&clientident=%s&" % (newurl_safe,clientaddr,clientident)
             #strip out the domain.
-            url_domain_only_unsafe=domain_regex.match(spliturl[0].lower().replace("http://","",1)).group()[:70]
+            url_domain_only_unsafe=domain_regex.match(spliturl[0].lower().replace("http://","",1)).group()[:DB.DOMAIN_LEN]
     
             #sanitise it
             url_domain_only=domain_sanitise.match(url_domain_only_unsafe).group()
