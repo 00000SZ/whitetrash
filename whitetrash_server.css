@@ -8,13 +8,29 @@ body{
     padding:0;
     }
 
+h1 { display:none; }
+
+a:link, a:visited {
+    color:#f93009;
+    text-decoration:none;
+    }
+
+a:hover, a:active {
+    color:#fff;
+    }
+
+#whitelistTable {
+    position:absolute;
+    top:160px;
+}
+
 #pageHeader{
     position:absolute;
     top:1em;
     left:0;
     background:#000000 url(http://whitetrash.sf.net/logo.png) no-repeat top left;
     height:133px;
-    width:100%;
+    width:350px;
     }
 
 #host{
@@ -49,6 +65,14 @@ body{
     height:20em;
 }
 
+#successDetails{
+    position:absolute;
+    top:150px;
+    background:#000000 url(http://whitetrash.sf.net/green_rect.png) no-repeat left;
+    width:20em;
+    height:12em;
+}
+
 #requestDetailsText{
     position:relative;
     left:1em;
@@ -58,20 +82,16 @@ body{
 }
 
 #centreContent {
+    font-size:2em;
     position:absolute;
     left:25em;
     top:2em;
     width:30em;
 }
 
-#centreContent a:link, a:visited {
-    color:#f93009;
-    text-decoration:none;
-    }
-
-#centreContent a:hover, a:active {
-    color:#fff;
-    }
+#centreContent h1 {
+    display:block;
+}
 
 #bnessInput {
     position:relative;
