@@ -1,0 +1,80 @@
+body{
+    font-family:Arial, Helvetica, sans-serif;
+    background:#000000;
+    font-size:1em;
+    color:#fff;
+    font-weight:normal;
+    margin:0;
+    padding:0;
+    }
+
+#pageHeader{
+    position:absolute;
+    top:1em;
+    left:0;
+    background:#000000 url(http://whitetrash.sf.net/logo.png) no-repeat top left;
+    height:133px;
+    width:100%;
+    }
+
+#host{
+    position:relative;
+    color:#fff;
+    background:#000000 url(http://whitetrash.sf.net/orange_rect.png) no-repeat top left;
+    width:100%;
+    height:13em;
+    top:9em;
+    }
+
+#hostText{
+    position:relative;
+    font-size:1em;
+    width:15em;
+    top:0.5em;
+    left:1em;
+    color:#000;
+    }
+
+#hostInputText{
+    position:relative;
+    font-size:1em;
+    left:1em;
+    width:15em;
+    }
+
+#requestDetails{
+    position:relative;
+    top:0.5em;
+    background:#000000 url(http://whitetrash.sf.net/green_rect.png) no-repeat top left;
+    height:20em;
+}
+
+#requestDetailsText{
+    position:relative;
+    left:1em;
+    top:1em;
+    width:15em;
+    color:#000;
+}
+
+#centreContent {
+    position:absolute;
+    left:25em;
+    top:2em;
+    width:30em;
+}
+
+#centreContent a:link, a:visited {
+    color:#f93009;
+    text-decoration:none;
+    }
+
+#centreContent a:hover, a:active {
+    color:#fff;
+    }
+
+#bnessInput {
+    position:relative;
+    margin-top:2em;
+}
+
