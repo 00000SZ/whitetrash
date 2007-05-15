@@ -120,10 +120,16 @@ while 1:
             url_domain_only=domain_sanitise.match(url_domain_only_unsafe).group()
             fail_url+="domain=%s" % url_domain_only
             #syslog.syslog("domainonly: %s" % url_domain_only)
-
+    except AttributeError:
+        #Probably a bad domain
+        if protocol=="SSL":
+            os.write(1,fail_url+"\n")
+        else:
+            os.write(1,http_fail_url+"domain=invalid_try_again\n")
+        continue
     except Exception,e:
-        #syslog.syslog("Exception:%s" % e)
-        os.write(1,http_fail_url+"domain=invalid_try_again\n")
+        syslog.syslog("Unexpected whitetrash redirector exception:%s" % e)
+        os.write(1,fail_url+"\n")
         continue
 
     try:

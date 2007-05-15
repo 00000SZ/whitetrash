@@ -86,6 +86,10 @@ a:hover, a:active {
     display:block;
 }
 
+#errorText {
+    color:#f93009;
+}
+
 #bnessInput {
     position:relative;
     margin-top:2em;

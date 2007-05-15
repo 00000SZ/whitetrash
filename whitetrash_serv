@@ -48,7 +48,6 @@ class Log:
 def print_http_form(domain=None, url=None, clientaddr=None, username=None):
 
     return """
-    <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
     <html>
     <head>
         <title>Internet Access Request Form</title>
@@ -82,12 +81,11 @@ def print_http_form(domain=None, url=None, clientaddr=None, username=None):
         </div>
         </form>
     </html>
-    <html>""" % (stylesheet_server,domain,clientaddr,username,url,url,username)
+    """ % (stylesheet_server,domain,clientaddr,username,url,url,username)
 
 def print_ssl_form(domain=None, url=None, clientaddr=None, username=None):
 
     return """
-    <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
     <html>
     <head>
         <title>Internet Access Request Form</title>
@@ -120,7 +118,7 @@ def print_ssl_form(domain=None, url=None, clientaddr=None, username=None):
         </form>
 
     </html>
-    <html>""" % (stylesheet_server,domain,url,url,username)
+    """ % (stylesheet_server,domain,url,url,username)
 
 class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
@@ -134,23 +132,32 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         <html>
 
         <head>
-        <title>Error - Cannot add domain to whitelist</title>
+        <title>Whitetrash Error</title>
+        <style type="text/css" title="currentStyle" media="screen">
+            @import "%s/whitetrash_server.css";
+        </style>
+
         </head>
 
         <body>
 
-        <h1>Could not add domain to whitelist</h1>
+        <div id="pageHeader"></div>
+        <div id="centreContent">
+        <div id="errorText">
+        <h1>Error</h1>
         <p>
-        Please contact your friendly sysadmin.  Error details as follows
+        Please contact your friendly sysadmin.  Error details as follows:
         <p>
         <hr>
         <p>%s</p>
+        </div>
+        </div>
 
         </body>
 
         </html>
 
-        """ % (e))
+        """ % (stylesheet_server,e))
 
     def success(self,orig_url,user,domain):
         dateobj=datetime
@@ -373,47 +380,28 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         
         <head>
         <title>Authentication Error</title>
+        <style type="text/css" title="currentStyle" media="screen">
+            @import "%s/whitetrash_server.css";
+        </style>
         </head>
         
         <body>
         
+        <div id="pageHeader"></div>
+        <div id="centreContent">
+        <div id="errorText">
         <h1>Authentication Error</h1>
         
         The Proxy-Authorization header did not contain the expected authorisation value.  Either you haven't authenticated to the proxy or you are trying something dodgy.  Contact your friendly sysadmin.
         
+        </div>
+        </div>
         </body>
         
         </html>
         
-        """)
+        """ % stylesheet_server)
         
-    def invalid_request(self,params):
-        self.wfile.write("""
-
-        <html>
-        
-        <head>
-        <title>CGI Error</title>
-        </head>
-        
-        <body>
-        
-        <h1>CGI Error</h1>
-        
-        <P>I didn't get the parameters I was expecting from your request.  Here are the parameters I got:<P>
-        <pre>
-        %s
-        <pre>
-        
-        <p>Contact your friendly sysadmin.</p>
-        
-        </body>
-        
-        </html>
-        
-        """ % params)
-
-
     def do_POST(self):
         try:
             #Use this for digest: breaks basic.
@@ -449,7 +437,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 self.add_to_whitelist(form,uname)
             else:
                 #User name invalid
-                self.invalid_auth()
+                self.invalid_auth("Expecting alphanumeric username, got:%s" % uname)
         except Exception,e:
             self.failed(e) 
             #self.invalid_auth()
@@ -464,13 +452,16 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         else:
             try:
                 if self.protocol=="SSL":
+                    print self.headers["Host"], self.path
                     self.wfile.write(print_ssl_form(domain=self.headers["Host"],url="https://%s%s" % (self.headers["Host"],self.path),clientaddr="0.0.0.0",username="ssl"))
                 else:
                     param_start=self.path.index("?")
                     results=cgi.parse_qs(self.path[param_start+1:].replace("?","%3F"))
                     self.wfile.write(print_http_form(url=results["url"][0],domain=results["domain"][0],clientaddr=results["clientaddr"][0],username=results["clientident"][0]))
+            except KeyError,e:
+                self.failed("Invalid domain requested")
             except Exception,e:
-                self.invalid_request("Error:%s. Path:%s" % (e,self.path))
+                self.failed("Error:%s. Path:%s" % (e,self.path))
 
     def do_CONNECT(self):
         self.auth_string=self.headers['Proxy-Authorization']

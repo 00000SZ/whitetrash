@@ -54,6 +54,8 @@ For testing/debug purposes you can run it directly from the commandline as a reg
 
     python whitetrash_serv
 
+You will probably want to change where the CSS stylesheet gets served from (default is whitetrash.sf.net) and probably make your own stylesheet.  Edit the stylesheet_server variable in whitetrash_serv to point to a server with the stylesheet you want to use.  If you use my stylesheet, the graphics are availbe from whitetrash.sf.net.
+
 
 Optional
 ~~~~~~~~
