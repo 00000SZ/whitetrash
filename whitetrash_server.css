@@ -25,7 +25,7 @@ a:hover, a:active {
 }
 
 #pageHeader{
-    position:absolute;
+    position:relative;
     top:1em;
     left:0;
     background:#000000 url(http://whitetrash.sf.net/logo.png) no-repeat top left;
@@ -38,8 +38,8 @@ a:hover, a:active {
     color:#fff;
     background:#000000 url(http://whitetrash.sf.net/orange_rect.png) no-repeat top left;
     width:100%;
-    height:13em;
-    top:9em;
+    height:5em;
+    top:1em;
     }
 
 #hostText{
@@ -58,19 +58,12 @@ a:hover, a:active {
     width:15em;
     }
 
-#requestDetails{
+#requestDetails {
     position:relative;
     top:0.5em;
     background:#000000 url(http://whitetrash.sf.net/green_rect.png) no-repeat top left;
     height:20em;
-}
-
-#successDetails{
-    position:absolute;
-    top:150px;
-    background:#000000 url(http://whitetrash.sf.net/green_rect.png) no-repeat left;
     width:20em;
-    height:12em;
 }
 
 #requestDetailsText{
@@ -82,9 +75,9 @@ a:hover, a:active {
 }
 
 #centreContent {
-    font-size:2em;
+    font-size:1.2em;
     position:absolute;
-    left:25em;
+    left:500px;
     top:2em;
     width:30em;
 }
