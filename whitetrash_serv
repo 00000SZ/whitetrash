@@ -35,6 +35,7 @@ from OpenSSL import SSL
 from string import join
 
 last_modified="Thu, 01 Jan 1970 00:00:00 GMT"
+stylesheet_server="http://whitetrash.sf.net"
 
 class Log:
     """ The class for logging to a file.  Contains a flush after every write to ensure everything is logged even during an unexpected exit."""
@@ -52,7 +53,7 @@ def print_http_form(domain=None, url=None, clientaddr=None, username=None):
     <head>
         <title>Internet Access Request Form</title>
         <style type="text/css" title="currentStyle" media="screen">
-            @import "http://whitetrash.sf.net/whitetrash_server.css";
+            @import "%s/whitetrash_server.css";
         </style>
     </head>
 
@@ -81,7 +82,7 @@ def print_http_form(domain=None, url=None, clientaddr=None, username=None):
         </div>
         </form>
     </html>
-    <html>""" % (domain,clientaddr,username,url,url,username)
+    <html>""" % (stylesheet_server,domain,clientaddr,username,url,url,username)
 
 def print_ssl_form(domain=None, url=None, clientaddr=None, username=None):
 
@@ -91,7 +92,7 @@ def print_ssl_form(domain=None, url=None, clientaddr=None, username=None):
     <head>
         <title>Internet Access Request Form</title>
         <style type="text/css" title="currentStyle" media="screen">
-            @import "http://whitetrash.sf.net/whitetrash_server.css";
+            @import "%s/whitetrash_server.css";
         </style>
     </head>
 
@@ -119,7 +120,7 @@ def print_ssl_form(domain=None, url=None, clientaddr=None, username=None):
         </form>
 
     </html>
-    <html>""" % (domain,url,url,username)
+    <html>""" % (stylesheet_server,domain,url,url,username)
 
 class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
@@ -160,7 +161,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         <title>Access Granted</title>
         <meta http-equiv=\"refresh\" CONTENT=\"1;URL=%s\">
         <style type="text/css" title="currentStyle" media="screen">
-            @import "http://whitetrash.sf.net/whitetrash_server.css";
+            @import "%s/whitetrash_server.css";
         </style>
 
         </head>
@@ -190,7 +191,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         </html>
 
-        """ % (orig_url,str(dateobj.datetime.now()),domain,user,user,orig_url,orig_url,orig_url))
+        """ % (orig_url,stylesheet_server,str(dateobj.datetime.now()),domain,user,user,orig_url,orig_url,orig_url))
 
     def convert_epoch(self,timestring):
         return time.mktime(time.strptime(timestring.strip(), "%a, %d %b %Y %H:%M:%S %Z"))
@@ -237,7 +238,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         <head>
         <title>HTTP Whitelist Report</title>
         <style type="text/css" title="currentStyle" media="screen">
-            @import "http://whitetrash.sf.net/whitetrash_server.css";
+            @import "%s/whitetrash_server.css";
         </style>
         </head>
 
@@ -257,7 +258,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         </div>
 
         </body>
-        </html>""" % (time.asctime(),table)
+        </html>""" % (stylesheet_server,time.asctime(),table)
         current_time=self.date_time_string()    
         last_modified=current_time
         self.send_200(current_time,cache_age_in_seconds,len(whitelist_htmlpage))
@@ -499,7 +500,7 @@ def run_http(server_class=WhitetrashServer,
     httpd = server_class(server_address, handler_class)
     syslog.openlog('whitetrash_serv',0,syslog.LOG_DAEMON)     
     PIDFILE = '/var/run/whitetrash_serv.pid'
-    DAEMON = False 
+    DAEMON = True 
     LOGFILE = '/var/log/whitetrash.log'
 
     if (DAEMON):
