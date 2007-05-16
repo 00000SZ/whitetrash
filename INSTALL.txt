@@ -117,7 +117,7 @@ Cache Peers
 ~~~~~~~~~~~
 
 #Need to do this to get the auth info passed to our whitetrash listener
-cache_peer whitelistproxy parent 8000 0 no-query no-digest login=PASS 
+cache_peer whitetrash parent 8000 0 no-query no-digest login=PASS 
 
 #Our upstream parent (if any).  If you don't have to go through an upstream proxy you don't need this line.
 #cache_peer 10.10.10.254 parent 8008 0 no-query no-digest
@@ -125,12 +125,12 @@ cache_peer whitelistproxy parent 8000 0 no-query no-digest login=PASS
 Domains
 ~~~~~~~
 
-#This tells squid to send requests for the whitelistproxy and viewwhitelist domains to the whitelistproxy cache_peer as above
-cache_peer_domain whitelistproxy viewwhitelist whitelistproxy
+#This tells squid to send requests for the whitetrash and viewwhitelist domains to the whitetrash cache_peer as above
+cache_peer_domain whitetrash viewwhitelist whitetrash
 
-#I have the viewwhitelist and whitelistproxy domains in /etc/hosts pointing to
+#I have the viewwhitelist and whitetrash domains in /etc/hosts pointing to
 #localhost like:
-# 127.0.0.1       localhost viewwhitelist whitelistproxy
+# 127.0.0.1       localhost viewwhitelist whitetrash
 #You can do the same or use real DNS entries.  If you do the latter you don't need this line.
 hosts_file /etc/hosts
 
@@ -169,7 +169,7 @@ never_direct allow all
 never_direct allow cgi_server
 
 #Allow the domains that manage the whitelist for us.
-acl cgi_server dstdomain whitelistproxy viewwhitelist
+acl cgi_server dstdomain whitetrash viewwhitelist
 http_access allow cgi_server
 
 #This is important to protect webservers (such as whitetrash_serv) listening on localhost.

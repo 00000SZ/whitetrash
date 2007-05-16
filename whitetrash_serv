@@ -59,7 +59,7 @@ def print_http_form(domain=None, url=None, clientaddr=None, username=None):
     <body>
         <div id="pageHeader"></div>
         <h1>Internet Access Request</h1>
-        <form action="http://whitelistproxy" method="post">
+        <form action="http://whitetrash" method="post">
         <div id="host"><div id="hostText"><p><b>Host Requested: </b></p></div><input name="domain" id="hostInputText" value="%s" maxlength="70" size="30" type="text"></div>
         <div id="requestDetails">
         <div id="requestDetailsText">
@@ -97,7 +97,7 @@ def print_ssl_form(domain=None, url=None, clientaddr=None, username=None):
     <body>
         <div id="pageHeader"></div>
         <h1>Internet Access Request</h1>
-        <form action="https://whitelistproxy" method="post">
+        <form action="https://whitetrash" method="post">
         <div id="host"><div id="hostText"><p><b>Host Requested: </b></p></div><input name="domain" id="hostInputText" value="%s" maxlength="70" size="30" type="text"></div>
         <div id="requestDetails">
         <div id="requestDetailsText">
