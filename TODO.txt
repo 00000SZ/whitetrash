@@ -1,0 +1,33 @@
+==============
+Authentication
+==============
+
+This is probably the most important feature request.  Currently whitetrash only supports basic auth because it acts as a cache peer, and this is the only auth protocol it makes sense for squid to pass on.
+
+I intend to address this by performing the NTLM authentication in the whitetrash server itself, and letting squid handle NTLM for the whitetrash redirectors.  I may also look at moving to a mod_python apache plugin instead of a standalone web server.
+
+=======
+CAPTCHA
+=======
+
+To prevent malware simply submitting the whitetrash form, I intend to implement a CAPTCHA system into the form.  http://en.wikipedia.org/wiki/Captcha
+
+=====================
+Per-User Whitelisting
+=====================
+
+Possibly have an option to make per-user whitelist the default, and to add into a system-wide whitelist requires admin approval or CAPTCHA.
+
+=======================
+Deleting From Whitelist
+=======================
+
+Have some sort of facility to allow removal of a website from the whitelist.  This would require admin rights or approval.  Useful for accidental additions and removal of any malicious/inappropriate sites.
+
+====================================
+More Sophisticated Reporting/Logging
+====================================
+
+I am considering logging in separate tables various other info that might be of use in tracking down malware.  One example is the list of all requests made that were not approved with a form submission.
+
+

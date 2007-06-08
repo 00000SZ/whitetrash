@@ -35,8 +35,10 @@ Create a whitetrash linux user::
    
     sudo adduser --shell /bin/false --no-create-home --disabled-password --disabled-login whitetrash
 
-sudo touch /var/log/whitetrash.log
-sudo chown whitetrash:root /var/log/whitetrash.log
+Create logs::
+
+    sudo touch /var/log/whitetrash.log
+    sudo chown whitetrash:root /var/log/whitetrash.log
 
 This will install the whitetrash python files into /usr/bin, and the init script into /etc/init.d::
 
@@ -54,7 +56,7 @@ For testing/debug purposes you can run it directly from the commandline as a reg
 
     python whitetrash_serv
 
-You will probably want to change where the CSS stylesheet gets served from (default is whitetrash.sf.net) and probably make your own stylesheet.  Edit the stylesheet_server variable in whitetrash_serv to point to a server with the stylesheet you want to use.  If you use my stylesheet, the graphics are availbe from whitetrash.sf.net.
+You will probably want to change where the CSS stylesheet gets served from (default is whitetrash.sf.net) and probably make your own stylesheet.  Edit the stylesheet_server variable in whitetrash_serv to point to a server with the stylesheet you want to use.  If you use my stylesheet, the graphics are available from whitetrash.sf.net.
 
 
 Optional
@@ -64,12 +66,97 @@ In ubuntu you can make sure this server gets started in the default runlevels by
 
     sudo update-rc.d whitetrash defaults
 
+Performance - MySQL
+-------------------
+
 If you have a lot of users, you will want to look at tweaking your mysql install, in particular the max number of connections (100 by default).  Set max_connections in my.cnf or test on the commandline temporarily like this::
 
   set global max_connections=200;
 
+============
+Squid Config
+============
+
+You will want to add the following lines to your squid.conf
+
+Cache Peers
+~~~~~~~~~~~
+
+Need to do this to get the auth info passed to our whitetrash listener. We are limited to basic auth as this is the only type of auth squid will pass on. I plan on addressing this soon - see TODO.txt:
+
+    cache_peer whitetrash parent 8000 0 no-query no-digest login=PASS 
+
+Our upstream parent (if any).  If you don't have to go through an upstream proxy you don't need this line.
+
+    cache_peer 10.10.10.254 parent 3128 0 no-query no-digest
+
+Domains
+~~~~~~~
+
+This tells squid to send requests for the whitetrash and viewwhitelist domains to the whitetrash cache_peer as above::
+    
+    cache_peer_domain whitetrash viewwhitelist whitetrash
+
+I have the viewwhitelist and whitetrash domains in /etc/hosts pointing to localhost like:
+    
+    127.0.0.1       localhost viewwhitelist whitetrash
+
+You can do the same or use real DNS entries.  If you do the latter you don't need this line::
+
+    hosts_file /etc/hosts
+
+Redirector
+~~~~~~~~~~
+
+This is the most important line - tell squid about our redirector.  This seems to have been renamed "url_rewrite_program" in newer versions of squid.
+  
+  redirect_program /usr/bin/whitetrash.py
+
+There is a new option called url_rewrite_concurrency which you can set if your redirector is multithreaded.  At the moment mine is not, but this might be something I look at in the future.
+
+Authentication
+~~~~~~~~~~~~~~
+
+You need to turn on authentication.  At the moment only basic is supported due to how squid works.  I am planning on looking at this - see TODO.txt.  Uncomment the relevant "auth_param" lines from your squid.conf.
+
+Access Controls
+~~~~~~~~~~~~~~~
+
+Force authentication:
+
+    acl password proxy_auth REQUIRED
+    http_access deny !password
+
+Allow the domains that manage the whitelist for us:
+
+    acl cgi_server dstdomain whitetrash viewwhitelist
+    http_access allow cgi_server
+
+If you have an upstream cache parent you want traffic to go through, you should use never_direct for all.  This means it will always use a cache parent and never try to contact the server itself.
+
+    never_direct allow all
+
+If your whitetrash box is the last thing between you and the internet you will want it to go and get all the requests for you.  The stuff for the whitelist will still need to go through our cache peer however, so use:
+
+    never_direct allow cgi_server
+
+
+This is important to protect webservers (such as whitetrash_serv) listening on localhost:
+
+    acl to_localhost dst 127.0.0.0/8
+    http_access deny to_localhost
+
+Let the redirector handle everything else:
+
+    http_access allow all
+
+Send everything we don't trust to the redirector to be compared against the whitelist.
+Renamed "url_rewrite_access" in new versions of squid.
+
+    redirector_access allow !cgi_server 
+
 Performance
------------
+~~~~~~~~~~~
 
 If you have a lot of users, you will have to make the standard system modifications to allow squid to consume lots of system resources::
 
@@ -83,7 +170,7 @@ Edit /etc/default/squid (this is probably ubuntu/debian specific, you might find
 
     SQUID_MAXFD=8192
 
-And go for lots of redirector processes in squid.conf::
+By default squid will fire up 5 instances of the redirector, you can change this, and if you have many users you will need a lot more.  Note that if you make this a large number you will probably want to increase the maximum number of mysql connections your mysql server will allow (100 by default).  You probably want lots of redirector processes in squid.conf::
 
     redirect_children 100
 
@@ -106,82 +193,6 @@ And finally recompile::
     ./configure --with-maxfd=8192
 
 Unfortunately despite doing all of this, I couldn't get squid to use more than 4096 file descriptors!  Look at syslog for any errors and warnings.
-
-============
-Squid Config
-============
-
-You will want to add the following lines to your squid.conf
-
-Cache Peers
-~~~~~~~~~~~
-
-#Need to do this to get the auth info passed to our whitetrash listener
-cache_peer whitetrash parent 8000 0 no-query no-digest login=PASS 
-
-#Our upstream parent (if any).  If you don't have to go through an upstream proxy you don't need this line.
-#cache_peer 10.10.10.254 parent 8008 0 no-query no-digest
-
-Domains
-~~~~~~~
-
-#This tells squid to send requests for the whitetrash and viewwhitelist domains to the whitetrash cache_peer as above
-cache_peer_domain whitetrash viewwhitelist whitetrash
-
-#I have the viewwhitelist and whitetrash domains in /etc/hosts pointing to
-#localhost like:
-# 127.0.0.1       localhost viewwhitelist whitetrash
-#You can do the same or use real DNS entries.  If you do the latter you don't need this line.
-hosts_file /etc/hosts
-
-Redirector
-~~~~~~~~~~
-
-#This is the most important line - tell squid about our redirector
-#This seems to have been renamed "url_rewrite_program" in newer versions of squid.
-redirect_program /usr/bin/whitetrash.py
-
-#By default squid will fire up 5 instances of the redirector, you can change this, and if you have many users you will need a lot more.  Note that if you make this a large number you will probably want to increase the maximum number of mysql connections your mysql server will allow (100 by default).
-redirect_children 5
-
-#There is a new option called url_rewrite_concurrency which you can set if your redirector is multithreaded.  At the moment mine is not, but this might be something I look at in the future.
-
-Authentication
-~~~~~~~~~~~~~~
-
-#You need to turn on authentication, it doesn't matter which method.  For digest I use:
-#auth_param digest program /usr/lib/squid/digest_pw_auth /etc/squid/digest_passwords
-#auth_param digest children 5
-#auth_param digest realm Squid proxy-caching web server
-#auth_param digest nonce_garbage_interval 5 minutes
-#auth_param digest nonce_max_duration 240 minutes
-
-Access Controls
-~~~~~~~~~~~~~~~
-
-#Force authentication
-acl password proxy_auth REQUIRED
-http_access deny !password
-
-#If you have an upstream cache parent you want traffic to go through, you should use never_direct for all.  This means it will always use a cache parent and never try to contact the server itself.
-never_direct allow all
-#If your whitetrash box is the last thing between you and the internet you will want it to go and get all the requests for you.  The stuff for the whitelist will still need to go through our cache peer however, so use:
-never_direct allow cgi_server
-
-#Allow the domains that manage the whitelist for us.
-acl cgi_server dstdomain whitetrash viewwhitelist
-http_access allow cgi_server
-
-#This is important to protect webservers (such as whitetrash_serv) listening on localhost.
-acl to_localhost dst 127.0.0.0/8
-http_access deny to_localhost
-
-#let the redirector handle everything else
-http_access allow all
-
-#Send everything we don't trust to the redirector to be compared against the whitelist.
-#Renamed "url_rewrite_access" in new versions of squid.
-redirector_access allow !cgi_server 
 
 ==========
 The result
