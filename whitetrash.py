@@ -27,11 +27,15 @@ import re
 import MySQLdb
 import MySQLdb.cursors
 import whitetrash_db.DB as DB
+from whitetrash_db.configobj import ConfigObj
+
+config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
+
 
 #I use os.write(1,"string") to write to standard out to avoid the python buffering on print statements.
 
-http_fail_url="http://whitetrash/whitetrash_genform.py?"
-ssl_fail_url="whitetrash:8000"
+http_fail_url=config["http_fail_url"]
+ssl_fail_url=config["ssl_fail_url"]
 www=re.compile("^www[0-9]?\.")
 syslog.openlog('whitetrash.py',0,syslog.LOG_USER)
 

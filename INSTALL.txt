@@ -17,7 +17,7 @@ mysql-server
 
 You should certainly be able to use another database with a small number of modifications.  There are only a small number of interactions with the database in the code, and (I think) it is pretty vanilla SQL.
 
-Change the default password in db_setup.  Edit whitetrash_db/DB.py and change DBPASSWD.
+Change the default password in db_setup.
 
 Create and populate a database called 'whitetrash'. If this is a new mysql install, please set a root password::
 
@@ -40,7 +40,7 @@ Create logs::
     sudo touch /var/log/whitetrash.log
     sudo chown whitetrash:root /var/log/whitetrash.log
 
-This will install the whitetrash python files into /usr/bin, and the init script into /etc/init.d::
+This will install the whitetrash python files into /usr/bin, init script into /etc/init.d, and whitetrash.conf into /etc::
 
     sudo python setup.py install
 
@@ -56,8 +56,14 @@ For testing/debug purposes you can run it directly from the commandline as a reg
 
     python whitetrash_serv
 
-You will probably want to change where the CSS stylesheet gets served from (default is whitetrash.sf.net) and probably make your own stylesheet.  Edit the stylesheet_server variable in whitetrash_serv to point to a server with the stylesheet you want to use.  If you use my stylesheet, the graphics are available from whitetrash.sf.net.
+/etc/whitetrash.conf
+~~~~~~~~~~~~~~~~~~~~
 
+Edit /etc/whitetrash.conf to perform the necessary customisations.  The essential things you should change are:
+
+- stylesheet_server. If you use my stylesheet, the graphics are available from whitetrash.sf.net.
+- proxy_secret
+- database_password
 
 Optional
 ~~~~~~~~
@@ -82,9 +88,9 @@ You will want to add the following lines to your squid.conf
 Cache Peers
 ~~~~~~~~~~~
 
-Need to do this to get the auth info passed to our whitetrash listener. We are limited to basic auth as this is the only type of auth squid will pass on. I plan on addressing this soon - see TODO.txt:
+Need to do this to get the username passed to our whitetrash listener:
 
-    cache_peer whitetrash parent 8000 0 no-query no-digest login=PASS 
+    cache_peer whitetrash parent 8000 0 no-query no-digest login=*:secretpassword 
 
 Our upstream parent (if any).  If you don't have to go through an upstream proxy you don't need this line.
 
@@ -117,7 +123,7 @@ There is a new option called url_rewrite_concurrency which you can set if your r
 Authentication
 ~~~~~~~~~~~~~~
 
-You need to turn on authentication.  At the moment only basic is supported due to how squid works.  I am planning on looking at this - see TODO.txt.  Uncomment the relevant "auth_param" lines from your squid.conf.
+You need to turn on authentication. You can use any of the default squid authentication schemes (basic, digest, ntlm) by uncommenting the relevant lines in squid.conf, or write your own squid authenticator.
 
 Access Controls
 ~~~~~~~~~~~~~~~

@@ -35,22 +35,25 @@ from Queue import Queue, Full, Empty
 from MySQLdb.constants import FIELD_TYPE
 import threading
 import syslog
+from configobj import ConfigObj
+
+config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
 
 db_connections=0
 
-DBUSER="whitetrash_user"
-DBPASSWD="passwd"
+DBUSER=config["database_user"]
+DBPASSWD=config["database_password"]
 
 #Sanitisation params
-DOMAIN_LEN=70
-USER_LEN=50
-URL_LEN=255
-COMMENT_LEN=100
+DOMAIN_LEN=int(config["domain_name_length"])
+USER_LEN=int(config["username_length"])
+URL_LEN=int(config["url_length"])
+COMMENT_LEN=int(config["comment_length"])
 
-DATABASE="whitetrash"
-DBUNIXSOCKET="/var/run/mysqld/mysqld.sock"
+DATABASE=config["database"]
+DBUNIXSOCKET=config["db_unix_socket"]
 STRICTSQL=False
-MYSQL_BIN="/usr/bin/mysql"
+MYSQL_BIN=config["mysql_binary"]
 
 
 FLAG_BIN="/usr/bin/whitetrash_serv"

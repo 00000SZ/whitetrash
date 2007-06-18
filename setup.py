@@ -43,7 +43,8 @@ def setup_args():
             'Database Environment :: Database API :: SQL-based',
             'Environment :: Console',
             'Natural Language :: English',],
-        'data_files' : [('/etc/init.d', ['whitetrash'])],
+        'data_files' : [('/etc/init.d', ['whitetrash']),
+                        ('/etc', ['whitetrash.conf'])],
     }
 
     return setup_args

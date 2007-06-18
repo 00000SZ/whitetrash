@@ -33,9 +33,12 @@ import whitetrash_db.DB as DB
 import threading
 from OpenSSL import SSL
 from string import join
+from whitetrash_db.configobj import ConfigObj
+
+config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
 
 last_modified="Thu, 01 Jan 1970 00:00:00 GMT"
-stylesheet_server="http://whitetrash.sf.net"
+proxy_secret_check=re.compile(config["proxy_secret"])
 
 class Log:
     """ The class for logging to a file.  Contains a flush after every write to ensure everything is logged even during an unexpected exit."""
@@ -81,7 +84,7 @@ def print_http_form(domain=None, url=None, clientaddr=None, username=None):
         </div>
         </form>
     </html>
-    """ % (stylesheet_server,domain,clientaddr,username,url,url,username)
+    """ % (config["stylesheet_server"],domain,clientaddr,username,url,url,username)
 
 def print_ssl_form(domain=None, url=None, clientaddr=None, username=None):
 
@@ -118,7 +121,7 @@ def print_ssl_form(domain=None, url=None, clientaddr=None, username=None):
         </form>
 
     </html>
-    """ % (stylesheet_server,domain,url,url,username)
+    """ % (config["stylesheet_server"],domain,url,url,username)
 
 class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
@@ -157,7 +160,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         </html>
 
-        """ % (stylesheet_server,e))
+        """ % (config["stylesheet_server"],e))
 
     def success(self,orig_url,user,domain):
         dateobj=datetime
@@ -198,7 +201,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         </html>
 
-        """ % (orig_url,stylesheet_server,str(dateobj.datetime.now()),domain,user,user,orig_url,orig_url,orig_url))
+        """ % (orig_url,config["stylesheet_server"],str(dateobj.datetime.now()),domain,user,user,orig_url,orig_url,orig_url))
 
     def convert_epoch(self,timestring):
         return time.mktime(time.strptime(timestring.strip(), "%a, %d %b %Y %H:%M:%S %Z"))
@@ -265,7 +268,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         </div>
 
         </body>
-        </html>""" % (stylesheet_server,time.asctime(),table)
+        </html>""" % (config["stylesheet_server"],time.asctime(),table)
         current_time=self.date_time_string()    
         last_modified=current_time
         self.send_200(current_time,cache_age_in_seconds,len(whitelist_htmlpage))
@@ -289,12 +292,11 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         try:
             global last_modified
-            cache_age_in_seconds=3600
 
             #syslog.syslog("Full Request Headers: %s" % self.headers)
             try:
             
-                if (time.time() + time.timezone - self.convert_epoch(last_modified) > cache_age_in_seconds):
+                if (time.time() + time.timezone - self.convert_epoch(last_modified) > int(config["cache_age_in_seconds"])):
                     #syslog.syslog("Time difference:%s"% (time.time() +time.timezone - self.convert_epoch(last_modified)))
                     #Time to refresh
                     last_modified="Thu, 01 Jan 1970 00:00:00 GMT"
@@ -304,10 +306,10 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 if self.headers['If-Modified-Since']==last_modified:
                     self.send_304(last_modified)
                 else:
-                    self.regenerate_whitelist(cache_age_in_seconds)
+                    self.regenerate_whitelist(int(config["cache_age_in_seconds"]))
             except KeyError:
                 #No IMS header so we have to regenerate
-                self.regenerate_whitelist(cache_age_in_seconds)
+                self.regenerate_whitelist(int(config["cache_age_in_seconds"]))
 
         except Exception,e:
             self.failed("Error running whitelist html page generation: %s" %e)
@@ -332,7 +334,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                     if (protocol=="HTTP") and (authenticated_user != user):
                         # We don't get this info for SSL, so just check if it is HTTP
                         # Doesn't matter too much since we ignore the form value anyway
-                        self.invalid_auth()
+                        self.failed("Invalid user authentication")
 
                     else:
 
@@ -372,76 +374,50 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         except Exception,e:
             self.failed("Invalid input:%s" % e)
 
-
-    def invalid_auth(self):
-        self.wfile.write("""
-
-        <html>
-        
-        <head>
-        <title>Authentication Error</title>
-        <style type="text/css" title="currentStyle" media="screen">
-            @import "%s/whitetrash_server.css";
-        </style>
-        </head>
-        
-        <body>
-        
-        <div id="pageHeader"></div>
-        <div id="centreContent">
-        <div id="errorText">
-        <h1>Authentication Error</h1>
-        
-        The Proxy-Authorization header did not contain the expected authorisation value.  Either you haven't authenticated to the proxy or you are trying something dodgy.  Contact your friendly sysadmin.
-        
-        </div>
-        </div>
-        </body>
-        
-        </html>
-        
-        """ % stylesheet_server)
-        
     def do_POST(self):
+
         try:
-            #Use this for digest: breaks basic.
-            #split_header=re.split(r"[=,]",self.headers['Proxy-Authorization'])
-            
-            #Basic header:
+            #Get the username and the "secret" passed by squid.
             #Header looks like: "Basic sldkfjlssjd\r\n"
+            (uname,secret)=decodestring(self.headers['Proxy-Authorization'].split()[1]).split(":")
+
+        except Exception,e:
             if self.protocol=="SSL":
-                uname=decodestring(self.auth_string.split(" ")[1]).split(":")[0]
+                message = "do_POST: Problem decoding authorization string (Proxy-Authorization: %s) '%s'" % self.auth_string,e
             else:
-                uname=decodestring(self.headers['Proxy-Authorization'].split(" ")[1]).split(":")[0]
-            
-            #Digest header
-            #uname_pos=split_header.index("Digest username")
-            #uname=split_header[uname_pos+1].strip("\"")
-            if uname.isalnum():
-                #This is a simple check
-                #Username is alpha-numeric
-                env = {}
-                env['GATEWAY_INTERFACE'] = 'CGI/1.1'
-                env['SERVER_PROTOCOL'] = self.protocol_version
-                env['REQUEST_METHOD'] = self.command
-                if self.headers.typeheader is None:
-                    env['CONTENT_TYPE'] = self.headers.type
+                message = "do_POST: Problem decoding authorization string (Proxy-Authorization: %s) '%s'" % self.headers['Proxy-Authorization'],e
+            self.failed(message)
+
+        try:
+           
+            if proxy_secret_check.match(secret):
+
+                if uname.isalnum():
+                    #This is a simple check
+                    #Username is alpha-numeric
+                    env = {}
+                    env['GATEWAY_INTERFACE'] = 'CGI/1.1'
+                    env['SERVER_PROTOCOL'] = self.protocol_version
+                    env['REQUEST_METHOD'] = self.command
+                    if self.headers.typeheader is None:
+                        env['CONTENT_TYPE'] = self.headers.type
+                    else:
+                        env['CONTENT_TYPE'] = self.headers.typeheader
+
+                    length = self.headers.getheader('content-length')
+                    if length:
+                        env['CONTENT_LENGTH'] = length
+
+                    form = cgi.FieldStorage(fp=self.rfile,headers = None, environ=env)
+                    self.add_to_whitelist(form,uname)
                 else:
-                    env['CONTENT_TYPE'] = self.headers.typeheader
-
-                length = self.headers.getheader('content-length')
-                if length:
-                    env['CONTENT_LENGTH'] = length
-
-                form = cgi.FieldStorage(fp=self.rfile,headers = None, environ=env)
-                self.add_to_whitelist(form,uname)
+                    #User name invalid
+                    self.failed("Expecting alphanumeric username, got:%s" % uname)
             else:
-                #User name invalid
-                self.invalid_auth("Expecting alphanumeric username, got:%s" % uname)
+                self.failed("Invalid cache_peer password for whitetrash")
+
         except Exception,e:
             self.failed(e) 
-            #self.invalid_auth()
-        
         
     def do_GET(self):
         #print self.path
@@ -471,9 +447,8 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         ctx = SSL.Context(SSL.SSLv23_METHOD)
         #server.pem's location (containing the server private key and
         #the server certificate).
-        fpem = '/etc/server.pem'
-        ctx.use_privatekey_file (fpem)
-        ctx.use_certificate_file(fpem)
+        ctx.use_privatekey_file (config["ssl_server_certificate"])
+        ctx.use_certificate_file(config["ssl_server_certificate"])
         ssl_socket = SSL.Connection(ctx, self.wfile)
         self.rfile = socket._fileobject(ssl_socket, "rb", self.rbufsize)
         self.wfile = socket._fileobject(ssl_socket, "wb", self.wbufsize)
@@ -487,12 +462,12 @@ class WhitetrashServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 
 def run_http(server_class=WhitetrashServer,
         handler_class=HTTPRequestHandler):
-    server_address = ('127.0.0.1', 8000)
+    server_address = (config["server_address"], int(config["server_port"]))
     httpd = server_class(server_address, handler_class)
     syslog.openlog('whitetrash_serv',0,syslog.LOG_DAEMON)     
-    PIDFILE = '/var/run/whitetrash_serv.pid'
-    DAEMON = True 
-    LOGFILE = '/var/log/whitetrash.log'
+    PIDFILE = config["pidfile"]
+    DAEMON = False 
+    LOGFILE = config["logfile"]
 
     if (DAEMON):
         # Unix double-fork magic
