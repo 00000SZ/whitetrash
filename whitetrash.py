@@ -57,15 +57,21 @@ def check_whitelist_db(url_domain_only,protocol):
         #Do this query whereever possible, more efficient than with the or.
         #This is a www or www2 query
         #Just select 1 because we only care if it exists or not.
-        cursor.execute("select 1 from whitelist where domain=%s and protocol=%s", (url_domain_only_wild,protocol))
+        cursor.execute("select whitelist_id from whitelist where domain=%s and protocol=%s", (url_domain_only_wild,protocol))
     else:
         #If we are checking images.slashdot.org and www.slashdot.org is listed, we let it through.  If we don't do this pretty much every big site is trashed because images are served from a subdomain.  Believe it is more efficient to do an OR than two separate queries.  Only want this behaviour for www - we don't want to throw away the start of every domain because users won't expect this.
         #syslog.syslog("logger wild:"+url_domain_only_wild)
-        cursor.execute("select 1 from whitelist where (domain=%s and protocol=%s) or (domain=%s and protocol=%s)", (url_domain_only,protocol,url_domain_only_wild,protocol))
+        cursor.execute("select whitelist_id from whitelist where (domain=%s and protocol=%s) or (domain=%s and protocol=%s)", (url_domain_only,protocol,url_domain_only_wild,protocol))
 
-    if cursor.fetchone():
-        os.write(1,"\n")
+    whitelist_id = cursor.fetchone()
+    #syslog.syslog("whitelist_id: %s" % whitelist_id)
+    if whitelist_id:
         #syslog.syslog("domain in whitelist: %s" % url_domain_only)
+        os.write(1,"\n")
+        try:
+            cursor.execute("insert into hitcount set whitelist_id=%s, hitcount=1, timestamp=NOW() on duplicate key update hitcount=hitcount+1, timestamp=NOW()", whitelist_id)
+        except Exception,e:
+            syslog.syslog("Error updating hitcount: %s" % e)
     else:
         os.write(1,fail_url+"\n")
         #syslog.syslog("domain not in whitelist: %s.  Writing fail url:%s" % (url_domain_only,fail_url))
@@ -144,7 +150,7 @@ while 1:
         #Our database handle has probably timed out.
         try:
             cursor=db_connect()
-            check_whitelist_db(url_domain_only)
+            check_whitelist_db(url_domain_only,protocol)
         except:
             #Something weird/bad has happened, tell the user.
             syslog.syslog("Error when checking domain in whitelist. Exception: %s" %e)

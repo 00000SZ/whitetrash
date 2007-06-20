@@ -362,6 +362,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                             try:
                                 dbh=DB.DBO()
                                 dbh.execute("insert into whitelist set domain=%r,timestamp=NOW(),username=%r,protocol=%r,originalrequest=%r,comment=%r", (domain,user,protocol,url,comment))
+                                #Don't worry about inserting a row into the hitcount, I do that in the whitelister.
 
                                 self.success(orig_url,user,domain)
                             except Exception,e:

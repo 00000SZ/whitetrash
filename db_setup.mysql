@@ -32,12 +32,24 @@ CREATE TABLE `whitelist` (
   CONSTRAINT `onedom_oneprotocol` UNIQUE INDEX `whitelist_domain_index` (domain,protocol)
 ) TYPE=MyISAM;
 
---
--- Create new user
---
+-- Would like to make a foreign key constraint here, but not
+-- supported by MyISAM
+CREATE TABLE `hitcount` (
+  `whitelist_id` int(11) UNSIGNED UNIQUE NOT NULL,
+  `hitcount` int(11) UNSIGNED NOT NULL,
+  `timestamp` datetime NOT NULL
+) TYPE=MyISAM;
 
+--
+-- Create new users
+--
+-- This user exposes the database through the web interface
 CREATE USER 'whitetrash_user'@'localhost' IDENTIFIED BY 'passwd';
 GRANT INSERT,SELECT on whitetrash.whitelist TO whitetrash_user;
+GRANT INSERT,SELECT,UPDATE on whitetrash.hitcount TO whitetrash_user;
 
-
+-- This user is used by the whitetrash_cleanup.py script
+CREATE USER 'whitetrash_clean'@'localhost' IDENTIFIED BY 'passwd';
+GRANT SELECT,DELETE on whitetrash.whitelist TO whitetrash_clean;
+GRANT SELECT,DELETE on whitetrash.hitcount TO whitetrash_clean;
 
