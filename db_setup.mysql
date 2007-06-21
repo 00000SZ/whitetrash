@@ -37,7 +37,20 @@ CREATE TABLE `whitelist` (
 CREATE TABLE `hitcount` (
   `whitelist_id` int(11) UNSIGNED UNIQUE NOT NULL,
   `hitcount` int(11) UNSIGNED NOT NULL,
-  `timestamp` datetime NOT NULL
+  `timestamp` datetime NOT NULL,
+  PRIMARY KEY `whitelist_id` (`whitelist_id`)
+) TYPE=MyISAM;
+
+CREATE TABLE `not_whitelisted` (
+  `not_whitelist_id` int(11) UNSIGNED UNIQUE NOT NULL auto_increment,
+  `domain` varchar(70) NOT NULL,
+  `protocol` ENUM('SSL', 'HTTP') NOT NULL,
+  `username` varchar(50) NOT NULL,
+  `hitcount` int(11) UNSIGNED NOT NULL,
+  `firstseen` datetime NOT NULL,
+  `lastseen` datetime NOT NULL,
+  PRIMARY KEY `not_whitelist_id` (`not_whitelist_id`),
+  CONSTRAINT `onedom_oneprotocol` UNIQUE (domain,protocol)
 ) TYPE=MyISAM;
 
 --
@@ -47,9 +60,9 @@ CREATE TABLE `hitcount` (
 CREATE USER 'whitetrash_user'@'localhost' IDENTIFIED BY 'passwd';
 GRANT INSERT,SELECT on whitetrash.whitelist TO whitetrash_user;
 GRANT INSERT,SELECT,UPDATE on whitetrash.hitcount TO whitetrash_user;
+GRANT INSERT,SELECT,UPDATE,DELETE on whitetrash.not_whitelisted TO whitetrash_user;
 
 -- This user is used by the whitetrash_cleanup.py script
 CREATE USER 'whitetrash_clean'@'localhost' IDENTIFIED BY 'passwd';
-GRANT SELECT,DELETE on whitetrash.whitelist TO whitetrash_clean;
-GRANT SELECT,DELETE on whitetrash.hitcount TO whitetrash_clean;
+GRANT SELECT,DELETE on whitetrash.* TO whitetrash_clean;
 

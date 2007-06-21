@@ -10,7 +10,12 @@ from funkload.FunkLoadTestCase import FunkLoadTestCase
 from funkload.Lipsum import Lipsum
 
 class whitelist(FunkLoadTestCase):
-    """This test uses whitelist.conf."""
+    """This test uses whitelist.conf.
+    
+    Note I am assuming that there are no proxy exclusions (ie all requests are sent through the proxy).
+    This is bad if you are using browser exclusion lists to serve your stylesheets off internal servers...
+    
+    """
 
     def setUp(self):
         """Setting up whitelist test."""
@@ -47,8 +52,9 @@ class whitelist(FunkLoadTestCase):
         first_timestamp=""
         for i in range(nb_time):
             self.logd('Try %i' % i)
+            #The next step is very slow, not sure why.  Is fine when using Firefox.
             response=self.get(whitelist_url, description='Get whitelist')
-            self.assertEquals(response.getDOM().getByName('title')[0][0],"HTTP Whitelist Report","Expected 'HTTP Whitelist Report' in HTML title'")
+            self.assertEquals(response.getDOM().getByName('title')[0][0],"Whitelist Whitelist Report","Expected 'HTTP Whitelist Report' in HTML title'")
             #Removing this until I think of a better way of doing things.
             #self.assert_(response.body.find("</table>"),"Page returned with no closing </table>.  We may have got an incomplete table.")
             #Check page is being cached

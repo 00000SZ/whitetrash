@@ -38,7 +38,9 @@ from whitetrash_db.configobj import ConfigObj
 config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
 
 last_modified="Thu, 01 Jan 1970 00:00:00 GMT"
+last_modified_not_whitelist="Thu, 01 Jan 1970 00:00:00 GMT"
 proxy_secret_check=re.compile(config["proxy_secret"])
+domain_re=re.compile("^([a-z0-9-]{1,50}\.){1,6}[a-z]{2,6}$")
 
 class Log:
     """ The class for logging to a file.  Contains a flush after every write to ensure everything is logged even during an unexpected exit."""
@@ -105,6 +107,7 @@ def print_ssl_form(domain=None, url=None, clientaddr=None, username=None):
         <div id="requestDetails">
         <div id="requestDetailsText">
         <p><b>Protocol: </b>SSL</p>
+        <p><b>Client Username: </b>%s</p>
         </div>
         </div>
         <div id="centreContent">
@@ -121,7 +124,7 @@ def print_ssl_form(domain=None, url=None, clientaddr=None, username=None):
         </form>
 
     </html>
-    """ % (config["stylesheet_server"],domain,url,url,username)
+    """ % (config["stylesheet_server"],domain,username,url,url,username)
 
 class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
@@ -129,6 +132,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         SimpleHTTPServer.SimpleHTTPRequestHandler.setup(self)
         self.protocol="HTTP"
         self.auth_string=""
+        self.ssl_username=""
 
     def failed(self,e):
         self.wfile.write("""
@@ -208,7 +212,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def send_200(self,new_time,cache_age_secs,length):
         self.send_response(200, 'OK')
-        syslog.syslog("Sending 200, Last-Modified:%s" % new_time)
+        #syslog.syslog("Sending 200, Last-Modified:%s" % new_time)
         self.send_header('Content-type','text/html')
         self.send_header("Accept-Ranges", "bytes")
         self.send_header("Cache-Control","max-age=%s" % cache_age_secs)
@@ -225,7 +229,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def send_304(self,last_modified):
         self.send_response(304,"Not Modified")
-        syslog.syslog("Sending 304 Not Modified")
+        #syslog.syslog("Sending 304 Not Modified")
         self.send_header("Date",self.date_time_string())
         self.send_header("Last-Modified",last_modified)
         self.end_headers()
@@ -235,18 +239,19 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         global last_modified
 
-        syslog.syslog("Regenerating whitelist webpage")
+        #syslog.syslog("Regenerating whitelist webpage")
         dbh=DB.DBO()
-        dbh.execute("select whitelist_id,domain,timestamp,username,protocol,comment,originalrequest from whitelist order by username,whitelist_id")
+#        dbh.execute("select whitelist_id,domain,timestamp,username,protocol,comment,originalrequest from whitelist order by username,whitelist_id")
+        dbh.execute("select w.whitelist_id,domain,hitcount,w.timestamp as firsttime,h.timestamp as lasttime,username,protocol,comment,originalrequest from whitelist as w left join hitcount as h on w.whitelist_id=h.whitelist_id order by hitcount DESC")
         table=""
         #I don't unquote the original domain urllib.unquote(row[4]) due to the potential for code injection.
         for row in dbh:
-            table+="<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n" %(row['whitelist_id'],row['domain'],row['timestamp'],row['username'],row['protocol'],row['comment'],row['originalrequest'])
+            table+="<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n" %(row['whitelist_id'],row['domain'],row["hitcount"],row['firsttime'],row["lasttime"],row['username'],row['protocol'],row['comment'],row['originalrequest'])
         whitelist_htmlpage="""
 
         <html>
         <head>
-        <title>HTTP Whitelist Report</title>
+        <title>Whitetrash Whitelist Report</title>
         <style type="text/css" title="currentStyle" media="screen">
             @import "%s/whitetrash_server.css";
         </style>
@@ -258,11 +263,15 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         <h1>Whitelist</h1>
         <div id="whitelistTable">
         <p>
-        Report generated at %s.
-        <p>
+        Use this report to find the sites getting the most whitelist hits.  To increase efficiency you should move really busy sites to a squid whitelist, thus minimising the necessary database accesses.</p>
+
+        <p>Click <a href="http://viewwhitelist/not_whitelisted">here</a> for a list of domains that have been requested but not approved.</p>
+
+        <p>Report generated at %s.
+        </p>
         
         <table border=1 frame=box>
-        <tr><td><b>ID</b></td><td><b>Whitelisted Domain</b></td><td><b>Timestamp (local)</b></td><td><b>Username</b></td><td><b>Protocol</b></td><td><b>Comment</b></td><td><b>Original Request</b></td></tr>
+        <tr><td><b>ID</b></td><td><b>Whitelisted Domain</b></td><td><b>Domain Hitcount</b></td><td><b>First Whitelisted</b></td><td><b>Last Accessed</b></td><td><b>Whitelisted by User</b></td><td><b>Protocol</b></td><td><b>Comment</b></td><td><b>Original Request</b></td></tr>
         %s
         </table>
         </div>
@@ -275,7 +284,54 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         self.wfile.write(whitelist_htmlpage)
 
-    def generate_whitelist_webpage(self):
+    def regenerate_not_whitelist(self,cache_age_in_seconds):
+        """Create the html representing the not_whitelist table from the database"""
+
+        global last_modified_not_whitelist
+
+        #syslog.syslog("Regenerating whitelist webpage")
+        dbh=DB.DBO()
+        dbh.execute("select not_whitelist_id, domain, username, protocol, firstseen, lastseen, hitcount from not_whitelisted order by hitcount DESC")
+        table=""
+        for row in dbh:
+            table+="<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n" %(row['not_whitelist_id'],row['domain'],row['protocol'],row["firstseen"],row['lastseen'],row['hitcount'])
+        whitelist_htmlpage="""
+
+        <html>
+        <head>
+        <title>Whitetrash: *Not* Whitelist Report</title>
+        <style type="text/css" title="currentStyle" media="screen">
+            @import "%s/whitetrash_server.css";
+        </style>
+        </head>
+
+        <body>
+
+        <div id="pageHeader"></div>
+        <div id="whitelistTable">
+        <h2>Domains Requested but *NOT* Whitelisted</h2>
+        <p>
+        Use this report to find the sites getting hit a lot, but not whitellisted.  This probably indicates malware or banner ad domains.  To increase efficiency you should move really busy sites to a squid blacklist, thus minimising the necessary database accesses.<p>
+
+        <p>Report generated at %s.
+        </p>
+        
+        <table border=1 frame=box>
+        <tr><td><b>ID</b></td><td><b>Domain</b></td><td><b>Protocol</b></td><td><b>First Requested</b></td><td><b>Last Requested</b></td><td><b>Hitcount</b></td></tr>
+        %s
+        </table>
+        </div>
+
+        </body>
+        </html>""" % (config["stylesheet_server"],time.asctime(),table)
+        current_time=self.date_time_string()    
+        last_modified_not_whitelist=current_time
+        self.send_200(current_time,cache_age_in_seconds,len(whitelist_htmlpage))
+
+        self.wfile.write(whitelist_htmlpage)
+
+
+    def generate_webpage(self,last_modified,regenerate_webpage):
         """I was originally caching this page locally, but it is much simpler and performs better if I just set the If-Modified-Since header and let squid do the caching!
         This approach is much better, as the page only gets regenerated if it has been requested.  Before I was using a cron which always ran, regardless of whether anyone
         was actually interested.
@@ -291,14 +347,13 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         """
 
         try:
-            global last_modified
 
             #syslog.syslog("Full Request Headers: %s" % self.headers)
             try:
             
                 if (time.time() + time.timezone - self.convert_epoch(last_modified) > int(config["cache_age_in_seconds"])):
                     #syslog.syslog("Time difference:%s"% (time.time() +time.timezone - self.convert_epoch(last_modified)))
-                    #Time to refresh
+                    #Time to refresh -force a reload through the IF condition below
                     last_modified="Thu, 01 Jan 1970 00:00:00 GMT"
                     
                 #syslog.syslog("IMS from request: %s.  Our last modified time: %s" % (self.headers['If-Modified-Since'],last_modified))
@@ -306,22 +361,49 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 if self.headers['If-Modified-Since']==last_modified:
                     self.send_304(last_modified)
                 else:
-                    self.regenerate_whitelist(int(config["cache_age_in_seconds"]))
+                    regenerate_webpage(int(config["cache_age_in_seconds"]))
             except KeyError:
                 #No IMS header so we have to regenerate
-                self.regenerate_whitelist(int(config["cache_age_in_seconds"]))
+                regenerate_webpage(int(config["cache_age_in_seconds"]))
 
         except Exception,e:
             self.failed("Error running whitelist html page generation: %s" %e)
-        
+
+    def domain_sanitise(self,domain):
+        #Make sure it is of something.com format
+        domain_res=domain_re.match(domain)
+        if domain_res:
+            #Domain is valid.
+            domain=domain_res.group()
+            return re.sub("^www[0-9]?\.","",domain,1)
+        else:
+            #Decided to fail rather than change to a valid domain name.
+            self.failed("Bad domain name")
+            return False
+
+
     def add_to_whitelist(self,form,authenticated_user):
+        """Take the filled out form, sanity check and add entry to the whitelist.
+
+        Here are the reasons why I don't store src (client) IP address in the database:
+
+        SSL - You know it at the redirector, but there is no way to pass this info back to whitetrash_serv.  You 
+        can use X-Forwarded-For header but it has to be enabled (not a great idea) and if it is on, chances are the squid
+        admin will be re-writing it with generic values to protect their internal IP addresses.  So ultimately it is not reliable.
+
+        HTTP - You know it reliably when you get the form GET, but since you don't save state between the GET and the form POST, there
+        is nowhere to store it.  You can put it in the form, but the user could change this value when it is posted so even though this
+        is unlikely the value is not reliable.
+
+        Long story short.  If you want to know IPs, you have username, domain, and timestamp - go look through the logs
+        """
 
         try:
             #All of these fields need to be sanitised.
             orig_comment=str(form.getfirst("comment"))[:DB.COMMENT_LEN]
             orig_url=str(form.getfirst("url"))[:DB.URL_LEN]
             #User comes from squid so we trust it
-            user=str(form.getfirst("user"))
+            user=str(form.getfirst("user"))[:DB.USER_LEN]
             domain=str(form.getfirst("domain"))[:DB.DOMAIN_LEN]
             protocol=str(form.getfirst("protocol")).upper()
             if orig_url and domain and protocol:
@@ -350,26 +432,19 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                         comment=re.sub("[^a-zA-Z0-9- .,!]+","",orig_comment)
 
                         #sanitise domain
-                        domain=form.getfirst("domain").lower()
-                        #Make sure it is of something.com format
-                        domain_sanitise=re.compile("^([a-z0-9-]{1,50}\.){1,6}[a-z]{2,6}$")
-                        domain_res=domain_sanitise.match(domain)
-                        if domain_res:
-                            #Domain is valid.
-                            domain=domain_res.group()
-                            domain=re.sub("^www[0-9]?\.","",domain,1)
+                        domain=self.domain_sanitise(form.getfirst("domain").lower())
+                        if domain:
 
                             try:
+                                #Don't worry about inserting a row into the hitcount, I do that in the whitelister.
                                 dbh=DB.DBO()
                                 dbh.execute("insert into whitelist set domain=%r,timestamp=NOW(),username=%r,protocol=%r,originalrequest=%r,comment=%r", (domain,user,protocol,url,comment))
-                                #Don't worry about inserting a row into the hitcount, I do that in the whitelister.
-
+                                #Need to remove any entry from the not_whitelisted table
+                                dbh.execute("delete from not_whitelisted where domain=%r and protocol=%r", (domain,protocol))
                                 self.success(orig_url,user,domain)
                             except Exception,e:
                                 self.failed(e)
-                        else:
-                            #Decided to fail rather than change to a valid domain name.
-                            self.failed("Bad domain name")
+
             else:
                 self.failed("Incomplete fields")
         except Exception,e:
@@ -378,9 +453,13 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def do_POST(self):
 
         try:
-            #Get the username and the "secret" passed by squid.
-            #Header looks like: "Basic sldkfjlssjd\r\n"
-            (uname,secret)=decodestring(self.headers['Proxy-Authorization'].split()[1]).split(":")
+
+            if self.protocol=="SSL":
+                uname=self.ssl_username
+            else:
+                #Get the username and the "secret" passed by squid.
+                #Header looks like: "Basic sldkfjlssjd\r\n"
+                (uname,secret)=decodestring(self.headers['Proxy-Authorization'].split()[1]).split(":")
 
         except Exception,e:
             if self.protocol=="SSL":
@@ -391,7 +470,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         try:
            
-            if proxy_secret_check.match(secret):
+            if (self.protocol=="HTTP" and proxy_secret_check.match(secret)) or (self.protocol=="SSL"):
 
                 if uname.isalnum():
                     #This is a simple check
@@ -421,20 +500,31 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             self.failed(e) 
         
     def do_GET(self):
-        #print self.path
-        if "viewwhitelist" in self.path:
+
+        if self.path.startswith("http://viewwhitelist"):
             
-            self.generate_whitelist_webpage()
+            if self.path.startswith("http://viewwhitelist/not_whitelisted"):
+                global last_modified_not_whitelist
+                self.generate_webpage(last_modified_not_whitelist,self.regenerate_not_whitelist)
+            else:
+                global last_modified
+                self.generate_webpage(last_modified,self.regenerate_whitelist)
 
         else:
             try:
+                dbh=DB.DBO()
                 if self.protocol=="SSL":
-                    print self.headers["Host"], self.path
-                    self.wfile.write(print_ssl_form(domain=self.headers["Host"],url="https://%s%s" % (self.headers["Host"],self.path),clientaddr="0.0.0.0",username="ssl"))
+                    host = self.domain_sanitise(self.headers["Host"])
+                    if host:
+                        self.wfile.write(print_ssl_form(domain=host,url="https://%s%s" % (self.headers["Host"],self.path),clientaddr="0.0.0.0",username=self.ssl_username))
+                        dbh.execute("insert into not_whitelisted set domain=%r, username=%r, protocol=%r, firstseen=NOW(), lastseen=NOW(), hitcount=1 on duplicate key update lastseen=NOW(), hitcount=hitcount+1",(host,self.ssl_username,"SSL"))
                 else:
                     param_start=self.path.index("?")
                     results=cgi.parse_qs(self.path[param_start+1:].replace("?","%3F"))
-                    self.wfile.write(print_http_form(url=results["url"][0],domain=results["domain"][0],clientaddr=results["clientaddr"][0],username=results["clientident"][0]))
+                    dom=self.domain_sanitise(results["domain"][0])
+                    if dom:
+                        self.wfile.write(print_http_form(url=results["url"][0],domain=results["domain"][0],clientaddr=results["clientaddr"][0],username=results["clientident"][0]))
+                        dbh.execute("insert into not_whitelisted set domain=%r, username=%r, protocol=%r, firstseen=NOW(), lastseen=NOW(), hitcount=1 on duplicate key update lastseen=NOW(), hitcount=hitcount+1",(dom,results["clientident"][0],"HTTP"))
             except KeyError,e:
                 self.failed("Invalid domain requested")
             except Exception,e:
@@ -442,9 +532,11 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def do_CONNECT(self):
         self.auth_string=self.headers['Proxy-Authorization']
+        self.ssl_username=decodestring(self.auth_string.split(" ")[1]).split(":")[0]
         self.send_response(200, 'OK')
         self.end_headers()
 
+        #Switch our socket to SSL
         ctx = SSL.Context(SSL.SSLv23_METHOD)
         #server.pem's location (containing the server private key and
         #the server certificate).
@@ -467,7 +559,7 @@ def run_http(server_class=WhitetrashServer,
     httpd = server_class(server_address, handler_class)
     syslog.openlog('whitetrash_serv',0,syslog.LOG_DAEMON)     
     PIDFILE = config["pidfile"]
-    DAEMON = True 
+    DAEMON = False 
     LOGFILE = config["logfile"]
 
     if (DAEMON):
