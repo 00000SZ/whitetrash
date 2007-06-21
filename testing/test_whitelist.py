@@ -43,20 +43,23 @@ class whitelist(FunkLoadTestCase):
         Might be a better way to do this...."""
         
         nb_time = self.conf_getInt('test_viewwhitelist', 'nb_time')
-        whitelist_url = self.conf_get('test_viewwhitelist', 'url')
+        whitelist_url = self.conf_get('test_viewwhitelist', 'whitelist_url')
         self.addHeader("Proxy-Authorization","Basic %s" % self.basic_auth)
 
         #Add a refresh header to really test the server and proxy caching
         self.addHeader("Cache-Control","max-age=0")
 
+        response=self.get(self.conf_get('test_viewwhitelist', 'not_whitelist_url'), description='Get whitelist')
+        self.assertEquals(response.getDOM().getByName('title')[0][0],"Whitetrash: *Not* Whitelist Report","Expected 'Whitetrash: *NOT* Whitelist Report' in HTML title'")
+        self.assert_(response.body.find("</table>"),"Page returned with no closing </table>.  We may have got an incomplete table.")
+
         first_timestamp=""
         for i in range(nb_time):
             self.logd('Try %i' % i)
-            #The next step is very slow, not sure why.  Is fine when using Firefox.
+            #The next step is very slow for large tables, not sure why.  Is fine when using Firefox.
             response=self.get(whitelist_url, description='Get whitelist')
-            self.assertEquals(response.getDOM().getByName('title')[0][0],"Whitelist Whitelist Report","Expected 'HTTP Whitelist Report' in HTML title'")
-            #Removing this until I think of a better way of doing things.
-            #self.assert_(response.body.find("</table>"),"Page returned with no closing </table>.  We may have got an incomplete table.")
+            self.assertEquals(response.getDOM().getByName('title')[0][0],"Whitetrash Whitelist Report","Expected 'Whitetrash Whitelist Report' in HTML title'")
+            self.assert_(response.body.find("</table>"),"Page returned with no closing </table>.  We may have got an incomplete table.")
             #Check page is being cached
             timestamp=response.getDOM().getByName('p')[0][0]
             if not first_timestamp:
