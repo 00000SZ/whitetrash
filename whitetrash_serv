@@ -559,7 +559,7 @@ def run_http(server_class=WhitetrashServer,
     httpd = server_class(server_address, handler_class)
     syslog.openlog('whitetrash_serv',0,syslog.LOG_DAEMON)     
     PIDFILE = config["pidfile"]
-    DAEMON = False 
+    DAEMON = True 
     LOGFILE = config["logfile"]
 
     if (DAEMON):
