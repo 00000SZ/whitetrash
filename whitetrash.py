@@ -34,8 +34,8 @@ config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
 
 #I use os.write(1,"string") to write to standard out to avoid the python buffering on print statements.
 
-http_fail_url=config["http_fail_url"]
-ssl_fail_url=config["ssl_fail_url"]
+http_fail_url="http://%s/addentry?" % config["whitetrash_domain"]
+ssl_fail_url="%s:8000" % config["whitetrash_domain"]
 www=re.compile("^www[0-9]?\.")
 syslog.openlog('whitetrash.py',0,syslog.LOG_USER)
 

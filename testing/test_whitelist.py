@@ -103,12 +103,12 @@ class whitelist(FunkLoadTestCase):
                         ['consent','I+Agree']]
 
                 self.logd('Adding %s page %i: %s' % (protocol,i,postparams))
-                response=self.post("http://whitelistproxy/",params=postparams,description='Post params:%s' % postparams)
+                response=self.post("http://whitetrash/addentry?",params=postparams,description='Post params:%s' % postparams)
 
             elif protocol=="SSL":
                 #Emulate the actual process here by submitting user=ssl.
                 self.logd('Adding %s page %i' % (protocol,i))
-                response=self.post("https://whitelistproxy/",params=None)
+                response=self.post("https://whitetrash/addentry?",params=None)
 
             self.assertEquals(response.getDOM().getByName('title')[0][0],"Access Granted","Expected 'Access Granted' in HTML title'")
             self.assert_(response.body.find(urllib.quote_plus(url))>=0,"URL %s expected but not found in response" % urllib.quote_plus(url))

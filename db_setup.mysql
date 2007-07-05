@@ -58,7 +58,7 @@ CREATE TABLE `not_whitelisted` (
 --
 -- This user exposes the database through the web interface
 CREATE USER 'whitetrash_user'@'localhost' IDENTIFIED BY 'passwd';
-GRANT INSERT,SELECT on whitetrash.whitelist TO whitetrash_user;
+GRANT INSERT,SELECT,DELETE on whitetrash.whitelist TO whitetrash_user;
 GRANT INSERT,SELECT,UPDATE on whitetrash.hitcount TO whitetrash_user;
 GRANT INSERT,SELECT,UPDATE,DELETE on whitetrash.not_whitelisted TO whitetrash_user;
 

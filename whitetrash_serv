@@ -42,6 +42,10 @@ last_modified_not_whitelist="Thu, 01 Jan 1970 00:00:00 GMT"
 proxy_secret_check=re.compile(config["proxy_secret"])
 domain_re=re.compile("^([a-z0-9-]{1,50}\.){1,6}[a-z]{2,6}$")
 
+whitetrash_admin_path="http://%s/admin" % config["whitetrash_domain"]
+add_path="%s/addentry" % whitetrash_admin_path
+delete_path="%s/deleteentry" % whitetrash_admin_path
+
 class Log:
     """ The class for logging to a file.  Contains a flush after every write to ensure everything is logged even during an unexpected exit."""
     def __init__(self, f):
@@ -64,7 +68,7 @@ def print_http_form(domain=None, url=None, clientaddr=None, username=None):
     <body>
         <div id="pageHeader"></div>
         <h1>Internet Access Request</h1>
-        <form action="http://whitetrash" method="post">
+        <form action="%s" method="post">
         <div id="host"><div id="hostText"><p><b>Host Requested: </b></p></div><input name="domain" id="hostInputText" value="%s" maxlength="70" size="30" type="text"></div>
         <div id="requestDetails">
         <div id="requestDetailsText">
@@ -78,7 +82,7 @@ def print_http_form(domain=None, url=None, clientaddr=None, username=None):
         <div id="bnessReq">
         <p><b>This site is not currently in the whitelist.  If you have a genuine need to access this site please enter a business requirement or comment for this domain: </b><input name="comment" id="bnessInput" maxlength="100" size="40" type="text"></p></div>
         <div id="warningText">
-        <p>By clicking "I Agree" below you are agreeing to have the information above stored on a list of whitelisted websites with YOUR UNIQUE USERNAME at <a href="http://viewwhitelist/whitelist.html">this address</a></p></div>
+        <p>By clicking "I Agree" below you are agreeing to have the information above stored on a list of whitelisted websites with YOUR UNIQUE USERNAME at <a href="%s/whitelist.html">this address</a></p></div>
         <input type="hidden" name="url" value="%s">
         <input type="hidden" name="user" value="%s">
         <input type="hidden" name="protocol" value="HTTP">
@@ -86,7 +90,7 @@ def print_http_form(domain=None, url=None, clientaddr=None, username=None):
         </div>
         </form>
     </html>
-    """ % (config["stylesheet_server"],domain,clientaddr,username,url,url,username)
+    """ % (config["stylesheet_server"],add_path,domain,clientaddr,username,url,config["whitetrash_domain"],url,username)
 
 def print_ssl_form(domain=None, url=None, clientaddr=None, username=None):
 
@@ -102,7 +106,7 @@ def print_ssl_form(domain=None, url=None, clientaddr=None, username=None):
     <body>
         <div id="pageHeader"></div>
         <h1>Internet Access Request</h1>
-        <form action="https://whitetrash" method="post">
+        <form action="https://%s/admin/addentry" method="post">
         <div id="host"><div id="hostText"><p><b>Host Requested: </b></p></div><input name="domain" id="hostInputText" value="%s" maxlength="70" size="30" type="text"></div>
         <div id="requestDetails">
         <div id="requestDetailsText">
@@ -115,7 +119,7 @@ def print_ssl_form(domain=None, url=None, clientaddr=None, username=None):
         <div id="bnessReq">
         <p><b>This site is not currently in the whitelist.  If you have a genuine need to access this site please enter a business requirement or comment for this domain: </b><input name="comment" id="bnessInput" maxlength="100" size="40" type="text"></p></div>
         <div id="warningText">
-        <p>By clicking "I Agree" below you are agreeing to have the information above stored on a list of whitelisted websites with YOUR UNIQUE USERNAME at <a href="http://viewwhitelist/whitelist.html">this address</a></p></div>
+        <p>By clicking "I Agree" below you are agreeing to have the information above stored on a list of whitelisted websites with YOUR UNIQUE USERNAME at <a href="%s/whitelist.html">this address</a></p></div>
         <input type="hidden" name="url" value="%s">
         <input type="hidden" name="user" value="%s">
         <input type="hidden" name="protocol" value="SSL">
@@ -124,7 +128,7 @@ def print_ssl_form(domain=None, url=None, clientaddr=None, username=None):
         </form>
 
     </html>
-    """ % (config["stylesheet_server"],domain,username,url,url,username)
+    """ % (config["stylesheet_server"],config["whitetrash_domain"],domain,username,url,config["whitetrash_domain"],url,username)
 
 class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
@@ -137,15 +141,12 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def failed(self,e):
         self.wfile.write("""
         <html>
-
         <head>
         <title>Whitetrash Error</title>
         <style type="text/css" title="currentStyle" media="screen">
             @import "%s/whitetrash_server.css";
         </style>
-
         </head>
-
         <body>
 
         <div id="pageHeader"></div>
@@ -161,25 +162,41 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         </div>
 
         </body>
-
         </html>
 
         """ % (config["stylesheet_server"],e))
+
+    def keys_deleted(self):
+        self.wfile.write("""
+        <html>
+        <head>
+        <meta http-equiv=\"refresh\" CONTENT=\"1;URL=%s\">
+        <title>Whitelist Entries Deleted</title>
+        <style type="text/css" title="currentStyle" media="screen">
+            @import "%s/whitetrash_server.css";
+        </style>
+        </head>
+        <body>
+        <div id="pageHeader"></div>
+        <div id="centreContent">
+        <h1>Whitelist Entries Deleted.</h1>
+        </div>
+        </body>
+        </html>
+
+        """ % (delete_path,config["stylesheet_server"]))
 
     def success(self,orig_url,user,domain):
         dateobj=datetime
         self.wfile.write(""" 
         <html>
-
         <head>
         <title>Access Granted</title>
         <meta http-equiv=\"refresh\" CONTENT=\"1;URL=%s\">
         <style type="text/css" title="currentStyle" media="screen">
             @import "%s/whitetrash_server.css";
         </style>
-
         </head>
-
         <body>
 
         <div id="pageHeader"></div>
@@ -199,10 +216,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         <p>has been granted.  Your browser should automatically take you to the website. If it doesn't you can use this link:</p>
         <p><a href=\"%s\">%s</a></p>
         </div>
-
-
         </body>
-
         </html>
 
         """ % (orig_url,config["stylesheet_server"],str(dateobj.datetime.now()),domain,user,user,orig_url,orig_url,orig_url))
@@ -265,7 +279,9 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         <p>
         Use this report to find the sites getting the most whitelist hits.  To increase efficiency you should move really busy sites to a squid whitelist, thus minimising the necessary database accesses.</p>
 
-        <p>Click <a href="http://viewwhitelist/not_whitelisted">here</a> for a list of domains that have been requested but not approved.</p>
+        <p>Click <a href="%s/not_whitelisted">here</a> for a list of domains that have been requested but not approved.</p>
+
+        <p>Click <a href="%s">here</a> to remove domains from the whitelist.</p>
 
         <p>Report generated at %s.
         </p>
@@ -277,7 +293,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         </div>
 
         </body>
-        </html>""" % (config["stylesheet_server"],time.asctime(),table)
+        </html>""" % (config["stylesheet_server"],whitetrash_admin_path,delete_path,time.asctime(),table)
         current_time=self.date_time_string()    
         last_modified=current_time
         self.send_200(current_time,cache_age_in_seconds,len(whitelist_htmlpage))
@@ -330,6 +346,48 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         self.wfile.write(whitelist_htmlpage)
 
+    def generate_delete_list(self,uname):
+        dbh=DB.DBO()
+        dbh.execute("select whitelist_id,domain,timestamp,protocol,comment from whitelist where username=%r order by timestamp DESC", uname)
+        table=""
+        #I don't unquote the original domain urllib.unquote(row[4]) due to the potential for code injection.
+        for row in dbh:
+            table+='<tr><td><input type="checkbox" name="DeleteId" value="%s"></td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n' %(row['whitelist_id'],row['whitelist_id'],row['domain'],row['timestamp'],row['protocol'],row['comment'])
+
+        whitelist_htmlpage="""
+
+        <html>
+        <head>
+        <title>Whitetrash: Deletion Interface for %s</title>
+        <style type="text/css" title="currentStyle" media="screen">
+            @import "%s/whitetrash_server.css";
+        </style>
+        </head>
+
+        <body>
+
+        <div id="pageHeader"></div>
+        <div id="whitelistTable">
+        <h2>Domains Whitelisted by %s</h2>
+        <p>
+        To delete entries, tick those you want to delete and hit the "Delete" button.<p>
+
+        <p>Report generated at %s.
+        </p>
+        <form name="delete" action="%s" method="POST"> 
+        <table border=1 frame=box>
+        <tr><td><b>Delete</b></td><td><b>ID</b></td><td><b>Whitelisted Domain</b></td><td><b>First Whitelisted</b></td><td><b>Protocol</b></td><td><b>Comment</b></td></tr>
+        %s
+        </table>
+        <p>
+        <input type="submit" name="Delete" id="Delete" value="Delete domains" class="LgnBtn"></p>
+        </form>
+        </div>
+
+        </body>
+        </html>""" % (uname,config["stylesheet_server"],uname,time.asctime(),delete_path,table)
+        self.send_200(self.date_time_string(),0,len(whitelist_htmlpage))
+        self.wfile.write(whitelist_htmlpage)
 
     def generate_webpage(self,last_modified,regenerate_webpage):
         """I was originally caching this page locally, but it is much simpler and performs better if I just set the If-Modified-Since header and let squid do the caching!
@@ -450,62 +508,84 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         except Exception,e:
             self.failed("Invalid input:%s" % e)
 
+    def delete_from_whitelist(self,form,authenticated_user):
+        try:
+            ids=form.getvalue("DeleteId")
+            if ids.__class__.__name__=='list':
+                #we have more than one selected.
+                for id in ids:
+                    if int(id)<=0:
+                        self.failed("Bad id submitted for deletion")
+                id_list=join(ids,"','")
+            else:
+                id_list=ids
+            dbh=DB.DBO()
+            dbh.execute("delete low_priority from whitelist where username=%r and whitelist_id IN ('%s')", (str(authenticated_user)[:DB.USER_LEN],id_list))
+            self.keys_deleted()
+
+        except DB.DBError,e:
+            self.failed("Database error when deleting values:%s" % e)
+        except Exception,e:
+            self.failed("Bad id submitted for deletion:%s" %e)
+        
+    def check_uname_secret(self):
+        """Get the username and the "secret" passed by squid.
+        Check the secret matches and that the username is alphanumeric
+        Header looks like: "Basic sldkfjlssjd\r\n" """
+        try:
+            if self.protocol=="SSL":
+                if self.ssl_username.isalpha():
+                    return self.ssl_username
+                else:
+                    self.failed("Invalid username (not alphabetic)")
+            else:
+                (uname,secret)=decodestring(self.headers['Proxy-Authorization'].split()[1]).split(":")
+                if (proxy_secret_check.match(secret) and uname.isalpha()):
+                    return uname
+                else:
+                    self.failed("Invalid username (not alphabetic) or cache_peer password for whitetrash")
+        except Exception, e:
+            self.failed("Problem decoding proxy authorization string")
+
     def do_POST(self):
 
-        try:
-
-            if self.protocol=="SSL":
-                uname=self.ssl_username
-            else:
-                #Get the username and the "secret" passed by squid.
-                #Header looks like: "Basic sldkfjlssjd\r\n"
-                (uname,secret)=decodestring(self.headers['Proxy-Authorization'].split()[1]).split(":")
-
-        except Exception,e:
-            if self.protocol=="SSL":
-                message = "do_POST: Problem decoding authorization string (Proxy-Authorization: %s) '%s'" % self.auth_string,e
-            else:
-                message = "do_POST: Problem decoding authorization string (Proxy-Authorization: %s) '%s'" % self.headers['Proxy-Authorization'],e
-            self.failed(message)
+        uname=self.check_uname_secret();
 
         try:
-           
-            if (self.protocol=="HTTP" and proxy_secret_check.match(secret)) or (self.protocol=="SSL"):
-
-                if uname.isalnum():
-                    #This is a simple check
-                    #Username is alpha-numeric
-                    env = {}
-                    env['GATEWAY_INTERFACE'] = 'CGI/1.1'
-                    env['SERVER_PROTOCOL'] = self.protocol_version
-                    env['REQUEST_METHOD'] = self.command
-                    if self.headers.typeheader is None:
-                        env['CONTENT_TYPE'] = self.headers.type
-                    else:
-                        env['CONTENT_TYPE'] = self.headers.typeheader
-
-                    length = self.headers.getheader('content-length')
-                    if length:
-                        env['CONTENT_LENGTH'] = length
-
-                    form = cgi.FieldStorage(fp=self.rfile,headers = None, environ=env)
-                    self.add_to_whitelist(form,uname)
-                else:
-                    #User name invalid
-                    self.failed("Expecting alphanumeric username, got:%s" % uname)
+            env = {}
+            env['GATEWAY_INTERFACE'] = 'CGI/1.1'
+            env['SERVER_PROTOCOL'] = self.protocol_version
+            env['REQUEST_METHOD'] = self.command
+            if self.headers.typeheader is None:
+                env['CONTENT_TYPE'] = self.headers.type
             else:
-                self.failed("Invalid cache_peer password for whitetrash")
+                env['CONTENT_TYPE'] = self.headers.typeheader
+
+            length = self.headers.getheader('content-length')
+            if length:
+                env['CONTENT_LENGTH'] = length
+
+            print self.path
+            if self.path.startswith(delete_path):
+                form = cgi.FieldStorage(fp=self.rfile,headers = None, environ=env)
+                self.delete_from_whitelist(form,uname)
+            else:
+                form = cgi.FieldStorage(fp=self.rfile,headers = None, environ=env)
+                self.add_to_whitelist(form,uname)
 
         except Exception,e:
             self.failed(e) 
         
     def do_GET(self):
 
-        if self.path.startswith("http://viewwhitelist"):
+        if self.path.startswith(whitetrash_admin_path):
             
-            if self.path.startswith("http://viewwhitelist/not_whitelisted"):
+            if self.path.startswith("%s/not_whitelisted" % whitetrash_admin_path):
                 global last_modified_not_whitelist
                 self.generate_webpage(last_modified_not_whitelist,self.regenerate_not_whitelist)
+            elif self.path.startswith("%s/deleteentry" % whitetrash_admin_path):
+                self.generate_delete_list(self.check_uname_secret())
+
             else:
                 global last_modified
                 self.generate_webpage(last_modified,self.regenerate_whitelist)
@@ -559,7 +639,7 @@ def run_http(server_class=WhitetrashServer,
     httpd = server_class(server_address, handler_class)
     syslog.openlog('whitetrash_serv',0,syslog.LOG_DAEMON)     
     PIDFILE = config["pidfile"]
-    DAEMON = True 
+    DAEMON = False 
     LOGFILE = config["logfile"]
 
     if (DAEMON):

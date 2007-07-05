@@ -99,13 +99,13 @@ Our upstream parent (if any).  If you don't have to go through an upstream proxy
 Domains
 ~~~~~~~
 
-This tells squid to send requests for the whitetrash and viewwhitelist domains to the whitetrash cache_peer as above::
+This tells squid to send requests for the whitetrash domain to the whitetrash cache_peer as above::
     
-    cache_peer_domain whitetrash viewwhitelist whitetrash
+    cache_peer_domain whitetrash whitetrash
 
-I have the viewwhitelist and whitetrash domains in /etc/hosts pointing to localhost like:
+I have the whitetrash domains in /etc/hosts pointing to localhost like:
     
-    127.0.0.1       localhost viewwhitelist whitetrash
+    127.0.0.1       localhost whitetrash
 
 You can do the same or use real DNS entries.  If you do the latter you don't need this line::
 
@@ -135,7 +135,7 @@ Force authentication:
 
 Allow the domains that manage the whitelist for us:
 
-    acl cgi_server dstdomain whitetrash viewwhitelist
+    acl cgi_server dstdomain whitetrash
     http_access allow cgi_server
 
 If you have an upstream cache parent you want traffic to go through, you should use never_direct for all.  This means it will always use a cache parent and never try to contact the server itself.
