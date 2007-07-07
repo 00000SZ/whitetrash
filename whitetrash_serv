@@ -42,10 +42,12 @@ last_modified="Thu, 01 Jan 1970 00:00:00 GMT"
 last_modified_not_whitelist="Thu, 01 Jan 1970 00:00:00 GMT"
 proxy_secret_check=re.compile(config["proxy_secret"])
 domain_re=re.compile("^([a-z0-9-]{1,50}\.){1,6}[a-z]{2,6}$")
+user_deletion_allowed=config["user_deletion_allowed"].upper()=="TRUE"
 
-whitetrash_admin_path="http://%s/admin" % config["whitetrash_admin_domain"]
+whitetrash_admin_path="http://%s" % config["whitetrash_admin_domain"]
 whitetrash_add_domain_path="http://%s" % config["whitetrash_add_domain"]
 add_path="%s/addentry" % whitetrash_add_domain_path
+ssl_add_path=add_path.replace("http","https")
 delete_path="%s/deleteentry" % whitetrash_admin_path
 admins = config["admins"].split(",")
 debug=config["debug"].upper()=="TRUE"
@@ -119,7 +121,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         <body>
             <div id="pageHeader"></div>
             <h1>Internet Access Request</h1>
-            <form action="https://%s/admin/addentry" method="post">
+            <form action="%s" method="post">
             <div id="host"><div id="hostText"><p><b>Host Requested: </b></p></div><input name="domain" id="hostInputText" value="%s" maxlength="70" size="30" type="text"></div>
             <div id="requestDetails">
             <div id="requestDetailsText">
@@ -141,7 +143,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             </form>
 
         </html>
-        """ % (config["stylesheet_server"],config["whitetrash_add_domain"],domain,username,url,config["whitetrash_admin_domain"],url,username)
+        """ % (config["stylesheet_server"],ssl_add_path,domain,username,url,config["whitetrash_admin_domain"],url,username)
 
 
     def failed_screen(self,e):
@@ -361,14 +363,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         self.wfile.write(whitelist_htmlpage)
 
-    def generate_delete_list(self,uname):
-        dbh=DB.DBO()
-        if uname in admins:
-            dbh.execute("select whitelist_id,domain,timestamp,protocol,comment from whitelist order by timestamp DESC")
-            uname="all users"
-        else:
-            dbh.execute("select whitelist_id,domain,timestamp,protocol,comment from whitelist where username=%r order by timestamp DESC", uname)
-        
+    def print_delete_page(self,dbh,uname):
         table=""
         for row in dbh:
             table+='<tr><td><input type="checkbox" name="DeleteId" value="%s"></td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n' %(row['whitelist_id'],row['whitelist_id'],row['domain'],row['timestamp'],row['protocol'],row['comment'])
@@ -407,6 +402,22 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         </html>""" % (uname,config["stylesheet_server"],uname,time.asctime(),delete_path,table)
         self.send_200(self.date_time_string(),0,len(whitelist_htmlpage))
         self.wfile.write(whitelist_htmlpage)
+
+
+    def generate_delete_list(self,uname):
+        try:
+            dbh=DB.DBO()
+            if uname in admins:
+                dbh.execute("select whitelist_id,domain,timestamp,protocol,comment from whitelist order by timestamp DESC")
+                uname="all users"
+                self.print_delete_page(dbh,uname)
+            elif user_deletion_allowed:
+                dbh.execute("select whitelist_id,domain,timestamp,protocol,comment from whitelist where username=%r order by timestamp DESC", uname)
+                self.print_delete_page(dbh,uname)
+            else:
+                self.failed_screen("Delete access not authorised")
+        except Exception,e:
+            self.failed("Database error when generating deleted items list: %s" % e)
 
     def generate_webpage(self,last_modified,regenerate_webpage):
         """I was originally caching this page locally, but it is much simpler and performs better if I just set the If-Modified-Since header and let squid do the caching!
@@ -518,7 +529,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                                 dbh=DB.DBO()
                                 dbh.execute("insert into whitelist set domain=%r,timestamp=NOW(),username=%r,protocol=%r,originalrequest=%r,comment=%r", (domain,user,protocol,url,comment))
                                 #Need to remove any entry from the not_whitelisted table
-                                dbh.execute("delete from not_whitelisted where domain=%r and protocol=%r", (domain,protocol))
+                                dbh.execute("delete low_priority from not_whitelisted where domain=%r and protocol=%r", (domain,protocol))
                                 self.success(orig_url,user,domain)
                             except Exception,e:
                                 self.failed(e)
@@ -540,8 +551,14 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             else:
                 id_list=ids
             dbh=DB.DBO()
-            dbh.execute("delete low_priority from whitelist where username=%r and whitelist_id IN ('%s')", (str(authenticated_user),id_list))
-            self.keys_deleted()
+            if authenticated_user in admins:
+                dbh.execute("delete low_priority from whitelist where whitelist_id IN ('%s')", (id_list))
+                self.keys_deleted()
+            elif user_deletion_allowed:
+                dbh.execute("delete low_priority from whitelist where username=%r and whitelist_id IN ('%s')", (str(authenticated_user),id_list))
+                self.keys_deleted()
+            else:
+                self.failed_screen("Deletion access denied")
 
         except DB.DBError,e:
             self.failed("Database error when deleting values:%s" % e)
@@ -600,37 +617,46 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         uname=self.check_uname_secret()
         if uname:
-            print self.path
-            if self.path.startswith(whitetrash_add_domain_path):
-                try:
-                    dbh=DB.DBO()
+            try:
+                dbh=DB.DBO()
+                print self.path
+                if self.path.startswith(add_path):
+                    #This is a http request
+                    param_start=self.path.index("?")
+                    results=cgi.parse_qs(self.path[param_start+1:].replace("?","%3F"))
+                    dom=self.domain_sanitise(results["domain"][0])
+                    if dom:
+                        self.wfile.write(self.print_http_form(url=results["url"][0],domain=results["domain"][0],clientaddr=results["clientaddr"][0],username=uname))
+                        dbh.execute("insert into not_whitelisted set domain=%r, username=%r, protocol=%r, firstseen=NOW(), lastseen=NOW(), hitcount=1 on duplicate key update lastseen=NOW(), hitcount=hitcount+1",(dom,uname,"HTTP"))
+
+                elif not(self.path.startswith("http")):
+                    #The path for ssl requests just looks like "/favicon.ico"
+                    #i.e. no https:// in front
                     if self.protocol=="SSL":
                         host = self.domain_sanitise(self.headers["Host"])
                         if host:
                             self.wfile.write(self.print_ssl_form(domain=host,url="https://%s%s" % (self.headers["Host"],self.path),clientaddr="0.0.0.0",username=uname))
                             dbh.execute("insert into not_whitelisted set domain=%r, username=%r, protocol=%r, firstseen=NOW(), lastseen=NOW(), hitcount=1 on duplicate key update lastseen=NOW(), hitcount=hitcount+1",(host,uname,"SSL"))
                     else:
-                        param_start=self.path.index("?")
-                        results=cgi.parse_qs(self.path[param_start+1:].replace("?","%3F"))
-                        dom=self.domain_sanitise(results["domain"][0])
-                        if dom:
-                            self.wfile.write(self.print_http_form(url=results["url"][0],domain=results["domain"][0],clientaddr=results["clientaddr"][0],username=uname))
-                            dbh.execute("insert into not_whitelisted set domain=%r, username=%r, protocol=%r, firstseen=NOW(), lastseen=NOW(), hitcount=1 on duplicate key update lastseen=NOW(), hitcount=hitcount+1",(dom,uname,"HTTP"))
-                except Exception,e:
-                    self.failed("Error:%s. Path:%s" % (e,self.path))
+                        self.failed("Receive a SSL request for %s without CONNECT" % self.path)
 
-            elif self.path.startswith(whitetrash_admin_path):
+                elif self.path.startswith(whitetrash_admin_path):
 
-                if self.path.startswith("%s/not_whitelisted" % whitetrash_admin_path):
-                    global last_modified_not_whitelist
-                    self.generate_webpage(last_modified_not_whitelist,self.regenerate_not_whitelist)
-                elif self.path.startswith("%s/deleteentry" % whitetrash_admin_path):
-                    self.generate_delete_list(uname)
+                    if self.path.startswith("%s/not_whitelisted" % whitetrash_admin_path):
+                        global last_modified_not_whitelist
+                        self.generate_webpage(last_modified_not_whitelist,self.regenerate_not_whitelist)
+                    elif self.path.startswith("%s/deleteentry" % whitetrash_admin_path):
+                        self.generate_delete_list(uname)
+
+                    else:
+                        global last_modified
+                        self.generate_webpage(last_modified,self.regenerate_whitelist)
 
                 else:
-                    global last_modified
-                    self.generate_webpage(last_modified,self.regenerate_whitelist)
+                    self.failed("Bad path: %s" % self.path)
 
+            except Exception,e:
+                self.failed("Error:%s. Path:%s" % (e,self.path))
 
     def do_CONNECT(self):
         self.auth_string=self.headers['Proxy-Authorization']
@@ -661,7 +687,7 @@ def run_http(server_class=WhitetrashServer,
     httpd = server_class(server_address, handler_class)
     syslog.openlog('whitetrash_serv',0,syslog.LOG_DAEMON)     
     PIDFILE = config["pidfile"]
-    DAEMON = False 
+    DAEMON = True 
     LOGFILE = config["logfile"]
 
     if (DAEMON):

@@ -44,7 +44,7 @@ This will install the whitetrash python files into /usr/bin, init script into /e
 
     sudo python setup.py install
 
-If you intend to whitelist SSL you will need a certificate.  You can use the line below to create one, or buy one from a CA (this is better because then it will be automatically trusted by users).  The code expects the cert to be in /etc/server.pem.  You will want to make the common name something meaningful because users will get a popup as they are redirected::
+If you intend to whitelist SSL you will need a certificate.  You can use the line below to create one, or buy one from a CA (this is better because then it will be automatically trusted by users).  The code expects the cert to be in /etc/server.pem.  The common name should be the same as whatever whitetrash_add_domain is set to in whitetrash.conf (default is whitetrash) :
 
     openssl req -new -x509 -keyout /etc/server.pem -out /etc/server.pem -days 365 -nodes
 
@@ -72,12 +72,6 @@ In ubuntu you can make sure this server gets started in the default runlevels by
 
     sudo update-rc.d whitetrash defaults
 
-Performance - MySQL
--------------------
-
-If you have a lot of users, you will want to look at tweaking your mysql install, in particular the max number of connections (100 by default).  Set max_connections in my.cnf or test on the commandline temporarily like this::
-
-  set global max_connections=200;
 
 ============
 Squid Config
@@ -164,6 +158,18 @@ Renamed "url_rewrite_access" in new versions of squid.
 Performance
 ~~~~~~~~~~~
 
+MySQL
+-----
+
+If you have a lot of users, you will want to look at tweaking your mysql install, in particular the max number of connections (100 by default).  Set max_connections in my.cnf or test on the commandline temporarily like this::
+
+  set global max_connections=200;
+
+You should probably allocate mysql some more system resources, as the defaults are fairly conservative.  See mysql.com for guidance.
+
+System
+------
+
 If you have a lot of users, you will have to make the standard system modifications to allow squid to consume lots of system resources::
 
     echo 8192 > /proc/sys/fs/file-max
@@ -199,6 +205,13 @@ And finally recompile::
     ./configure --with-maxfd=8192
 
 Unfortunately despite doing all of this, I couldn't get squid to use more than 4096 file descriptors!  Look at syslog for any errors and warnings.
+
+Whitetrash
+----------
+
+I have allowed the adding domain to be separated from the viewing/deleting domain.  The idea behind this is that if you think viewing/deleting actions are slowing down the main server, you can move it to a different machine.  You will have to configure DNS, allow MySQL connection over the network, and add the new domain into the squid.conf where you only had "whitetrash" before.
+
+There are plenty of other ways the install could be tweaked if there are any performance issues.  Send me an email if you have any questions.
 
 ==========
 The result
