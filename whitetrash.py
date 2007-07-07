@@ -34,8 +34,9 @@ config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
 
 #I use os.write(1,"string") to write to standard out to avoid the python buffering on print statements.
 
-http_fail_url="http://%s/addentry?" % config["whitetrash_domain"]
-ssl_fail_url="%s:8000" % config["whitetrash_domain"]
+http_fail_url="http://%s/addentry?" % config["whitetrash_add_domain"]
+ssl_fail_url="%s:8000" % config["whitetrash_add_domain"]
+fail_string=config["domain_fail_string"]
 www=re.compile("^www[0-9]?\.")
 syslog.openlog('whitetrash.py',0,syslog.LOG_USER)
 
@@ -135,7 +136,7 @@ while 1:
         if protocol=="SSL":
             os.write(1,fail_url+"\n")
         else:
-            os.write(1,http_fail_url+"domain=invalid_try_again\n")
+            os.write(1,http_fail_url+("domain=%s\n" % fail_string))
         continue
     except Exception,e:
         syslog.syslog("Unexpected whitetrash redirector exception:%s" % e)
