@@ -10,18 +10,4 @@ Per-User Whitelisting
 
 Possibly have an option to make per-user whitelist the default, and to add into a system-wide whitelist requires admin approval or CAPTCHA.
 
-=======================
-Deleting From Whitelist
-=======================
-
-Have some sort of facility to allow removal of a website from the whitelist.  This would require admin rights or approval.  Useful for accidental additions and removal of any malicious/inappropriate sites.
-
-Another approach would be to have a hit count on each domain, and domains that aren't visited again are removed from the whitelist periodically.
-
-====================================
-More Sophisticated Reporting/Logging
-====================================
-
-I am considering logging in separate tables various other info that might be of use in tracking down malware.  One example is the list of all requests made that were not approved with a form submission.
-
 
