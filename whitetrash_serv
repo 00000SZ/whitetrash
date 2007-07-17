@@ -147,6 +147,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
 
     def failed_screen(self,e):
+        safe_e=re.sub("[^a-zA-Z0-9- .,()\"\']+","",e)
         self.wfile.write("""
         <html>
         <head>
@@ -172,7 +173,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         </body>
         </html>
 
-        """ % (config["stylesheet_server"],e))
+        """ % (config["stylesheet_server"],safe_e))
 
     def failed(self,e):
         """Hide our detailed serious errors inline with best practice.  Use failed_screen for errors that will be meaningful to users but don't disclose security information."""
@@ -619,7 +620,6 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         if uname:
             try:
                 dbh=DB.DBO()
-                print self.path
                 if self.path.startswith(add_path):
                     #This is a http request
                     param_start=self.path.index("?")

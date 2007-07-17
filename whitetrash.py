@@ -82,7 +82,7 @@ cursor=db_connect()
 
 #Strip out everything except the domain
 #Valid domain suffixes are 2-6 chars
-domain_regex=re.compile("([a-z0-9-]+\.)+[a-z]{2,6}")
+domain_regex=re.compile("([a-z0-9-]+\.)+[a-z]+")
 #Valid domains are from iana.org
 #Too many country designators, so we will accept any two letters
 
@@ -103,7 +103,7 @@ while 1:
         if spliturl[3]=="CONNECT":
             #syslog.syslog("Protocol=SSL")
             protocol="SSL"
-            url_domain_only=domain_sanitise.match(spliturl[0].split(":")[0]).group()[:DB.DOMAIN_LEN]
+            url_domain_only=domain_sanitise.match(spliturl[0].split(":")[0]).group()
             fail_url=ssl_fail_url
 
         else:
@@ -114,6 +114,7 @@ while 1:
             #The full url as passed by squid
             #urlencode it to make it safe to hand around in forms
             newurl_safe=urllib.quote(spliturl[0])
+            #syslog.syslog("sanitised_url: %s" % newurl_safe)
 
             #Get just the client IP
             clientaddr=spliturl[1].split("/")[0]
@@ -125,7 +126,8 @@ while 1:
 
             fail_url+="url=%s&clientaddr=%s&clientident=%s&" % (newurl_safe,clientaddr,clientident)
             #strip out the domain.
-            url_domain_only_unsafe=domain_regex.match(spliturl[0].lower().replace("http://","",1)).group()[:DB.DOMAIN_LEN]
+            url_domain_only_unsafe=domain_regex.match(spliturl[0].lower().replace("http://","",1)).group()
+            #syslog.syslog("unsafe: %s" % url_domain_only_unsafe)
     
             #sanitise it
             url_domain_only=domain_sanitise.match(url_domain_only_unsafe).group()
@@ -136,7 +138,7 @@ while 1:
         if protocol=="SSL":
             os.write(1,fail_url+"\n")
         else:
-            os.write(1,http_fail_url+("domain=%s\n" % fail_string))
+            os.write(1,"%sdomain=%s\n" % (http_fail_url,fail_string))
         continue
     except Exception,e:
         syslog.syslog("Unexpected whitetrash redirector exception:%s" % e)
