@@ -39,6 +39,9 @@ ssl_fail_url="%s:8000" % config["whitetrash_add_domain"]
 fail_string=config["domain_fail_string"]
 www=re.compile("^www[0-9]?\.")
 syslog.openlog('whitetrash.py',0,syslog.LOG_USER)
+#Strip out everything except the domain
+domain_regex=re.compile("([a-z0-9-]+\.)+[a-z]+")
+domain_sanitise=re.compile(config["domain_regex"])
 
 def db_connect():
 
@@ -79,14 +82,6 @@ def check_whitelist_db(url_domain_only,protocol):
 
 
 cursor=db_connect()
-
-#Strip out everything except the domain
-#Valid domain suffixes are 2-6 chars
-domain_regex=re.compile("([a-z0-9-]+\.)+[a-z]+")
-#Valid domains are from iana.org
-#Too many country designators, so we will accept any two letters
-
-domain_sanitise=re.compile("^([a-z0-9-]{1,50}\.){1,6}[a-z]{2,6}$")
 
 while 1:
 

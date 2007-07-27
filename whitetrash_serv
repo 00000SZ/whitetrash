@@ -36,21 +36,17 @@ from string import join
 from whitetrash_db.configobj import ConfigObj
 from random import randint
 
-config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
+try:
+    from Captcha.Visual.Tests import PseudoGimpy
+    from Captcha import Factory
+except ImportError:
+    print "PyCaptcha not installed.  Download from http://cheeseshop.python.org/pypi/PyCAPTCHA/0.4\nAlso requires Python imaging library."
 
+config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
 last_modified="Thu, 01 Jan 1970 00:00:00 GMT"
 last_modified_not_whitelist="Thu, 01 Jan 1970 00:00:00 GMT"
-proxy_secret_check=re.compile(config["proxy_secret"])
-domain_re=re.compile("^([a-z0-9-]{1,50}\.){1,6}[a-z]{2,6}$")
-user_deletion_allowed=config["user_deletion_allowed"].upper()=="TRUE"
+captcha_factory=Factory()
 
-whitetrash_admin_path="http://%s" % config["whitetrash_admin_domain"]
-whitetrash_add_domain_path="http://%s" % config["whitetrash_add_domain"]
-add_path="%s/addentry" % whitetrash_add_domain_path
-ssl_add_path=add_path.replace("http","https")
-delete_path="%s/deleteentry" % whitetrash_admin_path
-admins = config["admins"].split(",")
-debug=config["debug"].upper()=="TRUE"
 
 class Log:
     """ The class for logging to a file.  Contains a flush after every write to ensure everything is logged even during an unexpected exit."""
@@ -66,10 +62,31 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def setup(self):
         SimpleHTTPServer.SimpleHTTPRequestHandler.setup(self)
         self.protocol="HTTP"
+        self.captcha_id_length=24
         self.auth_string=""
         self.ssl_username=""
+        self.proxy_secret_check=re.compile(config["proxy_secret"])
+        self.domain_re=re.compile(config["domain_regex"])
+        self.user_deletion_allowed=config["user_deletion_allowed"].upper()=="TRUE"
+
+        self.whitetrash_admin_path="http://%s" % config["whitetrash_admin_domain"]
+        self.add_path="http://%s/addentry" % config["whitetrash_add_domain"]
+        self.captcha_path="http://%s/captcha/" % config["whitetrash_captcha_domain"]
+        self.ssl_add_path=self.add_path.replace("http","https")
+        self.delete_path="%s/deleteentry" % self.whitetrash_admin_path
+        self.admins = config["admins"].split(",")
+        self.debug=config["debug"].upper()=="TRUE"
+        self.captcha=config["captcha"].upper()=="TRUE"
+
 
     def print_http_form(self,domain=None, url=None, clientaddr=None, username=None):
+        if self.captcha:
+            captcha_data="""
+                <div id="captchaContent">
+                <p><img id="captchaImage" src="%s%s"/></p>
+                <p>Enter the word shown: <input type="text" name="captchatext" maxlength="100" size="20"/></p>
+                </div>
+            """ % (self.captcha_path,captcha_factory.new(PseudoGimpy).id)
 
         return """
         <html>
@@ -101,11 +118,12 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             <input type="hidden" name="url" value="%s">
             <input type="hidden" name="user" value="%s">
             <input type="hidden" name="protocol" value="HTTP">
+            %s
             <input type="submit" name="consent" id="submit" value="I Agree" class="LgnBtn">
             </div>
             </form>
         </html>
-        """ % (config["stylesheet_server"],add_path,domain,clientaddr,username,url,whitetrash_admin_path,url,username)
+        """ % (config["stylesheet_server"],self.add_path,domain,clientaddr,username,url,self.whitetrash_admin_path,url,username,captcha_data)
 
     def print_ssl_form(self,domain=None, url=None, clientaddr=None, username=None):
 
@@ -143,7 +161,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             </form>
 
         </html>
-        """ % (config["stylesheet_server"],ssl_add_path,domain,username,url,config["whitetrash_admin_domain"],url,username)
+        """ % (config["stylesheet_server"],self.ssl_add_path,domain,username,url,config["whitetrash_admin_domain"],url,username)
 
 
     def failed_screen(self,e):
@@ -177,7 +195,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def failed(self,e):
         """Hide our detailed serious errors inline with best practice.  Use failed_screen for errors that will be meaningful to users but don't disclose security information."""
-        if debug:
+        if self.debug:
             self.failed_screen(e)
         else:
             code=randint(1,65536)
@@ -202,7 +220,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         </body>
         </html>
 
-        """ % (delete_path,config["stylesheet_server"]))
+        """ % (self.delete_path,config["stylesheet_server"]))
 
     def success(self,orig_url,user,domain):
         dateobj=datetime
@@ -311,7 +329,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         </div>
 
         </body>
-        </html>""" % (config["stylesheet_server"],whitetrash_admin_path,delete_path,time.asctime(),table)
+        </html>""" % (config["stylesheet_server"],self.whitetrash_admin_path,self.delete_path,time.asctime(),table)
         current_time=self.date_time_string()    
         last_modified=current_time
         self.send_200(current_time,cache_age_in_seconds,len(whitelist_htmlpage))
@@ -400,7 +418,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         </div>
 
         </body>
-        </html>""" % (uname,config["stylesheet_server"],uname,time.asctime(),delete_path,table)
+        </html>""" % (uname,config["stylesheet_server"],uname,time.asctime(),self.delete_path,table)
         self.send_200(self.date_time_string(),0,len(whitelist_htmlpage))
         self.wfile.write(whitelist_htmlpage)
 
@@ -408,11 +426,11 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def generate_delete_list(self,uname):
         try:
             dbh=DB.DBO()
-            if uname in admins:
+            if uname in self.admins:
                 dbh.execute("select whitelist_id,domain,timestamp,protocol,comment from whitelist order by timestamp DESC")
                 uname="all users"
                 self.print_delete_page(dbh,uname)
-            elif user_deletion_allowed:
+            elif self.user_deletion_allowed:
                 dbh.execute("select whitelist_id,domain,timestamp,protocol,comment from whitelist where username=%r order by timestamp DESC", uname)
                 self.print_delete_page(dbh,uname)
             else:
@@ -460,7 +478,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def domain_sanitise(self,domain):
         #Make sure it is of something.com format
-        domain_res=domain_re.match(domain)
+        domain_res=self.domain_re.match(domain)
         if domain_res and (len(domain) < DB.DOMAIN_LEN) and (domain!=config["domain_fail_string"]):
             #Domain is valid.
             domain=domain_res.group()
@@ -552,10 +570,10 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             else:
                 id_list=ids
             dbh=DB.DBO()
-            if authenticated_user in admins:
+            if authenticated_user in self.admins:
                 dbh.execute("delete low_priority from whitelist where whitelist_id IN ('%s')", (id_list))
                 self.keys_deleted()
-            elif user_deletion_allowed:
+            elif self.user_deletion_allowed:
                 dbh.execute("delete low_priority from whitelist where username=%r and whitelist_id IN ('%s')", (str(authenticated_user),id_list))
                 self.keys_deleted()
             else:
@@ -578,7 +596,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                     self.failed("Invalid username (not alphabetic)")
             else:
                 (uname,secret)=decodestring(self.headers['Proxy-Authorization'].split()[1]).split(":")
-                if (proxy_secret_check.match(secret) and uname.isalpha() and (len(self.ssl_username) < DB.USER_LEN)):
+                if (self.proxy_secret_check.match(secret) and uname.isalpha() and (len(self.ssl_username) < DB.USER_LEN)):
                     return uname
                 else:
                     self.failed("Invalid username or cache_peer password for whitetrash")
@@ -604,7 +622,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 if length:
                     env['CONTENT_LENGTH'] = length
 
-                if self.path.startswith(delete_path):
+                if self.path.startswith(self.delete_path):
                     form = cgi.FieldStorage(fp=self.rfile,headers = None, environ=env)
                     self.delete_from_whitelist(form,uname)
                 else:
@@ -620,7 +638,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         if uname:
             try:
                 dbh=DB.DBO()
-                if self.path.startswith(add_path):
+                if self.path.startswith(self.add_path):
                     #This is a http request
                     param_start=self.path.index("?")
                     results=cgi.parse_qs(self.path[param_start+1:].replace("?","%3F"))
@@ -628,6 +646,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                     if dom:
                         self.wfile.write(self.print_http_form(url=results["url"][0],domain=results["domain"][0],clientaddr=results["clientaddr"][0],username=uname))
                         dbh.execute("insert into not_whitelisted set domain=%r, username=%r, protocol=%r, firstseen=NOW(), lastseen=NOW(), hitcount=1 on duplicate key update lastseen=NOW(), hitcount=hitcount+1",(dom,uname,"HTTP"))
+
 
                 elif not(self.path.startswith("http")):
                     #The path for ssl requests just looks like "/favicon.ico"
@@ -640,12 +659,24 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                     else:
                         self.failed("Receive a SSL request for %s without CONNECT" % self.path)
 
-                elif self.path.startswith(whitetrash_admin_path):
+                elif self.path.startswith(self.captcha_path):
+                    req_id=self.path.replace(self.captcha_path,"").strip()
+                    if req_id.isalnum() and len(req_id)==self.captcha_id_length:
+                        test = captcha_factory.get(req_id)
+                        if test:
+                            self.send_response(200)
+                            self.send_header("Content-Type", "image/jpeg")
+                            self.end_headers()
+                            test.render().save(self.wfile, "JPEG")
+                            return 
+                    self.failed_screen("Bad captcha request")
 
-                    if self.path.startswith("%s/not_whitelisted" % whitetrash_admin_path):
+                elif self.path.startswith(self.whitetrash_admin_path):
+
+                    if self.path.startswith("%s/not_whitelisted" % self.whitetrash_admin_path):
                         global last_modified_not_whitelist
                         self.generate_webpage(last_modified_not_whitelist,self.regenerate_not_whitelist)
-                    elif self.path.startswith("%s/deleteentry" % whitetrash_admin_path):
+                    elif self.path.startswith("%s/deleteentry" % self.whitetrash_admin_path):
                         self.generate_delete_list(uname)
 
                     else:
@@ -687,7 +718,7 @@ def run_http(server_class=WhitetrashServer,
     httpd = server_class(server_address, handler_class)
     syslog.openlog('whitetrash_serv',0,syslog.LOG_DAEMON)     
     PIDFILE = config["pidfile"]
-    DAEMON = True 
+    DAEMON = False 
     LOGFILE = config["logfile"]
 
     if (DAEMON):
