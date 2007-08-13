@@ -15,7 +15,7 @@ python2.4-mysqldb \
 python-pyopenssl \
 mysql-server
 
-You should certainly be able to use another database with a small number of modifications.  There are only a small number of interactions with the database in the code, and (I think) it is pretty vanilla SQL.
+If you would like to enable the CAPTCHA (http://en.wikipedia.org/wiki/Captcha) test for whitelist additions, you will need to install PyCAPTCHA: http://cheeseshop.python.org/pypi/PyCAPTCHA/0.4 and the python-imaging package (PIL).
 
 Change the default password in db_setup.
 
