@@ -42,6 +42,7 @@ syslog.openlog('whitetrash.py',0,syslog.LOG_USER)
 #Strip out everything except the domain
 domain_regex=re.compile("([a-z0-9-]+\.)+[a-z]+")
 domain_sanitise=re.compile(config["domain_regex"])
+auto_add_all=config["auto_add_all_domains"].upper()=="TRUE"
 
 def db_connect():
 
@@ -54,17 +55,17 @@ def db_connect():
 
     return dbh.cursor()
 
-def check_whitelist_db(url_domain_only,protocol):
+def check_whitelist_db(url_domain_only,protocol,username,url):
 
     url_domain_only_wild=re.sub("^[a-z0-9-]+\.","",url_domain_only,1)
     if www.match(url_domain_only):
         #Do this query whereever possible, more efficient than with the or.
         #This is a www or www2 query
-        #Just select 1 because we only care if it exists or not.
+        #syslog.syslog("select whitelist_id from whitelist where domain=%s and protocol=%s" % (url_domain_only_wild,protocol))
         cursor.execute("select whitelist_id from whitelist where domain=%s and protocol=%s", (url_domain_only_wild,protocol))
     else:
         #If we are checking images.slashdot.org and www.slashdot.org is listed, we let it through.  If we don't do this pretty much every big site is trashed because images are served from a subdomain.  Believe it is more efficient to do an OR than two separate queries.  Only want this behaviour for www - we don't want to throw away the start of every domain because users won't expect this.
-        #syslog.syslog("logger wild:"+url_domain_only_wild)
+        #syslog.syslog("query:select whitelist_id from whitelist where (domain=%s and protocol=%s) or (domain=%s and protocol=%s)" % (url_domain_only,protocol,url_domain_only_wild,protocol))
         cursor.execute("select whitelist_id from whitelist where (domain=%s and protocol=%s) or (domain=%s and protocol=%s)", (url_domain_only,protocol,url_domain_only_wild,protocol))
 
     whitelist_id = cursor.fetchone()
@@ -77,8 +78,17 @@ def check_whitelist_db(url_domain_only,protocol):
         except Exception,e:
             syslog.syslog("Error updating hitcount: %s" % e)
     else:
-        os.write(1,fail_url+"\n")
-        #syslog.syslog("domain not in whitelist: %s.  Writing fail url:%s" % (url_domain_only,fail_url))
+        if auto_add_all:
+            if www.match(url_domain_only):
+                insert_domain=url_domain_only_wild
+            else:
+                insert_domain=url_domain_only
+            syslog.syslog("Doing auto insert: %s,%s,%s,%s" % (insert_domain,username,protocol,url))
+            cursor.execute("insert into whitelist set domain=%s,timestamp=NOW(),username=%s,protocol=%s,originalrequest=%s,comment='Automatically added by whitetrash'", (insert_domain,username,protocol,url))
+            os.write(1,"\n")
+        else:
+            os.write(1,fail_url+"\n")
+            #syslog.syslog("domain not in whitelist: %s.  Writing fail url:%s" % (url_domain_only,fail_url))
 
 
 cursor=db_connect()
@@ -136,13 +146,13 @@ while 1:
             os.write(1,"%sdomain=%s\n" % (http_fail_url,fail_string))
         continue
     except Exception,e:
-        syslog.syslog("Unexpected whitetrash redirector exception:%s" % e)
+        syslog.syslog("Unexpected whitetrash redirector exception:%s. Using fail url:%s" % (e,fail_url))
         os.write(1,fail_url+"\n")
         continue
 
     try:
 
-        check_whitelist_db(url_domain_only,protocol)
+        check_whitelist_db(url_domain_only,protocol,clientident,newurl_safe)
 
     except Exception,e:
         #Our database handle has probably timed out.

@@ -36,7 +36,7 @@ class whitelist(FunkLoadTestCase):
             self.logd('Try %i' % i)
             for url in urls:
                 response=self.get("http://"+url, description='Get %s' % url)
-                self.assert_(response.body.find("<img")>=0,"Page returned with no <img> tags.  Probably means the request failed.")
+                self.assert_(response.body.find("<img")>=0,"URL: %s returned with no <img> tags.  Probably means the request failed." % url)
 
     def test_viewwhitelist(self):
         """This test is pretty CPU intensive as it parses the whole page each time looking for a /table tag (which is at the very end) to make sure we got a complete page.
