@@ -29,141 +29,165 @@ import MySQLdb.cursors
 import whitetrash_db.DB as DB
 from whitetrash_db.configobj import ConfigObj
 
-config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
 
-
-#I use os.write(1,"string") to write to standard out to avoid the python buffering on print statements.
-
-http_fail_url="http://%s/addentry?" % config["whitetrash_add_domain"]
-ssl_fail_url="%s:8000" % config["whitetrash_add_domain"]
-fail_string=config["domain_fail_string"]
-www=re.compile("^www[0-9]?\.")
-syslog.openlog('whitetrash.py',0,syslog.LOG_USER)
-#Strip out everything except the domain
-domain_regex=re.compile("([a-z0-9-]+\.)+[a-z]+")
-domain_sanitise=re.compile(config["domain_regex"])
-auto_add_all=config["auto_add_all_domains"].upper()=="TRUE"
-
-def db_connect():
-
-    dbh = MySQLdb.Connect(user = DB.DBUSER,
-                                passwd = DB.DBPASSWD,
-                                db = DB.DATABASE,
-                                unix_socket = DB.DBUNIXSOCKET, 
-                                use_unicode = False
-                                )
-
-    return dbh.cursor()
-
-def check_whitelist_db(url_domain_only,protocol,username,url):
-
-    url_domain_only_wild=re.sub("^[a-z0-9-]+\.","",url_domain_only,1)
-    if www.match(url_domain_only):
-        #Do this query whereever possible, more efficient than with the or.
-        #This is a www or www2 query
-        #syslog.syslog("select whitelist_id from whitelist where domain=%s and protocol=%s" % (url_domain_only_wild,protocol))
-        cursor.execute("select whitelist_id from whitelist where domain=%s and protocol=%s", (url_domain_only_wild,protocol))
-    else:
-        #If we are checking images.slashdot.org and www.slashdot.org is listed, we let it through.  If we don't do this pretty much every big site is trashed because images are served from a subdomain.  Believe it is more efficient to do an OR than two separate queries.  Only want this behaviour for www - we don't want to throw away the start of every domain because users won't expect this.
-        #syslog.syslog("query:select whitelist_id from whitelist where (domain=%s and protocol=%s) or (domain=%s and protocol=%s)" % (url_domain_only,protocol,url_domain_only_wild,protocol))
-        cursor.execute("select whitelist_id from whitelist where (domain=%s and protocol=%s) or (domain=%s and protocol=%s)", (url_domain_only,protocol,url_domain_only_wild,protocol))
-
-    whitelist_id = cursor.fetchone()
-    #syslog.syslog("whitelist_id: %s" % whitelist_id)
-    if whitelist_id:
-        #syslog.syslog("domain in whitelist: %s" % url_domain_only)
-        os.write(1,"\n")
-        try:
-            cursor.execute("insert into hitcount set whitelist_id=%s, hitcount=1, timestamp=NOW() on duplicate key update hitcount=hitcount+1, timestamp=NOW()", whitelist_id)
-        except Exception,e:
-            syslog.syslog("Error updating hitcount: %s" % e)
-    else:
-        if auto_add_all:
-            if www.match(url_domain_only):
-                insert_domain=url_domain_only_wild
-            else:
-                insert_domain=url_domain_only
-            syslog.syslog("Doing auto insert: %s,%s,%s,%s" % (insert_domain,username,protocol,url))
-            cursor.execute("insert into whitelist set domain=%s,timestamp=NOW(),username=%s,protocol=%s,originalrequest=%s,comment='Automatically added by whitetrash'", (insert_domain,username,protocol,url))
-            os.write(1,"\n")
-        else:
-            os.write(1,fail_url+"\n")
-            #syslog.syslog("domain not in whitelist: %s.  Writing fail url:%s" % (url_domain_only,fail_url))
-
-
-cursor=db_connect()
-
-while 1:
-
-    try:
- 
-        #The squidurl is of the form: 
-        #http://www.microsoft.com/ 10.10.9.60/- greg GET
-        #Or for SSL
-        #www.microsoft.com:443 10.10.9.60/- greg CONNECT
-        squidurl=sys.stdin.readline()
-        #syslog.syslog("String received from squid: %s" % squidurl)
-
-        spliturl=squidurl.strip().split(" ")
-        if spliturl[3]=="CONNECT":
-            #syslog.syslog("Protocol=SSL")
-            protocol="SSL"
-            url_domain_only=domain_sanitise.match(spliturl[0].split(":")[0]).group()
-            fail_url=ssl_fail_url
-
-        else:
-            #syslog.syslog("Protocol=HTTP")
-            protocol="HTTP"
-            fail_url=http_fail_url
-
-            #The full url as passed by squid
-            #urlencode it to make it safe to hand around in forms
-            newurl_safe=urllib.quote(spliturl[0])
-            #syslog.syslog("sanitised_url: %s" % newurl_safe)
-
-            #Get just the client IP
-            clientaddr=spliturl[1].split("/")[0]
-            #syslog.syslog("client address: %s" % clientaddr)
-
-            #Get the client username
-            clientident=spliturl[2]
-            #syslog.syslog("client username:%s " % clientident)
-
-            fail_url+="url=%s&clientaddr=%s&clientident=%s&" % (newurl_safe,clientaddr,clientident)
-            #strip out the domain.
-            url_domain_only_unsafe=domain_regex.match(spliturl[0].lower().replace("http://","",1)).group()
-            #syslog.syslog("unsafe: %s" % url_domain_only_unsafe)
+class WTSquidRedirector:
+    """Whitetrash squid redirector.
     
-            #sanitise it
-            url_domain_only=domain_sanitise.match(url_domain_only_unsafe).group()
-            fail_url+="domain=%s" % url_domain_only
-            #syslog.syslog("domainonly: %s" % url_domain_only)
-    except AttributeError:
-        #Probably a bad domain
-        if protocol=="SSL":
-            os.write(1,fail_url+"\n")
+    I use os.write(1,"string") to write to standard out to avoid the python buffering on print statements."""
+
+    def __init__(self,config):
+        self.http_fail_url="http://%s/addentry?" % config["whitetrash_add_domain"]
+        self.ssl_fail_url="%s:8000" % config["whitetrash_add_domain"]
+        self.fail_string=config["domain_fail_string"]
+        self.www=re.compile("^www[0-9]?\.")
+        syslog.openlog('whitetrash.py',0,syslog.LOG_USER)
+#Strip out everything except the domain
+        self.domain_regex=re.compile("([a-z0-9-]+\.)+[a-z]+")
+        self.domain_sanitise=re.compile(config["domain_regex"])
+        self.auto_add_all=config["auto_add_all_domains"].upper()=="TRUE"
+
+        self.cursor=self.db_connect()
+
+    def db_connect(self):
+
+        dbh = MySQLdb.Connect(user = DB.DBUSER,
+                                    passwd = DB.DBPASSWD,
+                                    db = DB.DATABASE,
+                                    unix_socket = DB.DBUNIXSOCKET, 
+                                    use_unicode = False
+                                    )
+
+        return dbh.cursor()
+
+    def check_whitelist_db(self):
+        """Check the db for domain self.url_domain_only with protocol self.protocol
+        
+        If domain is present (ie. in whitelist), write \n as redirector output (no change)
+        If domain is not present, write self.fail_url as redirector output
+        """
+
+        self.url_domain_only_wild=re.sub("^[a-z0-9-]+\.","",self.url_domain_only,1)
+        if self.www.match(self.url_domain_only):
+            #Do this query whereever possible, more efficient than with the or.
+            #This is a www or www2 query
+            insert_domain=self.url_domain_only_wild
+            #syslog.syslog("select whitelist_id from whitelist where domain=%s and protocol=%s" % (self.url_domain_only_wild,self.protocol))
+            self.cursor.execute("select whitelist_id from whitelist where domain=%s and protocol=%s", (self.url_domain_only_wild,self.protocol))
         else:
-            os.write(1,"%sdomain=%s\n" % (http_fail_url,fail_string))
-        continue
-    except Exception,e:
-        syslog.syslog("Unexpected whitetrash redirector exception:%s. Using fail url:%s" % (e,fail_url))
-        os.write(1,fail_url+"\n")
-        continue
+            #If we are checking images.slashdot.org and www.slashdot.org is listed, we let it through.  If we don't do this pretty much every big site is trashed because images are served from a subdomain.  Believe it is more efficient to do an OR than two separate queries.  Only want this behaviour for www - we don't want to throw away the start of every domain because users won't expect this.
+            #syslog.syslog("query:select whitelist_id from whitelist where (domain=%s and protocol=%s) or (domain=%s and protocol=%s)" % (self.url_domain_only,self.protocol,self.url_domain_only_wild,self.protocol))
+            insert_domain=self.url_domain_only
+            self.cursor.execute("select whitelist_id from whitelist where (domain=%s and protocol=%s) or (domain=%s and protocol=%s)", (self.url_domain_only,self.protocol,self.url_domain_only_wild,self.protocol))
 
-    try:
+        whitelist_id = self.cursor.fetchone()
+        #syslog.syslog("whitelist_id: %s" % whitelist_id)
+        if whitelist_id:
+            #syslog.syslog("domain in whitelist: %s" % self.url_domain_only)
+            result=True
+            os.write(1,"\n")
+            try:
+                self.cursor.execute("insert into hitcount set whitelist_id=%s, hitcount=1, timestamp=NOW() on duplicate key update hitcount=hitcount+1, timestamp=NOW()", whitelist_id)
+            except Exception,e:
+                syslog.syslog("Error updating hitcount for whitelistid %s: %s" % (whitelist_id,e))
+        else:
+            if self.auto_add_all:
+                syslog.syslog("Doing auto insert: %s,%s,%s,%s" % (insert_domain,self.clientident,self.protocol,self.newurl_safe))
+                self.cursor.execute("insert into whitelist set domain=%s,timestamp=NOW(),username=%s,protocol=%s,originalrequest=%s,comment='Automatically added by whitetrash'", (insert_domain,self.clientident,self.protocol,self.newurl_safe))
+                result=True
+                os.write(1,"\n")
+            else:
+                result=False
+                os.write(1,self.fail_url+"\n")
+                #syslog.syslog("domain not in whitelist: %s.  Writing fail url:%s" % (self.url_domain_only,self.fail_url))
 
-        check_whitelist_db(url_domain_only,protocol,clientident,newurl_safe)
+        return result
 
-    except Exception,e:
-        #Our database handle has probably timed out.
+    def parseSquidInput(self,squidurl):
+        """Parse squid input line. Return true if parsing is successful.
+
+        Store result in self.fail_url.  On error, write redirector output and return false.
+
+        The squidurl is of the form: 
+        http://www.microsoft.com/ 10.10.9.60/- greg GET
+        Or for SSL
+        www.microsoft.com:443 10.10.9.60/- greg CONNECT
+        """
+
         try:
-            cursor=db_connect()
-            check_whitelist_db(url_domain_only,protocol)
-        except:
-            #Something weird/bad has happened, tell the user.
-            syslog.syslog("Error when checking domain in whitelist. Exception: %s" %e)
-            os.write(1,"http://database_error"+"\n")
+            spliturl=squidurl.strip().split(" ")
+            if spliturl[3]=="CONNECT":
+                #syslog.syslog("Protocol=SSL")
+                self.protocol="SSL"
+                self.url_domain_only=self.domain_sanitise.match(spliturl[0].split(":")[0]).group()
+                self.fail_url=self.ssl_fail_url
+                return True
 
+            else:
+                #syslog.syslog("Protocol=HTTP")
+                self.protocol="HTTP"
+                self.fail_url=self.http_fail_url
 
+                #The full url as passed by squid
+                #urlencode it to make it safe to hand around in forms
+                self.newurl_safe=urllib.quote(spliturl[0])
+                #syslog.syslog("sanitised_url: %s" % self.newurl_safe)
 
+                #Get just the client IP
+                clientaddr=spliturl[1].split("/")[0]
+                #syslog.syslog("client address: %s" % clientaddr)
+
+                #Get the client username
+                self.clientident=spliturl[2]
+                #syslog.syslog("client username:%s " % self.clientident)
+
+                self.fail_url+="url=%s&clientaddr=%s&clientident=%s&" % (self.newurl_safe,clientaddr,self.clientident)
+                #strip out the domain.
+                url_domain_only_unsafe=self.domain_regex.match(spliturl[0].lower().replace("http://","",1)).group()
+                #syslog.syslog("unsafe: %s" % url_domain_only_unsafe)
+        
+                #sanitise it
+                self.url_domain_only=self.domain_sanitise.match(url_domain_only_unsafe).group()
+                #syslog.syslog("domainonly: %s" % self.url_domain_only)
+                self.fail_url+="domain=%s" % self.url_domain_only
+                return True
+
+        except AttributeError:
+            #Probably a bad domain
+            if self.protocol=="SSL":
+                self.fail_url+="\n"
+            else:
+                self.fail_url="%sdomain=%s\n" % (self.http_fail_url,self.fail_string)
+            os.write(1,self.fail_url)
+            return False
+        except Exception,e:
+            syslog.syslog("Unexpected whitetrash redirector exception:%s. Using fail url:%s" % (e,self.fail_url))
+            os.write(1,self.fail_url+"\n")
+            return False
+
+    def readForever(self):
+        """Read squid URL from stdin, and write response to stdout."""
+
+        while 1:
+
+            squidurl=sys.stdin.readline()
+            #syslog.syslog("String received from squid: %s" % squidurl)
+            if self.parseSquidInput(squidurl):
+
+                try:
+                    self.check_whitelist_db()
+                except Exception,e:
+                    #Our database handle has probably timed out.
+                    try:
+                        self.cursor=db_connect()
+                        self.check_whitelist_db()
+                    except:
+                        #Something weird/bad has happened, tell the user.
+                        syslog.syslog("Error when checking domain in whitelist. Exception: %s" %e)
+                        os.write(1,"http://database_error"+"\n")
+
+       
+if __name__ == "__main__":
+    config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
+    redir=WTSquidRedirector(config)
+    redir.readForever()
 

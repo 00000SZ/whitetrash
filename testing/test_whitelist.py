@@ -121,11 +121,6 @@ class whitelist(FunkLoadTestCase):
         #self.add_pages(protocol="SSL")
         pass
 
-    def tearDown(self):
-        """Finishing test."""
-        self.logd("Teardown test: %s\n" % self.title)
-
-
 if __name__ in ('main', '__main__'):
     unittest.main()
 
