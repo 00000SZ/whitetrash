@@ -29,7 +29,6 @@ import MySQLdb.cursors
 import whitetrash_db.DB as DB
 from whitetrash_db.configobj import ConfigObj
 
-
 class WTSquidRedirector:
     """Whitetrash squid redirector.
     
@@ -59,6 +58,32 @@ class WTSquidRedirector:
 
         return dbh.cursor()
 
+    def get_whitelist_id(self):
+        """Get whitelist_id for non www domain.
+
+        If we are checking images.slashdot.org and www.slashdot.org is listed, we let it through.  
+        If we don't do this pretty much every big site is trashed because images are served from a subdomain.
+        Believe it is more efficient to do an OR than two separate queries.  
+        Only want this behaviour for www - we don't want to throw away the start of every domain 
+        because users won't expect this."""
+
+        self.cursor.execute("select whitelist_id from whitelist where (domain=%s and protocol=%s) or (domain=%s and protocol=%s)", (self.url_domain_only,self.protocol,self.url_domain_only_wild,self.protocol))
+        return self.cursor.fetchone()
+
+    def get_whitelist_id_wild(self):
+        """Get whitelist ID for the wildcarded domain (i.e. www or www2).
+
+        Do this query whereever possible, more efficient than with the or."""
+
+        self.cursor.execute("select whitelist_id from whitelist where domain=%s and protocol=%s", (self.url_domain_only_wild,self.protocol))
+        return self.cursor.fetchone()
+            
+    def add_to_whitelist(self):
+        self.cursor.execute("insert into whitelist set domain=%s,timestamp=NOW(),username=%s,protocol=%s,originalrequest=%s,comment='Automatically added by whitetrash'", (self.insert_domain,self.clientident,self.protocol,self.newurl_safe))
+
+    def update_hitcount(self,whitelist_id):
+        self.cursor.execute("insert into hitcount set whitelist_id=%s, hitcount=1, timestamp=NOW() on duplicate key update hitcount=hitcount+1, timestamp=NOW()", whitelist_id)
+
     def check_whitelist_db(self):
         """Check the db for domain self.url_domain_only with protocol self.protocol
         
@@ -68,37 +93,29 @@ class WTSquidRedirector:
 
         self.url_domain_only_wild=re.sub("^[a-z0-9-]+\.","",self.url_domain_only,1)
         if self.www.match(self.url_domain_only):
-            #Do this query whereever possible, more efficient than with the or.
-            #This is a www or www2 query
-            insert_domain=self.url_domain_only_wild
-            #syslog.syslog("select whitelist_id from whitelist where domain=%s and protocol=%s" % (self.url_domain_only_wild,self.protocol))
-            self.cursor.execute("select whitelist_id from whitelist where domain=%s and protocol=%s", (self.url_domain_only_wild,self.protocol))
+            self.insert_domain=self.url_domain_only_wild
+            whitelist_id=self.get_whitelist_id_wild()
         else:
-            #If we are checking images.slashdot.org and www.slashdot.org is listed, we let it through.  If we don't do this pretty much every big site is trashed because images are served from a subdomain.  Believe it is more efficient to do an OR than two separate queries.  Only want this behaviour for www - we don't want to throw away the start of every domain because users won't expect this.
-            #syslog.syslog("query:select whitelist_id from whitelist where (domain=%s and protocol=%s) or (domain=%s and protocol=%s)" % (self.url_domain_only,self.protocol,self.url_domain_only_wild,self.protocol))
-            insert_domain=self.url_domain_only
-            self.cursor.execute("select whitelist_id from whitelist where (domain=%s and protocol=%s) or (domain=%s and protocol=%s)", (self.url_domain_only,self.protocol,self.url_domain_only_wild,self.protocol))
-
-        whitelist_id = self.cursor.fetchone()
-        #syslog.syslog("whitelist_id: %s" % whitelist_id)
+            self.insert_domain=self.url_domain_only
+            whitelist_id=self.get_whitelist_id()
+      
         if whitelist_id:
-            #syslog.syslog("domain in whitelist: %s" % self.url_domain_only)
+
             result=True
             os.write(1,"\n")
             try:
-                self.cursor.execute("insert into hitcount set whitelist_id=%s, hitcount=1, timestamp=NOW() on duplicate key update hitcount=hitcount+1, timestamp=NOW()", whitelist_id)
+                self.update_hitcount(whitelist_id)
             except Exception,e:
                 syslog.syslog("Error updating hitcount for whitelistid %s: %s" % (whitelist_id,e))
         else:
+
             if self.auto_add_all:
-                syslog.syslog("Doing auto insert: %s,%s,%s,%s" % (insert_domain,self.clientident,self.protocol,self.newurl_safe))
-                self.cursor.execute("insert into whitelist set domain=%s,timestamp=NOW(),username=%s,protocol=%s,originalrequest=%s,comment='Automatically added by whitetrash'", (insert_domain,self.clientident,self.protocol,self.newurl_safe))
+                self.add_to_whitelist()
                 result=True
                 os.write(1,"\n")
             else:
                 result=False
                 os.write(1,self.fail_url+"\n")
-                #syslog.syslog("domain not in whitelist: %s.  Writing fail url:%s" % (self.url_domain_only,self.fail_url))
 
         return result
 
@@ -185,9 +202,41 @@ class WTSquidRedirector:
                         syslog.syslog("Error when checking domain in whitelist. Exception: %s" %e)
                         os.write(1,"http://database_error"+"\n")
 
-       
+
+class WTSquidRedirectorCached(WTSquidRedirector):
+
+    def __init__(self,config):
+       WTSquidRedirector.__init__(self,config)
+       self.servers=config["memcache_servers"].split(",")
+       self.cache=cmemcache.StringClient(self.servers)
+
+    def find_id(self,domain,dbmethod):
+        key="|".join((domain,self.protocol))
+        cache_value=self.cache.get(key)
+        if cache_value:
+            syslog.syslog("Using cache value %s: %s" % (key,cache_value))
+            return cache_value
+        else:
+            result=dbmethod(self)
+            syslog.syslog("Got result from db %s: %s" % (key,result))
+            self.cache.set(key,result)
+            return result
+
+    def get_whitelist_id(self):
+        self.find_id(self.url_domain_only,WTSquidRedirector.get_whitelist_id)
+
+    def get_whitelist_id_wild(self):
+        self.find_id(self.url_domain_only_wild,WTSquidRedirector.get_whitelist_id_wild)
+
+    def add_to_whitelist(self):
+        self.cursor.execute("insert into whitelist set domain=%s,timestamp=NOW(),username=%s,protocol=%s,originalrequest=%s,comment='Automatically added by whitetrash'", (self.insert_domain,self.clientident,self.protocol,self.newurl_safe))
+
 if __name__ == "__main__":
     config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
-    redir=WTSquidRedirector(config)
+    if config["use_memcached"].upper()=="TRUE":
+        import cmemcache 
+        redir=WTSquidRedirectorCached(config)
+    else:
+        redir=WTSquidRedirector(config)
     redir.readForever()
 
