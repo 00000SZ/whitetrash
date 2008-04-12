@@ -218,15 +218,15 @@ class WTSquidRedirectorCached(WTSquidRedirector):
             return cache_value
         else:
             result=dbmethod(self)
-            syslog.syslog("Got result from db %s: %s" % (key,result))
-            self.cache.set(key,result)
+            syslog.syslog("Got result from db %s: %s" % (key,str(result[0])))
+            self.cache.set(key,str(result[0]))
             return result
 
     def get_whitelist_id(self):
-        self.find_id(self.url_domain_only,WTSquidRedirector.get_whitelist_id)
+        return self.find_id(self.url_domain_only,WTSquidRedirector.get_whitelist_id)
 
     def get_whitelist_id_wild(self):
-        self.find_id(self.url_domain_only_wild,WTSquidRedirector.get_whitelist_id_wild)
+        return self.find_id(self.url_domain_only_wild,WTSquidRedirector.get_whitelist_id_wild)
 
     def add_to_whitelist(self):
         self.cursor.execute("insert into whitelist set domain=%s,timestamp=NOW(),username=%s,protocol=%s,originalrequest=%s,comment='Automatically added by whitetrash'", (self.insert_domain,self.clientident,self.protocol,self.newurl_safe))
