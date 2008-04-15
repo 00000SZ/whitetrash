@@ -82,6 +82,17 @@ class CachedSquidRedirectorUnitTests(SquidRedirectorUnitTests):
         self.wt_redir=WTSquidRedirectorCached(config)
         self.wt_redir.clientident="wt_unittesting"
         self.wt_redir.cursor.execute("delete from whitelist where username='wt_unittesting'")
+        self.wt_redir.cache.flush_all()
+
+    def testRepeatedGet(self):
+        """Make two gets to make sure the cache is used
+        The first get will grab from the DB.  The second will grab from the cache, so we want to test that.
+        """
+        self.testAddToWhitelist()
+        if not self.wt_redir.get_whitelist_id(): self.fail("Domain insertme.new.whitetrash.sf.net not added")
+        if self.wt_redir.get_whitelist_id_wild(): self.fail("Should return empty because wild was not inserted")
+        self.wt_redir.url_domain_only="notinwhitelist.sf.net"
+        if self.wt_redir.get_whitelist_id(): self.fail("Should return empty, notinwhitelist.sf.net not inserted")
 
 if __name__ in ('main', '__main__'):
     unittest.main()

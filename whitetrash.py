@@ -204,22 +204,31 @@ class WTSquidRedirector:
 
 
 class WTSquidRedirectorCached(WTSquidRedirector):
+    """Squid redirector with memcache support.
+    
+    Currently only caching the whitelist table.  Not as much value in caching the hitcount table, since I
+    still need to update the database each time to keep it consistent.
+    """
 
     def __init__(self,config):
-       WTSquidRedirector.__init__(self,config)
-       self.servers=config["memcache_servers"].split(",")
-       self.cache=cmemcache.StringClient(self.servers)
+        import cmemcache 
+        WTSquidRedirector.__init__(self,config)
+        self.servers=config["memcache_servers"].split(",")
+        self.cache=cmemcache.StringClient(self.servers)
 
     def find_id(self,domain,dbmethod):
+        """Get whitelist id from memcache cache or, failing that, the database"""
+
         key="|".join((domain,self.protocol))
         cache_value=self.cache.get(key)
         if cache_value:
-            syslog.syslog("Using cache value %s: %s" % (key,cache_value))
+            #syslog.syslog("Using cache value %s: %s" % (key,cache_value))
             return cache_value
         else:
             result=dbmethod(self)
-            syslog.syslog("Got result from db %s: %s" % (key,str(result[0])))
-            self.cache.set(key,str(result[0]))
+            if result:
+                #syslog.syslog("Got result from db %s: %s" % (key,str(result[0])))
+                self.cache.set(key,str(result[0]))
             return result
 
     def get_whitelist_id(self):
@@ -234,7 +243,6 @@ class WTSquidRedirectorCached(WTSquidRedirector):
 if __name__ == "__main__":
     config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
     if config["use_memcached"].upper()=="TRUE":
-        import cmemcache 
         redir=WTSquidRedirectorCached(config)
     else:
         redir=WTSquidRedirector(config)
