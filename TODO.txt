@@ -1,8 +1,8 @@
-=======
-CAPTCHA
-=======
+==============
+Firefox-Plugin
+==============
 
-To prevent malware simply submitting the whitetrash form, I intend to implement a CAPTCHA system into the form.  http://en.wikipedia.org/wiki/Captcha
+I intend to write a firefox plugin with a similar interface to 'noscript' that allows users to easily see what sites are being blocked, and quickly whitelist those necessary to load the page. 
 
 =====================
 Per-User Whitelisting

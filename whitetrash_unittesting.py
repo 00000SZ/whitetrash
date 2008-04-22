@@ -4,6 +4,9 @@ import unittest
 from whitetrash_db.configobj import ConfigObj
 from whitetrash import WTSquidRedirector
 from whitetrash import WTSquidRedirectorCached
+from whitetrash_serv import * 
+import httplib
+
 
 class SquidRedirectorUnitTests(unittest.TestCase):
 

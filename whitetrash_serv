@@ -36,17 +36,22 @@ from string import join
 from whitetrash_db.configobj import ConfigObj
 from random import randint
 
+config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
+try:
+    import cmemcache 
+    cache=cmemcache.StringClient(config["memcache_servers"].split(","))
+except ImportError:
+    print "cmemcache not installed, ensure it is disabled in whitetrash.conf"
+
 try:
     from Captcha.Visual.Tests import PseudoGimpy
     from Captcha import Factory
 except ImportError:
     print "PyCaptcha not installed.  Download from http://cheeseshop.python.org/pypi/PyCAPTCHA/0.4\nAlso requires Python imaging library."
 
-config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
 last_modified="Thu, 01 Jan 1970 00:00:00 GMT"
 last_modified_not_whitelist="Thu, 01 Jan 1970 00:00:00 GMT"
 captcha_factory=Factory()
-
 
 class Log:
     """ The class for logging to a file.  Contains a flush after every write to ensure everything is logged even during an unexpected exit."""
@@ -57,7 +62,7 @@ class Log:
         self.f.flush()
 
 
-class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+class WTHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def setup(self):
         SimpleHTTPServer.SimpleHTTPRequestHandler.setup(self)
@@ -495,6 +500,16 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             return False
 
     
+    def add_to_db(self,domain,user,protocol,url,comment,orig_url):
+        try:
+            #Don't worry about inserting a row into the hitcount, I do that in the whitelister.
+            dbh=DB.DBO()
+            dbh.execute("insert into whitelist set domain=%r,timestamp=NOW(),username=%r,protocol=%r,originalrequest=%r,comment=%r", (domain,user,protocol,url,comment))
+            #Need to remove any entry from the not_whitelisted table
+            dbh.execute("delete low_priority from not_whitelisted where domain=%r and protocol=%r", (domain,protocol))
+            self.success(orig_url,user,domain)
+        except Exception,e:
+            self.failed(e)
 
         
     def add_to_whitelist(self,form,authenticated_user):
@@ -521,18 +536,6 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                     return True
             self.failed_captcha(orig_url)
             return False
-
-        def add_to_db():
-            try:
-                #Don't worry about inserting a row into the hitcount, I do that in the whitelister.
-                dbh=DB.DBO()
-                dbh.execute("insert into whitelist set domain=%r,timestamp=NOW(),username=%r,protocol=%r,originalrequest=%r,comment=%r", (domain,user,protocol,url,comment))
-                #Need to remove any entry from the not_whitelisted table
-                dbh.execute("delete low_priority from not_whitelisted where domain=%r and protocol=%r", (domain,protocol))
-                self.success(orig_url,user,domain)
-            except Exception,e:
-                self.failed(e)
-
 
         try:
             user=str(form.getfirst("user"))
@@ -573,14 +576,20 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                         if domain:
                             if (protocol=="HTTP" and self.captcha_http) or (protocol=="SSL" and self.captcha_ssl):
                                 if check_captcha(str(form.getfirst("captchaID")),str(form.getfirst("captchatext"))):
-                                    add_to_db()
+                                    self.add_to_db(domain,user,protocol,url,comment,orig_url)
                             else:
-                                add_to_db()
+                                self.add_to_db(domain,user,protocol,url,comment,orig_url)
                        
             else:
                 self.failed_screen("Incomplete fields.  The usual cause of this problem is that you are trying to submit a form over SSL to a domain that is not currently in the whitelist.  Add the SSL domain to the whitelist and re-submit the form.")
         except Exception,e:
             self.failed("Invalid input to add_to_whitelist:%s" % e)
+
+    def do_delete(self,delete_statement,args):
+        """Perform the delete from database.  Own method to allow overriding for memcached"""
+        dbh=DB.DBO()
+        dbh.execute(delete_statement, args)
+        self.keys_deleted()
 
     def delete_from_whitelist(self,form,authenticated_user):
         try:
@@ -593,13 +602,10 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 id_list=join(ids,"','")
             else:
                 id_list=ids
-            dbh=DB.DBO()
             if authenticated_user in self.admins:
-                dbh.execute("delete low_priority from whitelist where whitelist_id IN ('%s')", (id_list))
-                self.keys_deleted()
+                self.do_delete("delete low_priority from whitelist where whitelist_id IN ('%s')", (id_list))
             elif self.user_deletion_allowed:
-                dbh.execute("delete low_priority from whitelist where username=%r and whitelist_id IN ('%s')", (str(authenticated_user),id_list))
-                self.keys_deleted()
+                self.do_delete("delete low_priority from whitelist where username=%r and whitelist_id IN ('%s')", (str(authenticated_user),id_list))
             else:
                 self.failed_screen("Deletion access denied")
 
@@ -732,12 +738,85 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.protocol="SSL"
         self.handle()
 
+class CachedWTHTTPRequestHandler(WTHTTPRequestHandler):
+#TODO:Just add this logic into existing server rather than writing subclass?
+
+    def add_to_db(self,domain,user,protocol,url,comment,orig_url):
+        """Insert into domain into DB and memcache.
+        This is not strictly necessary since the redirector will pull it into cache on the first access, but
+        we might as well save another access per new domain by adding it now.
+        """
+        try:
+            dbh=DB.DBO()
+            dbh.execute("insert into whitelist set domain=%r,timestamp=NOW(),username=%r,protocol=%r,originalrequest=%r,comment=%r", (domain,user,protocol,url,comment))
+            cache.set("|".join((domain,protocol)),str(dbh.autoincrement()))
+            #Need to remove any entry from the not_whitelisted table
+            dbh.execute("delete low_priority from not_whitelisted where domain=%r and protocol=%r", (domain,protocol))
+            self.success(orig_url,user,domain)
+        except Exception,e:
+            self.failed(e)
+
+    def do_delete(self,delete_statement,args):
+        """Perform the delete from database and memcached.
+        
+        We go back to the database to grab domain and protocol to be removed from the whitelist.
+        This is a bit of overhead, but deleting doesn't happen very often.  This way we can also stop
+        users from removing each others entries from the memcache - not that this matters too much because
+        it would just be dragged back from the DB on next access anyway.
+
+        The other option is to also submit the domain and protocol info in the webform along with ID.
+        Again this allows users to remove others entries from the cache by tampering with the form, but it
+        doesn't matter too much.
+        """
+        dbh=DB.DBO()
+        check_select_stmt=delete_statement.replace("delete low_priority","select domain,protocol")
+        dbh.execute(check_select_stmt,args)
+        for row in dbh:
+            cache.delete("|".join((row["domain"],row["protocol"])))
+        dbh.execute(delete_statement, args)
+        self.keys_deleted()
 
 class WhitetrashServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
     pass
 
+def double_fork(PIDFILE,LOGFILE):
+    """Do Unix double-fork magic"""
+
+    try:
+        pid = os.fork()
+        if pid > 0:
+            # exit first parent
+            sys.exit(0)
+    except OSError, e:
+        print >>sys.stderr, "fork #1 failed: %d (%s)" % (e.errno, e.strerror)
+        sys.exit(1)
+
+    # decouple from parent environment
+    os.chdir("/")   # don't prevent unmounting
+    os.setsid()
+    os.umask(0)
+
+    # do second fork
+    try:
+        pid = os.fork()
+        if pid > 0:
+            # exit from second parent, print eventual PID before
+            open(PIDFILE,'w').write("%d"%pid)
+            sys.exit(0)
+    except OSError, e:
+        print >>sys.stderr, "fork #2 failed: %d (%s)" % (e.errno, e.strerror)
+        sys.exit(1)
+
+    # redirect outputs to a log file
+    sys.stdout = sys.stderr = Log(open(LOGFILE, 'a+'))
+
+
 def run_http(server_class=WhitetrashServer,
-        handler_class=HTTPRequestHandler):
+        handler_class=WTHTTPRequestHandler):
+
+    if config["use_memcached"].upper()=="TRUE":
+        handler_class=CachedWTHTTPRequestHandler
+
     server_address = (config["server_address"], int(config["server_port"]))
     httpd = server_class(server_address, handler_class)
     syslog.openlog('whitetrash_serv',0,syslog.LOG_DAEMON)     
@@ -746,40 +825,13 @@ def run_http(server_class=WhitetrashServer,
     LOGFILE = config["logfile"]
 
     if (DAEMON):
-        # Unix double-fork magic
-        try:
-            pid = os.fork()
-            if pid > 0:
-                # exit first parent
-                sys.exit(0)
-        except OSError, e:
-            print >>sys.stderr, "fork #1 failed: %d (%s)" % (e.errno, e.strerror)
-            sys.exit(1)
-
-        # decouple from parent environment
-        os.chdir("/")   # don't prevent unmounting
-        os.setsid()
-        os.umask(0)
-
-        # do second fork
-        try:
-            pid = os.fork()
-            if pid > 0:
-                # exit from second parent, print eventual PID before
-                open(PIDFILE,'w').write("%d"%pid)
-                sys.exit(0)
-        except OSError, e:
-            print >>sys.stderr, "fork #2 failed: %d (%s)" % (e.errno, e.strerror)
-            sys.exit(1)
-    
-    
-        # redirect outputs to a log file
-        sys.stdout = sys.stderr = Log(open(LOGFILE, 'a+'))
+        double_fork(PIDFILE,LOGFILE)
 	syslog.syslog("***** Whitetrash Server Started - %s *****" % (str(time.asctime())))
 
     httpd.serve_forever()
 
-run_http()
+if __name__ == "__main__":
+    run_http()
 
 
 

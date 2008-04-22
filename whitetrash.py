@@ -28,6 +28,10 @@ import MySQLdb
 import MySQLdb.cursors
 import whitetrash_db.DB as DB
 from whitetrash_db.configobj import ConfigObj
+try:
+    import cmemcache
+except ImportError:
+    pass
 
 class WTSquidRedirector:
     """Whitetrash squid redirector.
@@ -211,7 +215,6 @@ class WTSquidRedirectorCached(WTSquidRedirector):
     """
 
     def __init__(self,config):
-        import cmemcache 
         WTSquidRedirector.__init__(self,config)
         self.servers=config["memcache_servers"].split(",")
         self.cache=cmemcache.StringClient(self.servers)
