@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+
+
+<!-- Localization Information -->
+<!DOCTYPE overlay SYSTEM "chrome://whitetrash/locale/whitetrash.dtd">
+
+
+<overlay id="whitetrash_browser_overlay"
+         xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+
+
+  <!-- Add the wt icon to the bottom right of screen -->
+  <statusbar id="status-bar">
+    <statusbarpanel class="statusbarpanel-iconic" id="whitetrash_sbi"
+			  tooltiptext="&statusbar.tooltip.default;"
+                src="chrome://whitetrash/skin/icon32.png" />
+  </statusbar>
+
+
+  <!-- Create an HPsched menu item -->
+  <menupopup id="menu_ToolsPopup">
+    <menuitem label="&menuitem.about;"
+		  insertafter="devToolsSeparator" 
+               />
+  </menupopup>
+
+</overlay>
