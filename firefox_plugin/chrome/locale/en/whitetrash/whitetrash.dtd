@@ -1,2 +1,3 @@
-<!ENTITY menuitem.about "About Whitetrash...">
-<!ENTITY statusbar.tooltip.default "Enable website">
+<!ENTITY whitetrashAbout "About Whitetrash...">
+<!ENTITY whitetrashOptions "Options...">
+<!ENTITY whitetrashDefaultTooltip "Enable website">
