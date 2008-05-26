@@ -97,7 +97,12 @@ class CachedSquidRedirectorUnitTests(SquidRedirectorUnitTests):
         self.wt_redir.url_domain_only="notinwhitelist.sf.net"
         if self.wt_redir.get_whitelist_id(): self.fail("Should return empty, notinwhitelist.sf.net not inserted")
 
+def allTests():
+    return unittest.TestSuite((unittest.makeSuite(CachedSquidRedirectorUnitTests),
+                                unittest.makeSuite(SquidRedirectorUnitTests),
+                                ))
+
 if __name__ in ('main', '__main__'):
-    unittest.main()
+    unittest.main(defaultTest="allTests")
 
 

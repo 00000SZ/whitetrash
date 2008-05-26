@@ -9,13 +9,15 @@
 <overlay id="whitetrash_browser_overlay"
          xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
 
+<script type="application/x-javascript" src="browser_overlay.js"/>
+
     <!-- Add the wt icon to the bottom right of screen -->
     <statusbar id="status-bar">
         <statusbarpanel id="whitetrash_sbi"
             class="statusbarpanel-menu-iconic whitetrash-can"
 		    tooltiptext="&whitetrashDefaultTooltip;">
 
-            <menupopup id="wt_menu_about">
+            <menupopup id="wt_sb_menu" onpopupshowing="whitetrashOverlay.createMenuItem(this)">
                 <menuitem 
                 label="&whitetrashAbout;"
                 tooltiptext="&whitetrashAbout;"
