@@ -17,7 +17,7 @@
             class="statusbarpanel-menu-iconic whitetrash-can"
 		    tooltiptext="&whitetrashDefaultTooltip;">
 
-            <menupopup id="wt_sb_menu" onpopupshowing="whitetrashOverlay.createMenuItem(this)">
+            <menupopup id="wt_sb_menu">
                 <menuitem 
                 label="&whitetrashAbout;"
                 tooltiptext="&whitetrashAbout;"
@@ -26,7 +26,7 @@
                 label="&whitetrashOptions;"
                 tooltiptext="&whitetrashOptions;"
                 />
-                <menuseparator />
+                <menuseparator id="dynamic_content_sep" />
             </menupopup>
 
         </statusbarpanel>
