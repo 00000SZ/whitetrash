@@ -19,7 +19,7 @@ whitetrashOverlay = {
         var item = document.createElement("menuitem"); // create a new XUL menuitem
         item.setAttribute("label", domain);
         item.setAttribute("class", "menuitem-iconic whitetrash-can");
-        item.setAttribute("oncommand", "whitetrashOverlay.addToWhitelist("+domain+protocol+uri+")");
+        item.setAttribute("oncommand", "whitetrashOverlay.addToWhitelist(\""+domain+'","'+protocol+'","'+uri+"\")");
         aPopup.appendChild(item);
 
     }//createMenuItem
@@ -51,8 +51,8 @@ whitetrashOverlay = {
             var domain=null;
             if (domain=domain_re.exec(uri)) {
                 if (!whitetrashOverlay.domainDupChecker.isDup(domain[2])) {
-                    logger.logStringMessage("Good domain: "+domain[2],uri,domain[0]);
-                    whitetrashOverlay.createMenuItem(wt_sb_menu_popup,domain[2],uri,domain[0])
+                    logger.logStringMessage("Good domain: "+domain[2]+uri+domain[1]);
+                    whitetrashOverlay.createMenuItem(wt_sb_menu_popup,domain[2],uri,domain[1].toUpperCase())
                 }
             } else {
                 logger.logStringMessage("Bad domain: "+uri);
@@ -88,7 +88,21 @@ whitetrashOverlay = {
     }
 ,
     addToWhitelist: function(domain,protocol,uri) {
-        alert('added domain:'+domain);
+        var http = new XMLHttpRequest();
+
+        http.open("POST", "http://whitetrash/addentry", true);
+        //TODO:Fix hard-coded username, remove from form since ignored anyway.
+        var params="domain="+domain+"&comment=&url="+escape(uri)+"&user=greg&protocol="+protocol+"&consent=I+Agree";
+
+        //Send the proper header information along with the request
+        http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+        http.setRequestHeader("Content-length", params.length);
+        http.setRequestHeader("Connection", "close");
+        http.send(params);
+        var tab = getBrowser().mCurrentBrowser;
+        var entry=tab.webNavigation.sessionHistory.getEntryAtIndex(tab.webNavigation.sessionHistory.index, false);
+        var referrer = entry.QueryInterface(Components.interfaces.nsISHEntry).referrerURI;
+        tab.webNavigation.loadURI(tab.webNavigation.currentURI.spec, null, referrer, null, null);
     }
 ,
     onLoad: function(ev) {
