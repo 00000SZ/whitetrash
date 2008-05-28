@@ -1,3 +1,7 @@
 .whitetrash-can {
-  list-style-image: url(icon32.png);
+    list-style-image: url(icon32.png);
+}
+
+.whitetrash-top-level {
+	font-weight: bold;
 }

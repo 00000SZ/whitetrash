@@ -14,11 +14,11 @@ whitetrashOverlay = {
         }
     }
 ,
-    createMenuItem: function(aPopup,domain,uri,protocol) {
+    createMenuItem: function(aPopup,display_domain,domain,uri,protocol,this_class) {
 
         var item = document.createElement("menuitem"); // create a new XUL menuitem
-        item.setAttribute("label", domain);
-        item.setAttribute("class", "menuitem-iconic whitetrash-can");
+        item.setAttribute("label", display_domain);
+        item.setAttribute("class", this_class);
         item.setAttribute("oncommand", "whitetrashOverlay.addToWhitelist(\""+domain+'","'+protocol+'","'+uri+"\")");
         aPopup.appendChild(item);
 
@@ -26,14 +26,11 @@ whitetrashOverlay = {
 ,
     deleteDynamicMenuItems: function(popup) {
 
-        var logger = Components.classes["@mozilla.org/consoleservice;1"].
-        getService(Components.interfaces.nsIConsoleService);
-
+        var logger = Components.classes["@mozilla.org/consoleservice;1"].getService(Components.interfaces.nsIConsoleService);
         logger.logStringMessage("Removing domains");
         whitetrashOverlay.domainDupChecker.domains={};
         var dynamic_sep = document.getElementById("dynamic_content_sep");
         while (popup.lastChild != dynamic_sep) {
-            logger.logStringMessage("Removing id: "+popup.lastChild.id);
         	popup.removeChild(popup.lastChild);
         }
     }
@@ -46,45 +43,62 @@ whitetrashOverlay = {
 
         var tags = this_doc.getElementsByTagName(tag_name); 
         domain_re = /^(https?):\/\/(([a-z0-9-]{1,50}\.){1,6}[a-z]{2,6})\//;
+
         for (var i = 0; i < tags.length; i++) { 
-            uri = tags[i].getAttribute(attribute); 
-            var domain=null;
-            if (domain=domain_re.exec(uri)) {
-                if (!whitetrashOverlay.domainDupChecker.isDup(domain[2])) {
-                    logger.logStringMessage("Good domain: "+domain[2]+uri+domain[1]);
-                    whitetrashOverlay.createMenuItem(wt_sb_menu_popup,domain[2],uri,domain[1].toUpperCase())
+        	var uri=null;
+            if (uri = tags[i].getAttribute(attribute)) {
+
+                var domain=null;
+                if (domain=domain_re.exec(uri)) {
+
+                    if (!whitetrashOverlay.domainDupChecker.isDup(domain[2])) {
+                        logger.logStringMessage("Good domain: "+domain[2]+uri+domain[1]);
+                        var	display_domain=this_doc.domain+": "+domain[2];
+                        whitetrashOverlay.createMenuItem(wt_sb_menu_popup,display_domain,domain[2],uri,domain[1].toUpperCase(),"menuitem-iconic whitetrash-can");
+                    }
+                } else {
+                    logger.logStringMessage("Bad domain: "+uri);
                 }
-            } else {
-                logger.logStringMessage("Bad domain: "+uri);
             }
         }
 
     }
 ,
-    onContentLoad: function(ev) {
+    wrapOnContentLoad: function(ev) {
+        whitetrashOverlay.onContentLoad(ev.originalTarget);
+    }
+,
+    onContentLoad: function(doc) {
 
-        var doc = ev.originalTarget;
+        var logger = Components.classes["@mozilla.org/consoleservice;1"].getService(Components.interfaces.nsIConsoleService);
+        logger.logStringMessage("Parsing content");
+
         if (doc instanceof HTMLDocument) {
 
-            var logger = Components.classes["@mozilla.org/consoleservice;1"].
-            getService(Components.interfaces.nsIConsoleService)
+            logger.logStringMessage("domain"+doc.domain);
+            if ((doc.body) && (doc.body.innerHTML.length!=null)) {
 
                 var wt_sb_menu_popup = document.getElementById("wt_sb_menu");
                 whitetrashOverlay.parseHTML(wt_sb_menu_popup,"iframe","src",doc);
                 whitetrashOverlay.parseHTML(wt_sb_menu_popup,"img","src",doc);
                 whitetrashOverlay.parseHTML(wt_sb_menu_popup,"script","src",doc);
                 whitetrashOverlay.parseHTML(wt_sb_menu_popup,"link","href",doc);
-            
-        }
 
+            }else {
+                logger.logStringMessage("Empty document");
+            }
+        }
     }
 ,
     tabChanged: function(ev) {
-        var logger = Components.classes["@mozilla.org/consoleservice;1"].
-        getService(Components.interfaces.nsIConsoleService)
+    	//Known limitation: on tab change I only re-parse the top level window.  If there is remote iframe 
+    	//that loads more content from another domain, it won't be in the list.
+        var logger = Components.classes["@mozilla.org/consoleservice;1"].getService(Components.interfaces.nsIConsoleService);
         logger.logStringMessage("Tab change");
         var wt_sb_menu_popup = document.getElementById("wt_sb_menu");
         whitetrashOverlay.deleteDynamicMenuItems(wt_sb_menu_popup);
+        whitetrashOverlay.onContentLoad(ev.document); 
+
     }
 ,
     addToWhitelist: function(domain,protocol,uri) {
@@ -105,28 +119,75 @@ whitetrashOverlay = {
         tab.webNavigation.loadURI(tab.webNavigation.currentURI.spec, null, referrer, null, null);
     }
 ,
-    onLoad: function(ev) {
-        var logger = Components.classes["@mozilla.org/consoleservice;1"].
-        getService(Components.interfaces.nsIConsoleService)
-        logger.logStringMessage("Onload fired");
-        window.removeEventListener("load", arguments.callee, false);
-        var prefs = this.prefService = Components.classes["@mozilla.org/preferences-service;1"]
-            .getService(Components.interfaces.nsIPrefService).getBranch("whitetrash.");
-
-        gBrowser.mPanelContainer.addEventListener("TabSelect", this.tabChanged, false);
-    }   
-,
     install: function() {
-        /** Contrary to http://developer.mozilla.org/en/docs/Gecko-Specific_DOM_Events 
-         * DOMFrameContentLoaded is not "the same as DOMContentLoaded, but also fired for enclosed frames."
-         * it was only giving me empty document objects. 
-         * **/
-        window.addEventListener("DOMContentLoaded", this.onContentLoad, false);
 
-    	//Don't want to execute too early.  Wait until window has loaded.
-        window.addEventListener("load", this.onLoad, false);
+        window.addEventListener("load", this.listeners.onLoad, false);
+        window.addEventListener("DOMContentLoaded", this.wrapOnContentLoad, false);
 
     }
+,
+    listeners: {
+    
+    webProgressListener: {
+
+        QueryInterface: function(aIID)
+        {
+        if (aIID.equals(Components.interfaces.nsISupportsWeakReference) ||
+            aIID.equals(Components.interfaces.nsIObserver) ||
+            aIID.equals(Components.interfaces.nsISupports))
+            return this;
+        throw Components.results.NS_NOINTERFACE;
+        },
+
+        STATE_STOP: Components.interfaces.nsIWebProgressListener.STATE_STOP,
+        onLocationChange: function(aWebProgress, aRequest, aLocation) {
+            const domWindow = aWebProgress.DOMWindow;
+            if (domWindow) {
+            whitetrashOverlay.tabChanged(domWindow);
+            }
+        },
+        onStatusChange: function() {}, 
+        onStateChange: function() {},
+        onSecurityChange: function() {}, 
+        onProgressChange: function() {}
+        },
+    
+    onLoad: function(ev) {
+        window.removeEventListener("load", arguments.callee, false);
+        window.addEventListener("unload", whitetrashOverlay.listeners.onUnload, false);
+        whitetrashOverlay.listeners.setup(); 
+    },
+
+    onUnload: function(ev) {
+      window.removeEventListener("unload", arguments.callee, false);
+      whitetrashOverlay.listeners.teardown();
+      window.browserDOMWindow = null;
+      whitetrashOverlay.dispose();
+    },
+    
+    setup: function() {
+      
+    var logger = Components.classes["@mozilla.org/consoleservice;1"].getService(Components.interfaces.nsIConsoleService);
+      var b = getBrowser();
+      const nsIWebProgress = Components.interfaces.nsIWebProgress;
+      b.addProgressListener(this.webProgressListener, nsIWebProgress.NOTIFY_STATE_WINDOW | nsIWebProgress.NOTIFY_LOCATION);
+  
+    logger.logStringMessage("setup finished");
+
+    },
+      
+    teardown: function() {
+
+      var b = getBrowser();
+      if (b) {
+        b.removeProgressListener(this.webProgressListener);
+      }
+  
+      window.removeEventListener("DOMContentLoaded", this.wrapOnContentLoad, false);
+    }
+    
+  } // END listeners
+
 
 }//end namespace encapsulation
 whitetrashOverlay.install();
