@@ -40,15 +40,17 @@ class WTSquidRedirector:
 
     def __init__(self,config):
         self.http_fail_url="http://%s/addentry?" % config["whitetrash_add_domain"]
+        self.dummy_content_url=config["dummy_content_url"]
+        self.html_suffix_re=re.compile(config["html_suffix_re"])
         self.ssl_fail_url="%s:8000" % config["whitetrash_add_domain"]
         self.fail_string=config["domain_fail_string"]
         self.www=re.compile("^www[0-9]?\.")
         syslog.openlog('whitetrash.py',0,syslog.LOG_USER)
-#Strip out everything except the domain
+        #Strip out everything except the domain
         self.domain_regex=re.compile("([a-z0-9-]+\.)+[a-z]+")
         self.domain_sanitise=re.compile(config["domain_regex"])
         self.auto_add_all=config["auto_add_all_domains"].upper()=="TRUE"
-
+        
         self.cursor=self.db_connect()
 
     def db_connect(self):
@@ -56,12 +58,13 @@ class WTSquidRedirector:
         dbh = MySQLdb.Connect(user = DB.DBUSER,
                                     passwd = DB.DBPASSWD,
                                     db = DB.DATABASE,
-                                    unix_socket = DB.DBUNIXSOCKET, 
+                                    unix_socket = DB.DBUNIXSOCKET,
                                     use_unicode = False
                                     )
 
         return dbh.cursor()
 
+       
     def get_whitelist_id(self):
         """Get whitelist_id for non www domain.
 
@@ -119,7 +122,18 @@ class WTSquidRedirector:
                 os.write(1,"\n")
             else:
                 result=False
-                os.write(1,self.fail_url+"\n")
+                # Not sure if this is too simplistic.  Can you always tell if HTML should be returned
+                # just from the extension of the request?
+                if self.html_suffix_re.match(self.original_url) or self.protocol=="SSL":
+                    #only makes sense to return the form if the browser is expecting html
+                    #We only ever see the SSL domain, not the full request path 
+                    #so we need to return the HTML form every time if it is SSL.
+                    os.write(1,self.fail_url+"\n")
+                    #syslog.syslog(self.fail_url)
+                else:
+                    #This is something other than html so just give it some really small dummy content.
+                    os.write(1,self.dummy_content_url+"\n")
+                    #syslog.syslog(self.dummy_content_url)
 
         return result
 
@@ -136,6 +150,8 @@ class WTSquidRedirector:
 
         try:
             spliturl=squidurl.strip().split(" ")
+            self.original_url=spliturl[0]
+
             if spliturl[3]=="CONNECT":
                 #syslog.syslog("Protocol=SSL")
                 self.protocol="SSL"

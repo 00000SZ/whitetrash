@@ -78,6 +78,7 @@ class WTHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.add_path="http://%s/addentry" % config["whitetrash_add_domain"]
         self.captcha_path="http://%s/captcha/" % config["whitetrash_captcha_domain"]
         self.ssl_add_path=self.add_path.replace("http","https")
+        self.dummy_content_url=config["dummy_content_url"]
         self.delete_path="%s/deleteentry" % self.whitetrash_admin_path
         self.admins = config["admins"].split(",")
         self.debug=config["debug"].upper()=="TRUE"
@@ -658,6 +659,7 @@ class WTHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         if uname:
             try:
                 dbh=DB.DBO()
+                #syslog.syslog(self.path)
                 if self.path.startswith(self.add_path):
                     #This is a http request
                     param_start=self.path.index("?")
@@ -666,7 +668,9 @@ class WTHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                     if dom:
                         self.wfile.write(self.print_form(url=results["url"][0],domain=results["domain"][0],clientaddr=results["clientaddr"][0],username=uname))
                         dbh.execute("insert into not_whitelisted set domain=%r, username=%r, protocol=%r, firstseen=NOW(), lastseen=NOW(), hitcount=1 on duplicate key update lastseen=NOW(), hitcount=hitcount+1",(dom,uname,"HTTP"))
-
+                elif self.path.startswith(self.dummy_content_url):
+                    self.send_response(404,"Not Found")
+                    self.end_headers()
 
                 elif not(self.path.startswith("http")):
                     #The path for ssl requests just looks like "/favicon.ico"
