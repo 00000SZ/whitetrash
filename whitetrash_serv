@@ -108,7 +108,7 @@ class WTHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             add_path=self.add_path
         else:
             add_path=self.ssl_add_path
-
+        #TODO:Can I remove the consent value without breaking anything?
         return """
         <html>
         <head>
@@ -137,14 +137,14 @@ class WTHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             <div id="warningText">
             <p>By clicking "I Agree" below you are agreeing to have the information above stored on a list of whitelisted websites with YOUR UNIQUE USERNAME at <a href="%s/whitelist.html">this address</a></p></div>
             <input type="hidden" name="url" value="%s" />
-            <input type="hidden" name="user" value="%s" />
             <input type="hidden" name="protocol" value="%s" />
             %s
-            <input type="submit" name="consent" id="submit" value="I Agree" class="LgnBtn" />
+            <input type="submit" value="I Agree" class="LgnBtn" />
             </div>
             </form>
+        </body>
         </html>
-        """ % (config["stylesheet_server"],add_path,domain,self.protocol,client_ip,username,url,self.whitetrash_admin_path,url,username,self.protocol,captcha_data)
+        """ % (config["stylesheet_server"],add_path,domain,self.protocol,client_ip,username,url,self.whitetrash_admin_path,url,self.protocol,captcha_data)
 
     def failed_captcha(self,url):
         self.wfile.write("""
@@ -158,7 +158,7 @@ class WTHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         </head>
         <body>
 
-        <div id="pageHeader"></div>
+        <div id="pageHeader" />
         <div id="centreContent">
         <div id="errorText">
         <h1>Error</h1>
@@ -538,7 +538,6 @@ class WTHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             return False
 
         try:
-            user=str(form.getfirst("user"))
             domain=str(form.getfirst("domain"))
             #Don't care if comment or orig_url gets truncated.
             orig_comment=str(form.getfirst("comment"))[:DB.COMMENT_LEN]
@@ -551,34 +550,26 @@ class WTHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
                 else:
                 
-                    if (protocol=="HTTP") and (authenticated_user != user):
-                        # We don't get this info for SSL, so just check if it is HTTP
-                        # Doesn't matter too much since we ignore the form value anyway
-                        self.failed_screen("Invalid user authentication")
-                        syslog.syslog("User with squid authentication: %s attempted to add a domain as user: %s" % (authenticated_user, user))
+                    # Only trust the user provided by squid auth header.
+                    # This input from squid has already been sanitised.
+                    user=authenticated_user
 
-                    else:
+                    if not orig_comment:
+                        orig_comment="None"
 
-                        # Only trust the user provided by squid auth header.
-                        # This input from squid has already been sanitised.
-                        user=authenticated_user
+                    #Quote the url to get rid of any dangerous stuff for the DB, but still display the proper text when viewed in a browser.
+                    url=urllib.quote(orig_url.lower())
+                    #Only allow sane text in the comment.
+                    comment=re.sub("[^a-zA-Z0-9- .,!]+","",orig_comment)
 
-                        if not orig_comment:
-                            orig_comment="None"
-
-                        #Quote the url to get rid of any dangerous stuff for the DB, but still display the proper text when viewed in a browser.
-                        url=urllib.quote(orig_url.lower())
-                        #Only allow sane text in the comment.
-                        comment=re.sub("[^a-zA-Z0-9- .,!]+","",orig_comment)
-
-                        #sanitise domain
-                        domain=self.domain_sanitise(form.getfirst("domain").lower())
-                        if domain:
-                            if (protocol=="HTTP" and self.captcha_http) or (protocol=="SSL" and self.captcha_ssl):
-                                if check_captcha(str(form.getfirst("captchaID")),str(form.getfirst("captchatext"))):
-                                    self.add_to_db(domain,user,protocol,url,comment,orig_url)
-                            else:
+                    #sanitise domain
+                    domain=self.domain_sanitise(form.getfirst("domain").lower())
+                    if domain:
+                        if (protocol=="HTTP" and self.captcha_http) or (protocol=="SSL" and self.captcha_ssl):
+                            if check_captcha(str(form.getfirst("captchaID")),str(form.getfirst("captchatext"))):
                                 self.add_to_db(domain,user,protocol,url,comment,orig_url)
+                        else:
+                            self.add_to_db(domain,user,protocol,url,comment,orig_url)
                        
             else:
                 self.failed_screen("Incomplete fields.  The usual cause of this problem is that you are trying to submit a form over SSL to a domain that is not currently in the whitelist.  Add the SSL domain to the whitelist and re-submit the form.")
