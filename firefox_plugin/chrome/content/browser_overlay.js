@@ -7,12 +7,105 @@ var whitetrashOverlay=null;
 
 whitetrashOverlay = {
 
-    domainDupChecker: {
+    prefs:null,
+    logger:null,
+    ss:null,
+
+    domainMenuList: {
         domains: {},
-        isDup: function(d) {
-            return this.domains[d] || !(this.domains[d] = true);
+        domainStruct: function(domain,disp_domain,uri,proto) {
+        	this.domain=domain;
+        	this.disp_domain=disp_domain;
+        	this.uri=uri;
+        	this.proto=proto;
+        	this.printString=this.domain+","+this.disp_domain+","+this.uri+","+this.proto;
         }
-    }
+        ,
+        countDomains: function(hash) {
+        	var count=0;
+        	for (var i in hash) {
+                count+=1;
+        	    whitetrashOverlay.logger.logStringMessage("dom:"+hash[i].printString);
+            }
+            return count;
+        }
+        ,
+        isDup: function(d) {
+        	if (this.domains[d]) {
+        		return true;
+            } else {
+            	return false;
+            }
+        }
+        ,
+        clearList: function() {
+            for (var i in this.domains) {
+        	    delete i;
+            }
+            this.domains={};
+        }
+        ,
+        flattenList: function() {
+        	//I would have liked to avoid this string pickling by just storing the object.
+        	//Unfortunately the store/restore didn't work properly, even when just doing set
+        	//then get straight-away, the object I got back was bad.  Possibly can't handle
+        	//an associative array of objects?
+        	whitetrashOverlay.logger.logStringMessage("flattening list");
+        	var result="";
+            for (var d in this.domains) {
+                result+=this.domains[d].printString+"|";
+            }
+            //Strip the last separator
+            return result.substring(0,result.length-1);
+        }
+        ,
+        inflateList: function(flatlist) {
+        	this.clearList();
+        	var dlist = flatlist.split("|");
+        	for (var i = 0; i < dlist.length; i++) {
+            	var thisd = dlist[i].split(",");
+            	this.storeDomainInfo(thisd[0],thisd[1],thisd[2],thisd[3]);
+            }
+        }
+        ,
+        restoreMenu: function() {
+        	for (var d in this.domains) {
+                whitetrashOverlay.createMenuItem(document.getElementById("wt_sb_menu"),
+                                        this.domains[d].disp_domain,this.domains[d].domain,
+                                        this.domains[d].uri,this.domains[d].proto,"menuitem-iconic whitetrash-can");
+        	}
+        }
+        ,
+        storeDomainInfo: function(domain,disp_domain,uri,proto) {
+            this.domains[domain]= new this.domainStruct(domain,disp_domain,uri.replace(",","%2c"),proto);
+        	whitetrashOverlay.logger.logStringMessage("storing entry:"+this.domains[domain].printString);
+        }
+        ,
+        saveList: function() {
+            var currentTab = getBrowser().selectedTab;
+        	var count=this.countDomains(this.domains);
+        	if (count!=0) {
+        	    whitetrashOverlay.logger.logStringMessage("list length:"+count);
+                whitetrashOverlay.ss.setTabValue(currentTab, "whitetrash.test.list",this.flattenList());
+        	    whitetrashOverlay.logger.logStringMessage("post save tab state:"+ whitetrashOverlay.ss.getTabState(currentTab));
+            } else {
+        	    whitetrashOverlay.logger.logStringMessage("not saving empty list");
+            }
+        }
+        ,
+        loadList: function() {
+            var currentTab = getBrowser().selectedTab;
+        	whitetrashOverlay.logger.logStringMessage("current tab:"+currentTab.label);
+        	whitetrashOverlay.logger.logStringMessage("current tab state:"+ whitetrashOverlay.ss.getTabState(currentTab));
+            var retrievedList = whitetrashOverlay.ss.getTabValue(currentTab, "whitetrash.test.list");
+            if (retrievedList) {
+            	this.inflateList(retrievedList);
+            	this.restoreMenu();
+            } else {
+                whitetrashOverlay.logger.logStringMessage("ignoring retrieved null list");
+            }
+        }
+    }//end MenuList class
 ,
     createMenuItem: function(aPopup,display_domain,domain,uri,protocol,this_class) {
 
@@ -22,13 +115,12 @@ whitetrashOverlay = {
         item.setAttribute("oncommand", "whitetrashOverlay.addToWhitelist(\""+domain+'","'+protocol+'","'+uri+"\")");
         aPopup.appendChild(item);
 
-    }//createMenuItem
+    }
 ,
     deleteDynamicMenuItems: function(popup) {
 
-        var logger = Components.classes["@mozilla.org/consoleservice;1"].getService(Components.interfaces.nsIConsoleService);
-        logger.logStringMessage("Removing domains");
-        whitetrashOverlay.domainDupChecker.domains={};
+        this.logger.logStringMessage("Removing domains");
+        this.domainMenuList.clearList();
         var dynamic_sep = document.getElementById("dynamic_content_sep");
         while (popup.lastChild != dynamic_sep) {
         	popup.removeChild(popup.lastChild);
@@ -36,10 +128,6 @@ whitetrashOverlay = {
     }
 ,
     parseHTML: function(wt_sb_menu_popup,tag_name,attribute,this_doc) {
-
-        var logger = Components.classes["@mozilla.org/consoleservice;1"].
-        getService(Components.interfaces.nsIConsoleService);
-
 
         var tags = this_doc.getElementsByTagName(tag_name); 
         domain_re = /^(https?):\/\/(([a-z0-9-]{1,50}\.){1,6}[a-z]{2,6})\//;
@@ -51,13 +139,14 @@ whitetrashOverlay = {
                 var domain=null;
                 if (domain=domain_re.exec(uri)) {
 
-                    if (!whitetrashOverlay.domainDupChecker.isDup(domain[2])) {
-                        logger.logStringMessage("Good domain: "+domain[2]+uri+domain[1]);
-                        var	display_domain=this_doc.domain+": "+domain[2];
+                    if (!whitetrashOverlay.domainMenuList.isDup(domain[2])) {
+                        var	display_domain=this_doc.domain+":"+domain[2];
                         whitetrashOverlay.createMenuItem(wt_sb_menu_popup,display_domain,domain[2],uri,domain[1].toUpperCase(),"menuitem-iconic whitetrash-can");
+
+                        whitetrashOverlay.domainMenuList.storeDomainInfo(domain[2],display_domain,uri,domain[1].toUpperCase());
                     }
                 } else {
-                    logger.logStringMessage("Bad domain: "+uri);
+                    this.logger.logStringMessage("Bad domain: "+uri);
                 }
             }
         }
@@ -70,35 +159,44 @@ whitetrashOverlay = {
 ,
     onContentLoad: function(doc) {
 
-        var logger = Components.classes["@mozilla.org/consoleservice;1"].getService(Components.interfaces.nsIConsoleService);
-        logger.logStringMessage("Parsing content");
+        this.logger.logStringMessage("Parsing content");
 
         if (doc instanceof HTMLDocument) {
 
-            logger.logStringMessage("domain"+doc.domain);
-            if ((doc.body) && (doc.body.innerHTML.length!=null)) {
+            try {
+            	//This domain check is necessary otherwise we end up parsing rubbish like
+            	//Loading... and Untitled empty tabs on every tab changed
+            	var valid_domain = doc.domain;
+            } catch(e) {
+                this.logger.logStringMessage("No domain, ignoring");
+            }
 
+            if ((doc.body) && (doc.body.innerHTML.length!=null) && (valid_domain)) {
+
+                this.logger.logStringMessage("Parsing domain:"+doc.domain);
+                //TODO: only display options for img and script elements with no content, i.e. they were 404ed
+                //maybe only iframes with the form in them?  what about nesting?
+                //this way I don't have to keep a list of whitelisted stuff.
                 var wt_sb_menu_popup = document.getElementById("wt_sb_menu");
                 whitetrashOverlay.parseHTML(wt_sb_menu_popup,"iframe","src",doc);
                 whitetrashOverlay.parseHTML(wt_sb_menu_popup,"img","src",doc);
                 whitetrashOverlay.parseHTML(wt_sb_menu_popup,"script","src",doc);
-                whitetrashOverlay.parseHTML(wt_sb_menu_popup,"link","href",doc);
+
+                this.domainMenuList.saveList();
 
             }else {
-                logger.logStringMessage("Empty document");
+                this.logger.logStringMessage("Empty document");
             }
         }
     }
 ,
     tabChanged: function(ev) {
-    	//Known limitation: on tab change I only re-parse the top level window.  If there is remote iframe 
-    	//that loads more content from another domain, it won't be in the list.
-        var logger = Components.classes["@mozilla.org/consoleservice;1"].getService(Components.interfaces.nsIConsoleService);
-        logger.logStringMessage("Tab change");
+        //Clear the current menu list and load the stored domain list if present.  
+        //If this is a new tab the oncontent load listener will build the new list.
+        this.logger.logStringMessage("Tab change");
         var wt_sb_menu_popup = document.getElementById("wt_sb_menu");
         whitetrashOverlay.deleteDynamicMenuItems(wt_sb_menu_popup);
-        whitetrashOverlay.onContentLoad(ev.document); 
-
+        whitetrashOverlay.domainMenuList.loadList()
     }
 ,
     addToWhitelist: function(domain,protocol,uri) {
@@ -106,7 +204,7 @@ whitetrashOverlay = {
 
         http.open("POST", "http://whitetrash/addentry", true);
         //TODO:Fix hard-coded username, remove from form since ignored anyway.
-        var params="domain="+domain+"&comment=&url="+escape(uri)+"&user=greg&protocol="+protocol+"&consent=I+Agree";
+        var params="domain="+domain+"&comment=&url="+escape(uri)+"&protocol="+protocol;
 
         //Send the proper header information along with the request
         http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
@@ -120,6 +218,13 @@ whitetrashOverlay = {
     }
 ,
     install: function() {
+        this.prefs = Components.classes["@mozilla.org/preferences-service;1"]
+                        .getService(Components.interfaces.nsIPrefBranch);
+        
+        this.logger = Components.classes["@mozilla.org/consoleservice;1"]
+                                .getService(Components.interfaces.nsIConsoleService);
+        this.ss = Components.classes["@mozilla.org/browser/sessionstore;1"].
+                             getService(Components.interfaces.nsISessionStore);
 
         window.addEventListener("load", this.listeners.onLoad, false);
         window.addEventListener("DOMContentLoaded", this.wrapOnContentLoad, false);
@@ -166,13 +271,11 @@ whitetrashOverlay = {
     },
     
     setup: function() {
-      
-    var logger = Components.classes["@mozilla.org/consoleservice;1"].getService(Components.interfaces.nsIConsoleService);
-      var b = getBrowser();
-      const nsIWebProgress = Components.interfaces.nsIWebProgress;
-      b.addProgressListener(this.webProgressListener, nsIWebProgress.NOTIFY_STATE_WINDOW | nsIWebProgress.NOTIFY_LOCATION);
-  
-    logger.logStringMessage("setup finished");
+        var b = getBrowser();
+        const nsIWebProgress = Components.interfaces.nsIWebProgress;
+        b.addProgressListener(this.webProgressListener, nsIWebProgress.NOTIFY_STATE_WINDOW | nsIWebProgress.NOTIFY_LOCATION);
+    
+        whitetrashOverlay.logger.logStringMessage("setup finished");
 
     },
       
@@ -187,6 +290,39 @@ whitetrashOverlay = {
     }
     
   } // END listeners
+,
+  getPref: function(name, def) {
+  	IPC=Components.interfaces.nsIPrefBranch
+    try {
+      switch (this.prefs.getPrefType(name)) {
+        case IPC.PREF_STRING:
+          return this.prefs.getCharPref(name);
+        case IPC.PREF_INT:
+          return this.prefs.getIntPref(name);
+        case IPC.PREF_BOOL:
+          return this.prefs.getBoolPref(name);
+      }
+    } catch(e) {}
+    return def || "";
+  }
+,
+  setPref: function(name, value) {
+
+    switch (typeof(value)) {
+      case "string":
+          this.prefs.setCharPref(name,value);
+          break;
+      case "boolean":
+        this.prefs.setBoolPref(name,value);
+        break;
+      case "number":
+        this.prefs.setIntPref(name,value);
+        break;
+      default:
+        throw new Error("Unsupported type "+typeof(value)+" for preference "+name);
+    }
+  }
+
 
 
 }//end namespace encapsulation
