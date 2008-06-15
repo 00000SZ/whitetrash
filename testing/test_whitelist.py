@@ -38,6 +38,14 @@ class whitelist(FunkLoadTestCase):
                 response=self.get("http://"+url, description='Get %s' % url)
                 self.assert_(response.body.find("<img")>=0,"URL: %s returned with no <img> tags.  Probably means the request failed." % url)
 
+    def test_404_for_blocked_nonhtml(self):
+        """Get for a media file from a non-whitelisted domain should produce a 404"""
+
+        self.addHeader("Proxy-Authorization","Basic %s" % self.basic_auth)
+        url_404 = self.conf_get('test_404_for_blocked_nonhtml', 'url_404')
+        response=self.get(url_404)
+        self.assertEquals(response.code,404,"Got %s, should have been 404" % response.code)
+
     def test_viewwhitelist(self):
         """This test is pretty CPU intensive as it parses the whole page each time looking for a /table tag (which is at the very end) to make sure we got a complete page.
         Might be a better way to do this...."""
@@ -96,11 +104,9 @@ class whitelist(FunkLoadTestCase):
     
             if protocol=="HTTP":
                 postparams=[['domain','www.'+page+'.com'],
-                        ['user',self.user],
                         ['comment',urllib.quote_plus(self.lipsum.getSentence())],
                         ['url',urllib.quote_plus(url)],
-                        ['protocol',protocol],
-                        ['consent','I+Agree']]
+                        ['protocol',protocol]]
 
                 self.logd('Adding %s page %i: %s' % (protocol,i,postparams))
                 response=self.post("http://whitetrash/addentry?",params=postparams,description='Post params:%s' % postparams)
