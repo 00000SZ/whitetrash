@@ -41,7 +41,7 @@ class WTSquidRedirector:
     def __init__(self,config):
         self.http_fail_url="http://%s/addentry?" % config["whitetrash_add_domain"]
         self.dummy_content_url=config["dummy_content_url"]
-        self.html_suffix_re=re.compile(config["html_suffix_re"])
+        self.nonhtml_suffix_re=re.compile(config["nonhtml_suffix_re"])
         self.ssl_fail_url="%s:8000" % config["whitetrash_add_domain"]
         self.fail_string=config["domain_fail_string"]
         self.www=re.compile("^www[0-9]?\.")
@@ -122,18 +122,12 @@ class WTSquidRedirector:
                 os.write(1,"\n")
             else:
                 result=False
-                # Not sure if this is too simplistic.  Can you always tell if HTML should be returned
-                # just from the extension of the request?
-                if self.html_suffix_re.match(self.original_url) or self.protocol=="SSL":
+                if self.nonhtml_suffix_re.match(self.original_url):
                     #only makes sense to return the form if the browser is expecting html
-                    #We only ever see the SSL domain, not the full request path 
-                    #so we need to return the HTML form every time if it is SSL.
-                    os.write(1,self.fail_url+"\n")
-                    #syslog.syslog(self.fail_url)
-                else:
                     #This is something other than html so just give it some really small dummy content.
                     os.write(1,self.dummy_content_url+"\n")
-                    #syslog.syslog(self.dummy_content_url)
+                else:
+                    os.write(1,self.fail_url+"\n")
 
         return result
 

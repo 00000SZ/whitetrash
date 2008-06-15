@@ -59,6 +59,7 @@ class SquidRedirectorUnitTests(unittest.TestCase):
         self.wt_redir.url_domain_only="testwhitetrash.sf.net"
         self.wt_redir.fail_url=""
         self.wt_redir.newurl_safe="http%3A//www.whitetrash.sf.net/FAQ"
+        self.wt_redir.original_url="http://testwhitetrash.sf.net"
         self.wt_redir.protocol="HTTP"
         self.wt_redir.auto_add_all=False
         self.assertEqual(self.wt_redir.check_whitelist_db(),False)
