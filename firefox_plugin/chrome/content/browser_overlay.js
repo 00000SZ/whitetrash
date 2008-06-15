@@ -10,6 +10,8 @@ whitetrashOverlay = {
     prefs:null,
     logger:null,
     ss:null,
+    whitelist_http: {},
+    whitelist_ssl: {},
 
     domainMenuList: {
         domains: {},
@@ -48,7 +50,7 @@ whitetrashOverlay = {
         flattenList: function() {
         	//I would have liked to avoid this string pickling by just storing the object.
         	//Unfortunately the store/restore didn't work properly, even when just doing set
-        	//then get straight-away, the object I got back was bad.  Possibly can't handle
+        	//then get straight-away, the object I got back was bad.  Maybe it can't handle
         	//an associative array of objects?
         	whitetrashOverlay.logger.logStringMessage("flattening list");
         	var result="";
@@ -105,9 +107,16 @@ whitetrashOverlay = {
                 whitetrashOverlay.logger.logStringMessage("ignoring retrieved null list");
             }
         }
+
     }//end MenuList class
 ,
     createMenuItem: function(aPopup,display_domain,domain,uri,protocol,this_class) {
+    	//Don't display the menu if it is already in the whitelist.
+        if (protocol=="HTTP") {
+    	    if (whitetrashOverlay.whitelist_http[domain]) { return }
+    	} else if (protocol=="SSL") {
+    	    if (whitetrashOverlay.whitelist_ssl[domain]) { return }
+    	}
 
         var item = document.createElement("menuitem"); // create a new XUL menuitem
         item.setAttribute("label", display_domain);
@@ -215,6 +224,7 @@ whitetrashOverlay = {
         var entry=tab.webNavigation.sessionHistory.getEntryAtIndex(tab.webNavigation.sessionHistory.index, false);
         var referrer = entry.QueryInterface(Components.interfaces.nsISHEntry).referrerURI;
         tab.webNavigation.loadURI(tab.webNavigation.currentURI.spec, null, referrer, null, null);
+        this.addToPrefsWhitelist(domain,protocol);
     }
 ,
     install: function() {
@@ -226,6 +236,7 @@ whitetrashOverlay = {
         this.ss = Components.classes["@mozilla.org/browser/sessionstore;1"].
                              getService(Components.interfaces.nsISessionStore);
 
+        this.loadPrefsWhitelist();
         window.addEventListener("load", this.listeners.onLoad, false);
         window.addEventListener("DOMContentLoaded", this.wrapOnContentLoad, false);
 
@@ -290,9 +301,38 @@ whitetrashOverlay = {
     }
     
   } // END listeners
+    ,
+    splitIntoHash: function(str) {
+	    var split_str = str.split("|");
+	    var new_list = {};
+        for (var i = 0; i < (split_str.length-1); i++) {
+            new_list[split_str[i]]=true;
+        }
+        return new_list;
+    }
+    ,
+    loadPrefsWhitelist: function() {
+    	this.whitelist_http=this.splitIntoHash(this.getPref("whitetrash.HTTP.whitelist"));
+    	this.whitelist_ssl=this.splitIntoHash(this.getPref("whitetrash.SSL.whitelist"));
+    }
+    ,
+    addToPrefsWhitelist: function(domain,proto) {
+    	//Add the domain to a whitelist stored in memory and browser preferences so
+    	//we know not to display those domains in the menu.
+    	//Problem is if domain is whitelisted, then removed it will not show up.
+    	//perhaps don't store in prefs so list is only maintained for browser session?
+        this.logger.logStringMessage("adding to prefs:"+domain+proto);
+    	var cur=this.getPref("whitetrash."+proto+".whitelist");
+    	if (proto=="HTTP") {
+    	    this.whitelist_http[domain]=true;
+    	} else if (proto=="SSL") {
+    	    this.whitelist_ssl[domain]=true;
+    	}
+    	this.setPref("whitetrash."+proto+".whitelist",cur+=domain+"|");
+    }
 ,
   getPref: function(name, def) {
-  	IPC=Components.interfaces.nsIPrefBranch
+  	var IPC=Components.interfaces.nsIPrefBranch;
     try {
       switch (this.prefs.getPrefType(name)) {
         case IPC.PREF_STRING:
