@@ -35,6 +35,7 @@ from OpenSSL import SSL
 from string import join
 from whitetrash_db.configobj import ConfigObj
 from random import randint
+from whitetrash import WTSquidRedirector
 
 config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
 try:
@@ -78,7 +79,8 @@ class WTHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.add_path="http://%s/addentry" % config["whitetrash_add_domain"]
         self.captcha_path="http://%s/captcha/" % config["whitetrash_captcha_domain"]
         self.ssl_add_path=self.add_path.replace("http","https")
-        self.dummy_content_url=config["dummy_content_url"]
+        self.dummy_content_url="%s/empty" % self.whitetrash_admin_path
+        self.check_domain_service="%s/check_domain" % self.whitetrash_admin_path
         self.delete_path="%s/deleteentry" % self.whitetrash_admin_path
         self.admins = config["admins"].split(",")
         self.debug=config["debug"].upper()=="TRUE"
@@ -671,6 +673,25 @@ class WTHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 elif self.path.startswith(self.dummy_content_url):
                     self.send_response(404,"Not Found")
                     self.end_headers()
+
+                elif self.path.startswith(self.check_domain_service):
+                    #expose a service to allow checking of domains.  Returns whitelist id if in list
+                    #-1 if not in the list
+                    param_start=self.path.index("?")
+                    results=cgi.parse_qs(self.path[param_start+1:].replace("?","%3F"))
+                    dom=self.domain_sanitise(results["domain"][0])
+                    whitelistid=-1
+                    if dom and (results["protocol"][0]=="HTTP" or results["protocol"][0]=="SSL"):
+                        whitelister = WTSquidRedirector(config)
+                        whitelister.protocol=results["protocol"][0]
+                        whitelister.url_domain_only=dom
+                        whitelistid = whitelister.get_whitelist_id_wrapper()
+                        if not whitelistid:
+                            whitelistid=-1
+                        else:
+                            whitelistid=int(whitelistid[0])
+                    self.wfile.write(whitelistid)
+
 
                 elif not(self.path.startswith("http")):
                     #The path for ssl requests just looks like "/favicon.ico"

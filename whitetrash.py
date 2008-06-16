@@ -40,7 +40,8 @@ class WTSquidRedirector:
 
     def __init__(self,config):
         self.http_fail_url="http://%s/addentry?" % config["whitetrash_add_domain"]
-        self.dummy_content_url=config["dummy_content_url"]
+        self.whitetrash_admin_path="http://%s" % config["whitetrash_admin_domain"]
+        self.dummy_content_url="%s/empty" % self.whitetrash_admin_path
         self.nonhtml_suffix_re=re.compile(config["nonhtml_suffix_re"])
         self.ssl_fail_url="%s:8000" % config["whitetrash_add_domain"]
         self.fail_string=config["domain_fail_string"]
@@ -91,13 +92,7 @@ class WTSquidRedirector:
     def update_hitcount(self,whitelist_id):
         self.cursor.execute("insert into hitcount set whitelist_id=%s, hitcount=1, timestamp=NOW() on duplicate key update hitcount=hitcount+1, timestamp=NOW()", whitelist_id)
 
-    def check_whitelist_db(self):
-        """Check the db for domain self.url_domain_only with protocol self.protocol
-        
-        If domain is present (ie. in whitelist), write \n as redirector output (no change)
-        If domain is not present, write self.fail_url as redirector output
-        """
-
+    def get_whitelist_id_wrapper(self):
         self.url_domain_only_wild=re.sub("^[a-z0-9-]+\.","",self.url_domain_only,1)
         if self.www.match(self.url_domain_only):
             self.insert_domain=self.url_domain_only_wild
@@ -105,8 +100,17 @@ class WTSquidRedirector:
         else:
             self.insert_domain=self.url_domain_only
             whitelist_id=self.get_whitelist_id()
-      
-        if whitelist_id:
+        return whitelist_id
+
+
+    def check_whitelist_db(self):
+        """Check the db for domain self.url_domain_only with protocol self.protocol
+        
+        If domain is present (ie. in whitelist), write \n as redirector output (no change)
+        If domain is not present, write self.fail_url as redirector output
+        """
+
+        if self.get_whitelist_id_wrapper():
 
             result=True
             os.write(1,"\n")
