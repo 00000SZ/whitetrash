@@ -1,0 +1,37 @@
+{% extends "whitelist/base.html" %}
+
+{% block title %}Whitetrash Internet Access Request Form{% endblock %}
+
+{% block content %}
+    <h1>Internet Access Request</h1>
+    <form action="%s" method="post">
+        <div id="host">
+            <div id="hostText">
+                <p><b>Host Requested: </b></p>
+            </div>
+            <input name="domain" id="hostInputText" value="%s" maxlength="70" size="30" type="text"/>
+        </div>
+        <div id="requestDetails">
+            <div id="requestDetailsText">
+                <p><b>Protocol: </b>%s</p>
+                <p><b>Client Username: </b>%s</p>
+            </div>
+        </div>
+        <div id="centreContent">
+            <p><b>Full Request: </b>%s</p>
+            <div id="bnessReq">
+                <p><b>This site is not currently in the whitelist.  If you have a genuine need to access this site please enter a business requirement or comment for this domain: </b>
+                <input name="comment" id="bnessInput" maxlength="100" size="40" type="text" /></p>
+            </div>
+            <div id="warningText">
+                <p>By clicking "I Agree" below you are agreeing to have the information above stored on a list of whitelisted websites with YOUR UNIQUE USERNAME at <a href="%s/whitelist.html">this address</a></p>
+            </div>
+            <input type="hidden" name="url" value="%s" />
+            <input type="hidden" name="protocol" value="%s" />
+            %s
+            <input type="submit" value="I Agree" class="LgnBtn" />
+        </div>
+    </form>
+
+{% endblock %}
+

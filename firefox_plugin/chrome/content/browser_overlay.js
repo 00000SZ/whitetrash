@@ -187,6 +187,8 @@ whitetrashOverlay = {
                 //maybe only iframes with the form in them?  what about nesting?
                 //this way I don't have to keep a list of whitelisted stuff.
                 var wt_sb_menu_popup = document.getElementById("wt_sb_menu");
+                //Need to do link too because it is used to load css.
+                whitetrashOverlay.parseHTML(wt_sb_menu_popup,"link","href",doc);
                 whitetrashOverlay.parseHTML(wt_sb_menu_popup,"iframe","src",doc);
                 whitetrashOverlay.parseHTML(wt_sb_menu_popup,"img","src",doc);
                 whitetrashOverlay.parseHTML(wt_sb_menu_popup,"script","src",doc);
