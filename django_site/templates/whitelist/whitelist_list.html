@@ -1,0 +1,55 @@
+<html>
+        <head>
+        <title>Whitetrash Whitelist Report</title>
+        <!--
+        <style type="text/css" title="currentStyle" media="screen">
+            @import 127.0.0.1:9000/whitetrash_server.css";
+        </style> -->
+        </head>
+
+        <body>
+
+        <div id="pageHeader"></div>
+        <h1>Whitelist</h1>
+        <div id="whitelistTable">
+        <p>
+        Use this report to find the sites getting the most whitelist hits.  To increase efficiency you should move really busy sites to a squid whitelist, thus minimising the necessary database accesses.</p>
+
+        <p>Click <a href="%s/not_whitelisted">here</a> for a list of domains that have been requested but not approved.</p>
+
+        <p>Click <a href="%s">here</a> to remove domains from the whitelist.</p>
+
+        <p>Report generated at %s.
+        </p>
+
+        Getting the hitcounts is a bit tricky.  Have to use select related?
+
+        <table border=1 frame=box>
+        <tr>
+        <td><b>ID</b></td>
+        <td><b>Whitelisted Domain</b></td>
+        <td><b>Domain Hitcount</b></td>
+        <td><b>First Whitelisted</b></td>
+        <td><b>Last Accessed</b></td>
+        <td><b>Whitelisted by User</b></td>
+        <td><b>Protocol</b></td>
+        <td><b>Comment</b></td>
+        <td><b>Original Request</b></td></tr>
+
+        {% for item in object_list %}
+            <tr><td>{{item.whitelist_id}}</td>
+            <td>{{item.domain}}</td>
+            <td></td>
+            <td>{{item.timestamp}}</td>
+            <td></td>
+            <td>{{item.username}}</td>
+            <td>{{item.get_protocol_display}}</td>
+            <td>{{item.comment}}</td>
+            <td>{{item.originalrequest}}</td>
+            </tr>
+        {% endfor %}
+        </table>
+        </div>
+
+        </body>
+</html>
