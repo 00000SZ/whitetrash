@@ -1,0 +1,26 @@
+{% extends "whitelist/base.html" %}
+
+{% block title %}Whitetrash: Access Granted{% endblock %}
+{#{% block meta %}<meta http-equiv="refresh" CONTENT="1;URL={{ url }}" />{% endblock %}#}
+
+{% block content %}
+
+        <div id="requestDetails">
+            <div id="requestDetailsText">
+                <p><b>Timestamp: </b>{% now "Y-m-d H:i:s" %}</p>
+                <p><b>Domain: </b>{{ domain }}</p>
+                <p><b>Client Username: </b>{{ user.username }}</p>
+            </div>
+        </div>
+        
+        <div id="centreContent">
+            <h1>Thank you {{ user.username }}</h1>
+            <p>
+            Your access request for:</p>
+            <p>{{ domain }}</p>
+            <p>has been granted.  Your browser should automatically take you to the website. If it doesn't you can use this link:</p>
+            <p><a href="{{ url }}">{{ url }}</a></p>
+        </div>
+
+{% endblock %}
+

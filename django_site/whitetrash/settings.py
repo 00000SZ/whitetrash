@@ -73,6 +73,12 @@ TEMPLATE_DIRS = (
     "/home/greg/whitetrash/django_site/templates"
 )
 
+
+TEMPLATE_CONTEXT_PROCESSORS = ('django.core.context_processors.request',
+'django.core.context_processors.auth',
+'django.core.context_processors.i18n',
+)
+
 INSTALLED_APPS = (
     'django.contrib.auth',
     'django.contrib.contenttypes',
