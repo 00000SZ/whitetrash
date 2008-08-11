@@ -50,3 +50,8 @@ def getform(request):
                             context_instance=RequestContext(request))
 
 
+@login_required
+def limited_object_list(*args, **kwargs):
+    """Lets us require login for generic views"""
+    return object_list(*args, **kwargs)
+
