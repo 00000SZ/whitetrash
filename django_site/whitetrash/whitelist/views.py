@@ -3,6 +3,7 @@ from django.shortcuts import render_to_response
 from whitetrash.whitelist.models import Whitelist
 from django.http import HttpResponseForbidden
 from django.template import loader, Context, RequestContext
+from django.views.generic.list_detail import object_list
 
 def index(request):
     if request.method == 'CONNECT':

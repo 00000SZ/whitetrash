@@ -5,67 +5,80 @@
 {% block content %}
 
     <h1>Whitelist</h1>
-    <div id="whitelistTable">
+    <div id="viewlist">
+        <div id="sidebar">
+            <ul>
+            <li><a href="http://whitetrash/whitelist/view/list">View Whitelist</a></li>
+            <li><a href="http://whitetrash/whitelist/view/disabledlist">Not-Whitelisted</a></li>
+            <li><a href="http://whitetrash/whitelist/delete">Delete Entries</a></li>
+            <li><a href=http://whitetrash/whitelist/getform/?url=&clientaddr=&domain=&clientident=>Add Entry</a></li>
+            <li><a href="http://whitetrash/admin">Admin Login</a></li>
+            </ul>
+        </div>
 
-    {% if delete_domains %}
-    <form name="delete" action="%s" method="POST"> 
-    {% endif %}
-
-    <table border=1 frame=box>
-
-    <tr>
-    {% if delete_domains %}
-    <td>Delete?</td>
-    {% endif %}
-
-    <td><b>ID</b></td>
-    <td><b>Whitelisted Domain</b></td>
-    <td><b>Domain Hitcount</b></td>
-    <td><b>First Whitelisted</b></td>
-    <td><b>Last Accessed</b></td>
-    <td><b>Whitelisted by User</b></td>
-    <td><b>Protocol</b></td>
-    <td><b>Comment</b></td>
-    <td><b>Original Request</b></td></tr>
-
-    {% for item in object_list %}
-        <tr>
+        <div id="whitelistTable">
 
         {% if delete_domains %}
-        <td><input type="checkbox" name="DeleteId" value="{{item.whitelist_id}}" /></td>
+        <form name="delete" action="%s" method="POST"> 
         {% endif %}
 
-        <td>{{item.whitelist_id}}</td>
-        <td>{{item.domain}}</td>
-        <td>{{item.hitcount}}</td>
-        <td>{{item.date_added}}</td>
-        <td>{{item.last_accessed}}</td>
-        <td>{{item.username}}</td>
-        <td>{{item.get_protocol_display}}</td>
-        <td>{{item.comment}}</td>
-        <td>{{item.original_request}}</td>
-        </tr>
-    {% endfor %}
-    </table>
+        <table border=1 frame=box>
 
-    {% if delete_domains %}
-    <p><input type="submit" name="Delete" id="Delete" value="Delete domains" class="LgnBtn" /></p>
-    </form>
-    {% endif %}
+        <tr>
+        {% if delete_domains %}
+        <td><b>Delete?</b></td>
+        {% endif %}
 
-    {% if is_paginated %}
-        <div class="paginator" id="paginator">
-            <p>
-            Page {{page}} of {{pages}}, total of {{hits}} entries.</p>
-            {% if has_previous %}
-            <a class="previous" href="{{ page_request }}?page={{ previous }}">{{ previous }}</a>
-            {% endif %}{{page}}
-            {% if has_next %}
-            <a class="next" href="{{ page_request }}?page={{ next }}">{{ next }}</a>
+        <td><b>ID</b></td>
+        <td><b>Whitelisted Domain</b></td>
+        <td><b>Domain Hitcount</b></td>
+        <td><b>First Whitelisted</b></td>
+        <td><b>Last Accessed</b></td>
+        <td><b>Whitelisted by User</b></td>
+        <td><b>Protocol</b></td>
+        <td><b>Comment</b></td>
+        <td><b>Original Request</b></td></tr>
+
+        {% for item in object_list %}
+            <tr>
+
+            {% if delete_domains %}
+            <td><input type="checkbox" name="DeleteId" value="{{item.whitelist_id}}" /></td>
             {% endif %}
 
+            <td>{{item.whitelist_id}}</td>
+            <td>{{item.domain}}</td>
+            <td>{{item.hitcount}}</td>
+            <td>{{item.date_added}}</td>
+            <td>{{item.last_accessed}}</td>
+            <td>{{item.username}}</td>
+            <td>{{item.get_protocol_display}}</td>
+            <td>{{item.comment}}</td>
+            <td>{{item.original_request}}</td>
+            </tr>
+        {% endfor %}
+        </table>
+
+        {% if delete_domains %}
+        <p><input type="submit" name="Delete" id="Delete" value="Delete domains" class="LgnBtn" /></p>
+        </form>
+        {% endif %}
+
+        {% if is_paginated %}
+            <div id="paginator">
+                <p>
+                Page {{page}} of {{pages}}, total of {{hits}} entries.</p>
+                {% if has_previous %}
+                <a id="previous" href="{{ page_request }}?page={{ previous }}">{{ previous }}</a>
+                {% endif %}<span id="current">{{page}}</span>
+                {% if has_next %}
+                <a id="next" href="{{ page_request }}?page={{ next }}">{{ next }}</a>
+                {% endif %}
+
+            </div>
+        {% endif %}
+
         </div>
-    {% endif %}
 
     </div>
 
