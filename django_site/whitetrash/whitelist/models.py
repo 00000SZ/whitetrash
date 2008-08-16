@@ -2,6 +2,10 @@ from django.db import models
 
 # Create your models here.
 
+def get_protocol_choice(string):
+    """Return the database short version of the protocol string"""
+    choices={'HTTP':1,'SSL':2}
+    return choices[string]
 
 class Whitelist(models.Model):
     """Model describes the whitelist.  Contains entries for ALL domains that have ever been requested
@@ -15,18 +19,19 @@ class Whitelist(models.Model):
     # would prefer if autofield created unsigned int, but will go with this
     # to get the auto increment.
     whitelist_id=models.AutoField("ID",primary_key=True)
-    domain=models.CharField("Domain Name",maxlength=70)
+    domain=models.CharField("Domain Name",maxlength=70,blank=False)
     date_added=models.DateTimeField(db_index=True,auto_now_add=True,
                             help_text="""If the domain is whitelisted, this timestamp is the time it was added
                             to the whitelist.  If the domain is not whitelisted, it is the time the domain was 
-                            first requested.""")
-    protocol=models.PositiveSmallIntegerField(db_index=True,choices=PROTOCOL_CHOICES)
-    username=models.CharField("Added By User",maxlength=50,db_index=True)
-    original_request=models.CharField(maxlength=255)
+                            first requested.""",blank=False)
+    protocol=models.PositiveSmallIntegerField(db_index=True,choices=PROTOCOL_CHOICES,blank=False)
+    username=models.CharField("Added By User",maxlength=30,db_index=True,blank=False)
+    original_request=models.CharField(maxlength=255,blank=False)
     comment=models.CharField(maxlength=100,blank=True)
-    enabled=models.BooleanField(db_index=True,default=False,help_text="If TRUE the domain is whitelisted")
-    hitcount=models.PositiveIntegerField(db_index=True,default=0,editable=False)
-    last_accessed=models.DateTimeField(auto_now=True,db_index=True,help_text="Time this domain was last requested")
+    enabled=models.BooleanField(db_index=True,default=False,help_text="If TRUE the domain is whitelisted",blank=False)
+    hitcount=models.PositiveIntegerField(db_index=True,default=0,editable=False,blank=False)
+    last_accessed=models.DateTimeField(auto_now=True,db_index=True,
+                                    help_text="Time this domain was last requested",blank=False)
 
     class Meta:
         unique_together = (("domain", "protocol"),)

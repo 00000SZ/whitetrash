@@ -104,6 +104,17 @@ a:hover, a:active {
     margin-top:2em;
 }
 
+#loginPrompt{
+    position:relative;
+    top:3em;
+    left:1em;
+}
+
+#loginPrompt label {
+    font-size:1.4em;
+	font-weight:bold; 
+}
+
 /* SIDEBAR */
 
 #sidebar {

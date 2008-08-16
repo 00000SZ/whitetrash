@@ -16,8 +16,8 @@ not_enabled_whitelist = {
 }
 
 delete_domains = {
-	#TODO: Fix queryset to be only user's domains.  May have to do in view.
-	'queryset': Whitelist.objects.filter(enabled=True).order_by("-date_added"),
+	#Futher filtering of list in view to display only domains owned by user.
+	'queryset': Whitelist.objects.all(),
 	'paginate_by': 10,
 	'allow_empty': True,
     'template_name': 'whitelist/whitelist_list.html',

@@ -1,23 +1,21 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render_to_response
-from whitetrash.whitelist.models import Whitelist
+from whitetrash.whitelist.models import Whitelist,get_protocol_choice
 from django.http import HttpResponseForbidden
 from django.template import loader, Context, RequestContext
 from django.views.generic.list_detail import object_list
+from django.http import HttpResponsePermanentRedirect
 
 def index(request):
     if request.method == 'CONNECT':
         t = loader.get_template('whitelist/whitelist_getform.html')
-        #TODO: make this SSL form_target an ssl address so you don't get insecure popup.
-        c = Context({ 'protocol':'SSL',
-                     'form_target':'http://whitetrash/whitelist/addentry/' })
+        c = RequestContext(request,{ 'protocol':'SSL',
+                     'form_target':'https://whitetrash/whitelist/addentry/' })
         resp=HttpResponseForbidden(t.render(c))
         resp["Proxy-Connection"]="close"
         return resp
     else:
-        #TODO: Return a whitetrash menu of options, view, add, login, logout
-        #This is just a placeholder
-        return render_to_response('whitelist/whitelist_added.html')
+        return HttpResponsePermanentRedirect("http://whitetrash/whitelist/view/list/")
 
 
 @login_required
@@ -27,6 +25,11 @@ def addentry(request):
     protocol=request.POST["protocol"]
     domain=request.POST["domain"]
     comment=request.POST["comment"]
+    #TODO: initial insert in redirector, then get_or_create here
+    #Still might insert a brand-new entry without hitting it first, so handle that.
+    w=Whitelist(domain=domain,protocol=get_protocol_choice(protocol),username=request.user,
+                            original_request=url,comment=comment,enabled=True)
+    w.save()
     if not url:
         #Handle SSL by refreshing to the domain added
         if protocol=="SSL" and domain:
@@ -53,6 +56,10 @@ def getform(request):
 
 @login_required
 def limited_object_list(*args, **kwargs):
-    """Lets us require login for generic views"""
+    """Require login for generic views, display only results owned by the user.
+    This view is used to present our delete interface. args[0] is the request object."""
+
+    kwargs['queryset']=Whitelist.objects.filter(enabled=True).filter(username=args[0].user).order_by("-date_added")
+
     return object_list(*args, **kwargs)
 
