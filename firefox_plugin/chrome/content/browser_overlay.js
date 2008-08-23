@@ -110,19 +110,43 @@ whitetrashOverlay = {
 
     }//end MenuList class
 ,
-    createMenuItem: function(aPopup,display_domain,domain,uri,protocol,this_class) {
-    	//Don't display the menu if it is already in the whitelist.
-        if (protocol=="HTTP") {
-    	    if (whitetrashOverlay.whitelist_http[domain]) { return }
-    	} else if (protocol=="SSL") {
-    	    if (whitetrashOverlay.whitelist_ssl[domain]) { return }
-    	}
-
+    onLoad: function(e,aPopup,display_domain,domain,uri,protocol,this_class) {
+    	//Maybe use XML instead?  This way is giving me a javascript syntax error.
+        this.logger.logStringMessage(e.responseText);
         var item = document.createElement("menuitem"); // create a new XUL menuitem
         item.setAttribute("label", display_domain);
         item.setAttribute("class", this_class);
         item.setAttribute("oncommand", "whitetrashOverlay.addToWhitelist(\""+domain+'","'+protocol+'","'+uri+"\")");
         aPopup.appendChild(item);
+
+    }
+,
+    onError: function(e) {
+        this.logger.logStringMessage(e.responseText);
+    }
+,
+    checkDomainInWhitelist: function(aPopup,display_domain,domain,uri,protocol,this_class) {
+    	//Assuming domain and protocol have already been sanitised.
+        var url="http://whitetrash/check_domain?domain="+domain+"&protocol="+protocol
+        var req = new XMLHttpRequest();
+        req.open("GET", url, false);
+        req.onload = this.onLoad(aPopup,display_domain,domain,uri,protocol,this_class);
+        req.onerror = this.onError;
+        req.send(null);
+    }
+    ,
+    createMenuItem: function(aPopup,display_domain,domain,uri,protocol,this_class) {
+    	//Don't display item in the menu if it is already in the whitelist.
+        if (protocol=="HTTP") {
+    	    if (whitetrashOverlay.whitelist_http[domain]) { return }
+    	} else if (protocol=="SSL") {
+    	    if (whitetrashOverlay.whitelist_ssl[domain]) { return }
+    	} else {
+            this.logger.logStringMessage("CreateMenuItem bad protocol: "+protocol);
+            return;
+    	}
+
+        this.checkDomainInWhitelist(aPopup,display_domain,domain,uri,protocol,this_class);
 
     }
 ,
