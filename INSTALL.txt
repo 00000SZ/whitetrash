@@ -223,3 +223,14 @@ netstat -plant should show you the following listeners:
 - mysqld             127.0.0.1:3306
 - squid              0.0.0.0:3128
 
+====================
+In progress - django
+====================
+
+To use the django code:
+
+ - Copy the apache static files: cp -r example_configs/apache2/www/whitetrash /var/www/
+ - Copy the whitetrash apache config: cp example_configs/apache2/whiterash /etc/apache/sites-available/
+ - Enable the whitetrash site: a2ensite whitetrash
+ - Create ssl cert and enable apache ssl module
+ - Create a symlink: ln -s /usr/share/python-support/python-django/django/contrib/admin/media/ /var/www/whitetrash/media

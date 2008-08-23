@@ -1,0 +1,27 @@
+<VirtualHost whitetrash:443>
+SSLEngine on
+SSLCertificateFile /etc/apache2/ssl/apache.pem
+ServerName whitetrash
+</VirtualHost>
+
+DocumentRoot /var/www/
+Alias /media "/var/www/whitetrash/media"
+MaxRequestsPerChild 1
+
+<Location "/">
+SetHandler mod_python
+PythonHandler django.core.handlers.modpython
+PythonPath "['/home/greg/whitetrash/django_site/'] + sys.path"
+SetEnv DJANGO_SETTINGS_MODULE whitetrash.settings
+PythonDebug On
+
+</Location>
+
+<Location "/media">
+    SetHandler None
+</Location>
+
+<LocationMatch "\.(jpg|gif|png|css)$">
+    SetHandler None
+</LocationMatch>
+

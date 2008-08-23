@@ -39,11 +39,11 @@ class WTSquidRedirector:
     I use os.write(1,"string") to write to standard out to avoid the python buffering on print statements."""
 
     def __init__(self,config):
-        self.http_fail_url="http://%s/addentry?" % config["whitetrash_add_domain"]
+        self.http_fail_url="http://%s/whitelist/getform?" % config["whitetrash_add_domain"]
         self.whitetrash_admin_path="http://%s" % config["whitetrash_admin_domain"]
         self.dummy_content_url="%s/empty" % self.whitetrash_admin_path
         self.nonhtml_suffix_re=re.compile(config["nonhtml_suffix_re"])
-        self.ssl_fail_url="%s:8000" % config["whitetrash_add_domain"]
+        self.ssl_fail_url="sslwhitetrash:80"
         self.fail_string=config["domain_fail_string"]
         self.www=re.compile("^www[0-9]?\.")
         syslog.openlog('whitetrash.py',0,syslog.LOG_USER)
