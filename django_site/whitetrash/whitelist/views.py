@@ -5,6 +5,7 @@ from django.http import HttpResponseForbidden
 from django.template import loader, Context, RequestContext
 from django.views.generic.list_detail import object_list
 from django.http import HttpResponsePermanentRedirect
+import re
 
 def index(request):
     if request.method == 'CONNECT':
@@ -27,6 +28,12 @@ def addentry(request):
     comment=request.POST["comment"]
     #TODO: initial insert in redirector, then get_or_create here
     #Still might insert a brand-new entry without hitting it first, so handle that.
+
+    if re.match("^www[0-9]?\.",domain):
+    	# If this is a www domain, strip off the www.
+    	dom_temp=domain
+        domain=re.sub("^[a-z0-9-]+\.","",dom_temp,1)
+
     w=Whitelist(domain=domain,protocol=get_protocol_choice(protocol),username=request.user,
                             original_request=url,comment=comment,enabled=True)
     w.save()

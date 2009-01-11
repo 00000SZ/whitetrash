@@ -78,6 +78,8 @@ Squid Config
 ============
 
 You will want to add the following lines to your squid.conf
+ 
+- vimdiff example_configs/squid/squid.conf /etc/squid/squid.conf
 
 Cache Peers
 ~~~~~~~~~~~
@@ -108,9 +110,9 @@ You can do the same or use real DNS entries.  If you do the latter you don't nee
 Redirector
 ~~~~~~~~~~
 
-This is the most important line - tell squid about our redirector.  This seems to have been renamed "url_rewrite_program" in newer versions of squid.
+This is the most important line - tell squid about our redirector.  Redirectors have been renamed "url_rewrite_programs" in newer versions of squid.
   
-  redirect_program /usr/bin/whitetrash.py
+    url_rewrite_program /usr/bin/whitetrash.py
 
 There is a new option called url_rewrite_concurrency which you can set if your redirector is multithreaded.  At the moment mine is not, but this might be something I look at in the future.
 
@@ -129,8 +131,8 @@ Force authentication:
 
 Allow the domains that manage the whitelist for us:
 
-    acl cgi_server dstdomain whitetrash
-    http_access allow cgi_server
+    acl whitetrash dstdomain whitetrash
+    http_access allow whitetrash
 
 If you have an upstream cache parent you want traffic to go through, you should use never_direct for all.  This means it will always use a cache parent and never try to contact the server itself.
 
@@ -150,10 +152,9 @@ Let the redirector handle everything else:
 
     http_access allow all
 
-Send everything we don't trust to the redirector to be compared against the whitelist.
-Renamed "url_rewrite_access" in new versions of squid.
+Send everything we don't trust to the url rewriter to be compared against the whitelist.
 
-    redirector_access allow !cgi_server 
+    url_rewrite_access allow !whitetrash 
 
 Performance
 ~~~~~~~~~~~
@@ -229,8 +230,25 @@ In progress - django
 
 To use the django code:
 
+sudo apt-get install \
+python-django \
+libapache2-mod-python
+
  - Copy the apache static files: cp -r example_configs/apache2/www/whitetrash /var/www/
- - Copy the whitetrash apache config: cp example_configs/apache2/whiterash /etc/apache/sites-available/
+ - Copy the whitetrash apache config: cp example_configs/apache2/whitetrash /etc/apache2/sites-available/
  - Enable the whitetrash site: a2ensite whitetrash
- - Create ssl cert and enable apache ssl module
+ - Create ssl cert and enable apache ssl module:
+    a2enmod ssl
+    mkdir /etc/apache2/ssl
+    openssl genrsa -out /etc/apache2/ssl/server.key 4096
+    openssl req -new -key /etc/apache2/ssl/server.key -out server.csr
+    openssl x509 -req -days 365 -in server.csr -signkey /etc/apache2/ssl/server.key -out /etc/apache2/ssl/server.crt
  - Create a symlink: ln -s /usr/share/python-support/python-django/django/contrib/admin/media/ /var/www/whitetrash/media
+
+Django config:
+ - cd django_site
+ - python manage.py syncdb
+
+
+
+
