@@ -6,15 +6,8 @@
 
     <h1>Whitelist</h1>
     <div id="viewlist">
-        <div id="sidebar">
-            <ul>
-            <li><a href="http://whitetrash/whitelist/view/list">View Whitelist</a></li>
-            <li><a href="http://whitetrash/whitelist/view/disabledlist">Not-Whitelisted</a></li>
-            <li><a href="http://whitetrash/whitelist/delete">Delete Entries</a></li>
-            <li><a href=http://whitetrash/whitelist/getform/?url=&clientaddr=&domain=&clientident=>Add Entry</a></li>
-            <li><a href="http://whitetrash/admin">Admin Login</a></li>
-            </ul>
-        </div>
+        
+        {% include "whitelist/sidebar.html" %}
 
         <div id="whitelistTable">
 

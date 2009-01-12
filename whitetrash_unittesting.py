@@ -60,25 +60,25 @@ class SquidRedirectorUnitTests(unittest.TestCase):
 
 
     def testWhitelistChecking(self):
-        self.wt_redir.url_domain_only="testwhitetrash.sf.net"
+        dom="testwhitetrash.sf.net"
         self.wt_redir.fail_url=""
-        self.wt_redir.newurl_safe="http%3A//www.whitetrash.sf.net/FAQ"
-        self.wt_redir.original_url="http://testwhitetrash.sf.net"
-        self.wt_redir.protocol=self.wt_redir.PROTOCOL_CHOICES["HTTP"]
+        url="http%3A//www.whitetrash.sf.net/FAQ"
+        orig_url="http://testwhitetrash.sf.net"
+        proto=self.wt_redir.PROTOCOL_CHOICES["HTTP"]
         self.wt_redir.auto_add_all=False
-        self.assertEqual(self.wt_redir.check_whitelist_db(),False)
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),False)
         self.wt_redir.auto_add_all=True
-        self.assertEqual(self.wt_redir.check_whitelist_db(),True)
-        self.wt_redir.url_domain_only="notintestwhitetrash.sf.net"
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),True)
+        dom="notintestwhitetrash.sf.net"
         self.wt_redir.auto_add_all=False
-        self.assertEqual(self.wt_redir.check_whitelist_db(),False)
-        self.wt_redir.url_domain_only="testwhitetrash.sf.net"
-        self.assertEqual(self.wt_redir.check_whitelist_db(),True)
-        self.wt_redir.protocol=self.wt_redir.PROTOCOL_CHOICES["SSL"]
-        self.assertEqual(self.wt_redir.check_whitelist_db(),False)
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),False)
+        dom="testwhitetrash.sf.net"
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),True)
+        proto=self.wt_redir.PROTOCOL_CHOICES["SSL"]
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),False)
         self.wt_redir.auto_add_all=True
-        self.wt_redir.url_domain_only="ssltestwhitetrash.sf.net"
-        self.assertEqual(self.wt_redir.check_whitelist_db(),True)
+        dom="ssltestwhitetrash.sf.net"
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),True)
        
     def tearDown(self):
         self.wt_redir.cursor.execute("delete from whitelist_whitelist where username='wt_unittesting'")

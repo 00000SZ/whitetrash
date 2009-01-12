@@ -90,29 +90,34 @@ class WTSquidRedirector:
     def add_to_whitelist(self,domain,protocol,username,url):
         self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),username=%s,protocol=%s,original_request=%s,comment='Auto add, learning mode',enabled=1,hitcount=1,last_accessed=NOW()", (domain,username,protocol,url))
 
+    def add_disabled_domain(self,domain,protocol,username,url):
+        """Add a domain to the table with enabled = 0.  This allows us to keep track of domains
+        that have been requested but not added since they are proabably spyware/trackers/malware."""
+
+        self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),username=%s,protocol=%s,original_request=%s, comment='', enabled=0,hitcount=1,last_accessed=NOW()", (domain,username,protocol,url))
+
     def enable_domain(self,whitelist_id):
-        self.cursor.execute("update whitelist_whitelist set username=%s,date_added=NOW(),last_accessed=NOW(),comment='Auto add, learning mode',enabled=1,hitcount=hitcount+1 where whitelist_id=%s", whitelist_id)
+        self.cursor.execute("update whitelist_whitelist set username='auto',date_added=NOW(),last_accessed=NOW(),comment='Auto add, learning mode',enabled=1,hitcount=hitcount+1 where whitelist_id=%s", whitelist_id)
 
     def update_hitcount(self,whitelist_id):
         self.cursor.execute("update whitelist_whitelist set last_accessed=NOW(),hitcount=hitcount+1 where whitelist_id=%s", whitelist_id)
 
-    def check_whitelist_db(self):
-        """Check the db for domain self.url_domain_only with protocol self.protocol
+    def check_whitelist_db(self,domain,protocol,url,orig_url):
+        """Check the db for domain with protocol
         
         If domain is present (ie. in whitelist), write \n as redirector output (no change)
         If domain is not present, write self.fail_url as redirector output
         """
-        #TODO: move params into arg list to make testing easier. 
-        self.url_domain_only_wild=re.sub("^[a-z0-9-]+\.","",self.url_domain_only,1)
 
-        if self.www.match(self.url_domain_only):
-            result=self.get_whitelist_id_wild(self.protocol,
-                                                            self.url_domain_only_wild)
+        domain_wild=re.sub("^[a-z0-9-]+\.","",domain,1)
+
+        if self.www.match(domain):
+            result=self.get_whitelist_id_wild(protocol, domain_wild)
 
         else:
-            result=self.get_whitelist_id(self.protocol,
-                                                self.url_domain_only,
-                                                self.url_domain_only_wild)
+            result=self.get_whitelist_id(protocol,
+                                        domain,
+                                        domain_wild)
         if result:
         	(whitelist_id,enabled)=result
         else:
@@ -132,16 +137,21 @@ class WTSquidRedirector:
             	if whitelist_id:
             		self.enable_domain(whitelist_id)
                 else:
-                    self.add_to_whitelist(self.url_domain_only,self.protocol,'auto',self.newurl_safe)
+                    self.add_to_whitelist(domain,protocol,'auto',url)
                 result=True
                 sys.stdout.write("\n")
             else:
-                #TODO: add disabled to whitelist, increment hitcount.
+                
+                if whitelist_id:
+                    self.update_hitcount(whitelist_id)
+                else:
+                    self.add_disabled_domain(domain,protocol,'notwhitelisted',url)
+
                 result=False
-                if self.nonhtml_suffix_re.match(self.original_url):
+                if self.nonhtml_suffix_re.match(orig_url):
                     #only makes sense to return the form if the browser is expecting html
                     #This is something other than html so just give it some really small dummy content.
-                    sys.stdout.write(self.dummy_content_url+"\n")
+                    sys.stdout.write(self.dummy_url+"\n")
                 else:
                     sys.stdout.write(self.fail_url+"\n")
 
@@ -161,7 +171,6 @@ class WTSquidRedirector:
 #        try:
         spliturl=squidurl.strip().split(" ")
         self.original_url=spliturl[0]
-        syslog.syslog(str(squidurl))
 
         if spliturl[3]=="CONNECT":
             #syslog.syslog("Protocol=SSL")
@@ -224,12 +233,14 @@ class WTSquidRedirector:
             if self.parseSquidInput(squidurl):
 
                 try:
-                    self.check_whitelist_db()
+                    self.check_whitelist_db(self.url_domain_only,self.protocol,self.newurl_safe,
+                                            self.original_url)
                 except Exception,e:
                     #Our database handle has probably timed out.
                     try:
                         self.cursor=db_connect()
-                        self.check_whitelist_db()
+                        self.check_whitelist_db(self.url_domain_only,self.protocol,self.newurl_safe,
+                                            self.original_url)
                     except:
                         #Something weird/bad has happened, tell the user.
                         syslog.syslog("Error when checking domain in whitelist. Exception: %s" %e)

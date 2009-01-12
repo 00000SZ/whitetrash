@@ -1,0 +1,19 @@
+{% extends "whitelist/base.html" %}
+
+{% block title %}Whitetrash: Error{% endblock %}
+
+{% block content %}
+        
+    {% include "whitelist/sidebar.html" %}
+
+    <div id="centreContent">
+        <div id="errorText">
+            <h1>Whitetrash Error</h1>
+            <p>
+                {{error_text}}
+            </p>
+        </div>
+    </div>
+
+{% endblock %}
+
