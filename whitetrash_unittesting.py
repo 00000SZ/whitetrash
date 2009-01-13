@@ -12,7 +12,6 @@ class SquidRedirectorUnitTests(unittest.TestCase):
     def setUp(self):
         config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
         self.wt_redir=WTSquidRedirector(config)
-        self.wt_redir.clientident="wt_unittesting"
         self.wt_redir.cursor.execute("delete from whitelist_whitelist where username='wt_unittesting'")
         
     def testURLParsing(self):
@@ -33,7 +32,7 @@ class SquidRedirectorUnitTests(unittest.TestCase):
     def testAddToWhitelist(self):
         self.wt_redir.add_to_whitelist("insertme.new.whitetrash.sf.net",
                                         self.wt_redir.PROTOCOL_CHOICES["HTTP"],
-                                        self.wt_redir.clientident,
+                                        "wt_unittesting",
                                         "http%3A//www.whitetrash.sf.net/FAQ")
 
         if not self.wt_redir.get_whitelist_id(self.wt_redir.PROTOCOL_CHOICES["HTTP"],
@@ -60,25 +59,49 @@ class SquidRedirectorUnitTests(unittest.TestCase):
 
 
     def testWhitelistChecking(self):
-        dom="testwhitetrash.sf.net"
-        self.wt_redir.fail_url=""
+        #TODO: test error handling.
+        self.wt_redir.fail_url=self.wt_redir.http_fail_url
+        form=self.wt_redir.http_fail_url+"\n"
         url="http%3A//www.whitetrash.sf.net/FAQ"
         orig_url="http://testwhitetrash.sf.net"
         proto=self.wt_redir.PROTOCOL_CHOICES["HTTP"]
         self.wt_redir.auto_add_all=False
-        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),False)
-        self.wt_redir.auto_add_all=True
-        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),True)
-        dom="notintestwhitetrash.sf.net"
-        self.wt_redir.auto_add_all=False
-        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),False)
+
         dom="testwhitetrash.sf.net"
-        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),True)
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),(False,form),
+                        "No testwhitetrash.sf.net domains should be in the whitelist")
+
+        self.wt_redir.auto_add_all=True
+        #Auto add is enabled so should always return true
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),(True,"\n"))
+        dom="www.thing.anothertestwhitetrash.sf.net"
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),(True,"\n"))
+
+        dom="images.thing.anothertestwhitetrash.sf.net"
+        self.wt_redir.auto_add_all=False
+        #We added www.thing.anothertestwhitetrash.sf.net so this should be wildcarded
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),(True,"\n"))
+
+        dom="testwhitetrash.sf.net"
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),(True,"\n"),
+                        "We added this so it should be true")
+
+        dom="this.another.testwhitetrash.sf.net"
+        orig_url="http://testwhitetrash.sf.net/blah.js"
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),(False,self.wt_redir.dummy_content_url+"\n"),
+                        "The orig_url ends in known non-html content so give back dummy url")
+
         proto=self.wt_redir.PROTOCOL_CHOICES["SSL"]
-        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),False)
+        self.wt_redir.fail_url=self.wt_redir.ssl_fail_url
+        form=self.wt_redir.ssl_fail_url+"\n"
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),(False,form),
+                        "This domain not whitelisted for SSL so we should get the form")
+
         self.wt_redir.auto_add_all=True
         dom="ssltestwhitetrash.sf.net"
-        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),True)
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),(True,"\n"),
+                        "Auto add ssl domain")
+
        
     def tearDown(self):
         self.wt_redir.cursor.execute("delete from whitelist_whitelist where username='wt_unittesting'")
@@ -89,7 +112,6 @@ class CachedSquidRedirectorUnitTests(SquidRedirectorUnitTests):
     def setUp(self):
         config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
         self.wt_redir=WTSquidRedirectorCached(config)
-        self.wt_redir.clientident="wt_unittesting"
         self.wt_redir.cursor.execute("delete from whitelist_whitelist where username='wt_unittesting'")
         self.wt_redir.cache.flush_all()
 
