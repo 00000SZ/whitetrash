@@ -29,6 +29,7 @@ import MySQLdb
 import MySQLdb.cursors
 import whitetrash_db.DB as DB
 from whitetrash_db.configobj import ConfigObj
+from socket import inet_aton
 try:
     import cmemcache
 except ImportError:
@@ -40,7 +41,7 @@ class WTSquidRedirector:
     def __init__(self,config):
         self.PROTOCOL_CHOICES={'HTTP':1,'SSL':2}
         self.http_fail_url="http://%s/whitelist/getform?" % config["whitetrash_add_domain"]
-        self.error_url="http://%s/whitelist/error.html\n" % config["whitetrash_add_domain"]
+        self.error_url="http://%s/whitelist/error" % config["whitetrash_add_domain"]
         self.dummy_content_url="%s/empty" % config["whitetrash_add_domain"]
 
         self.whitetrash_admin_path="http://%s" % config["whitetrash_admin_domain"]
@@ -57,6 +58,7 @@ class WTSquidRedirector:
         self.cursor=self.db_connect()
 
     def db_connect(self):
+        """Connect to the database and return a DB cursor"""
 
         dbh = MySQLdb.Connect(user = DB.DBUSER,
                                     passwd = DB.DBPASSWD,
@@ -72,7 +74,6 @@ class WTSquidRedirector:
 
         If we are checking images.slashdot.org and www.slashdot.org is listed, we let it through.  
         If we don't do this pretty much every big site is trashed because images are served from a subdomain.
-        Believe it is more efficient to do an OR than two separate queries.  
         Only want this behaviour for www - we don't want to throw away the start of every domain 
         because users won't expect this."""
 
@@ -81,8 +82,7 @@ class WTSquidRedirector:
         return self.cursor.fetchone()
 
     def get_whitelist_id_wild(self,proto,domain_wild):
-        """Get whitelist ID for the wildcarded domain (i.e. www or www2).
-        Do this query whereever possible, more efficient than with the or."""
+        """Get whitelist ID for the wildcarded domain (i.e. www or www2)."""
 
         self.cursor.execute("select whitelist_id,enabled from whitelist_whitelist where domain=%s and protocol=%s", (domain_wild,proto))
 
@@ -92,26 +92,37 @@ class WTSquidRedirector:
         self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),username=%s,protocol=%s,original_request=%s,comment='Auto add, learning mode',enabled=1,hitcount=1,last_accessed=NOW()", (domain,username,protocol,url))
 
     def add_disabled_domain(self,domain,protocol,username,url):
-        """Add a domain to the table with enabled = 0.  This allows us to keep track of domains
-        that have been requested but not added since they are proabably spyware/trackers/malware."""
+        """Add a domain to the table with enabled = 0.
+        
+        This allows us to keep track of domains that have been requested but not added 
+        since they are proabably spyware/trackers/malware."""
 
         self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),username=%s,protocol=%s,original_request=%s, comment='', enabled=0,hitcount=1,last_accessed=NOW()", (domain,username,protocol,url))
 
     def enable_domain(self,whitelist_id):
+        """Update db entry to set enabled=1."""
+
         self.cursor.execute("update whitelist_whitelist set username='auto',date_added=NOW(),last_accessed=NOW(),comment='Auto add, learning mode',enabled=1,hitcount=hitcount+1 where whitelist_id=%s", whitelist_id)
 
     def update_hitcount(self,whitelist_id):
         self.cursor.execute("update whitelist_whitelist set last_accessed=NOW(),hitcount=hitcount+1 where whitelist_id=%s", whitelist_id)
 
+    def get_error_url(self,errortext):
+        return "%s?error=%s\n" % (self.error_url,urllib.quote(errortext))
+
     def check_whitelist_db(self,domain,protocol,url,orig_url):
         """Check the db for domain with protocol.
-        
-        If domain is present (ie. in whitelist), write \n as redirector output (no change)
+
+        @param domain:      Domain to be checked
+        @param protocol:    Protocol to pair with the domain, HTTP|SSL enum
+        @param url:         Sanitised url 
+        @param orig_url:    The original un-sanitised url
+        @return:            Tuple (True if domain is whitelisted,url to write back to squid)
+
+        If domain is present (ie. in whitelist), write \n as url redirector output (no change)
         If domain is not present, write self.fail_url as redirector output
         """
-        #TODO: proper docstrings.
         try:
-            result = (False,self.error_url)
             domain_wild=re.sub("^[a-z0-9-]+\.","",domain,1)
 
             if self.www.match(domain):
@@ -148,7 +159,8 @@ class WTSquidRedirector:
                     else:
                         self.add_disabled_domain(domain,protocol,'notwhitelisted',url)
 
-                    if protocol ==self.PROTOCOL_CHOICES["HTTP"] and self.nonhtml_suffix_re.match(orig_url):
+                    if protocol == self.PROTOCOL_CHOICES["HTTP"] and	\
+                        self.nonhtml_suffix_re.match(orig_url):
                         #only makes sense to return the form if the browser is expecting html
                         #This is something other than html so just give some really small dummy content.
                         result = (False,self.dummy_content_url+"\n")
@@ -159,74 +171,62 @@ class WTSquidRedirector:
 
         except Exception,e:
             syslog.syslog("Error checking whitelist with %s,%s,%s.  Error:%s" % (domain,protocol,url,e)) 
-            return (False,self.error_url)
+            return (False,self.get_error_url("Error checking domain in whitelist"))
 
 
     def parseSquidInput(self,squidurl):
         """Parse squid input line. Return true if parsing is successful.
 
-        Store result in self.fail_url.  On error, write redirector output and return false.
-
-        The squidurl is of the form: 
-        http://www.microsoft.com/ 10.10.9.60/fqdn greg GET
-        Or for SSL
-        www.microsoft.com:443 10.10.9.60/fqdn greg CONNECT
+        Store result in self.fail_url.  On error, return false and self.error_url.
         """
 
-#        try:
-        spliturl=squidurl.strip().split(" ")
-        self.original_url=spliturl[0]
+        try:
+            spliturl=squidurl.strip().split(" ")
+            self.original_url=spliturl[0]
 
-        if spliturl[3]=="CONNECT":
-            #syslog.syslog("Protocol=SSL")
-            self.protocol=self.PROTOCOL_CHOICES["SSL"]
-            self.url_domain_only=self.domain_sanitise.match(spliturl[0].split(":")[0]).group()
-            self.fail_url=self.ssl_fail_url
-            return True
+            if spliturl[3]=="CONNECT":
+                #syslog.syslog("Protocol=SSL")
+                self.protocol=self.PROTOCOL_CHOICES["SSL"]
+                self.url_domain_only=self.domain_sanitise.match(spliturl[0].split(":")[0]).group()
+                self.fail_url=self.ssl_fail_url
+                return True
 
-        else:
-            #syslog.syslog("Protocol=HTTP")
-            self.protocol=self.PROTOCOL_CHOICES["HTTP"]
-            self.fail_url=self.http_fail_url
+            else:
+                if not spliturl[3].isalpha():
+                    raise ValueError("Bad HTTP request method is not alphabetic")
 
-            #The full url as passed by squid
-            #urlencode it to make it safe to hand around in forms
-            self.newurl_safe=urllib.quote(spliturl[0])
-            #syslog.syslog("sanitised_url: %s" % self.newurl_safe)
+                #syslog.syslog("Protocol=HTTP")
+                self.protocol=self.PROTOCOL_CHOICES["HTTP"]
+                self.fail_url=self.http_fail_url
 
-            #Get just the client IP
-            clientaddr=spliturl[1].split("/")[0]
-            #syslog.syslog("client address: %s" % clientaddr)
+                #The full url as passed by squid
+                #urlencode it to make it safe to hand around in forms
+                self.newurl_safe=urllib.quote(spliturl[0])
+                #syslog.syslog("sanitised_url: %s" % self.newurl_safe)
 
-            #strip out the domain.
-            url_domain_only_unsafe=self.domain_regex.match(spliturl[0].lower().replace("http://","",1)).group()
-            #syslog.syslog("unsafe: %s" % url_domain_only_unsafe)
-    
-            #sanitise it
-            self.url_domain_only=self.domain_sanitise.match(url_domain_only_unsafe).group()
-            #syslog.syslog("domainonly: %s" % self.url_domain_only)
-            self.fail_url+="url=%s&clientaddr=%s&domain=%s" % (self.newurl_safe,clientaddr,self.url_domain_only)
-            return True
+                #Get just the client IP
+                clientaddr=spliturl[1].split("/")[0]
+                #use inet_aton to validate the IP
+                inet_aton(clientaddr)
+                #syslog.syslog("client address: %s" % clientaddr)
 
-#TODO: return errors to squid: http://wiki.squid-cache.org/SquidFaq/SquidRedirectors
+                #strip out the domain.
+                #syslog.syslog("unsafe: %s" % url_domain_only_unsafe)
+                if spliturl[0].lower().startswith("http://"):
+                    url_domain_only_unsafe=self.domain_regex.match(spliturl[0].lower().replace("http://","",1)).group()
+                else:
+                    raise ValueError("Bad domain doesn't start with http")
+        
+                #sanitise it
+                self.url_domain_only=self.domain_sanitise.match(url_domain_only_unsafe).group()
+                #syslog.syslog("domainonly: %s" % self.url_domain_only)
+                self.fail_url+="url=%s&clientaddr=%s&domain=%s" % (self.newurl_safe,clientaddr,self.url_domain_only)
+                return True
 
-#        except AttributeError:
-#            #Probably a bad domain
-#            if self.protocol==self.PROTOCOL_CHOICES["SSL"]:
-#                self.fail_url+="\n"
-#            else:
-#                self.fail_url="%sdomain=%s\n" % (self.http_fail_url,self.fail_string)
-#            sys.stdout.write(self.fail_url)
-#            return False
-#        except Exception,e:
-#            try:
-#                syslog.syslog("Unexpected whitetrash redirector exception:%s. Using fail url:%s" % (e,self.fail_url))
-#                sys.stdout.write(self.fail_url+"\n")
-#            except:
-#                syslog.syslog("Unexpected whitetrash redirector exception:%s." % e)
-#                sys.stdout.write("http://split_error\n")
-                
-#            return False
+        except Exception,e:
+            syslog.syslog("Error parsing string '%s' from squid.  Error:%s" % (squidurl,e)) 
+            self.fail_url=self.get_error_url("Bad request logged.  See your sysadmin for assistance.")
+            return False
 
     def readForever(self):
         """Read squid URL from stdin, and write response to stdout."""
@@ -254,7 +254,9 @@ class WTSquidRedirector:
                     except:
                         #Something weird/bad has happened, tell the user.
                         syslog.syslog("Error when checking domain in whitelist. Exception: %s" %e)
-                        sys.stdout.write(self.error_url)
+                        sys.stdout.write(self.get_error_url())
+            else:
+                sys.stdout.write(self.fail_url)
 
 
 class WTSquidRedirectorCached(WTSquidRedirector):

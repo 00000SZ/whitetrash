@@ -70,3 +70,10 @@ def limited_object_list(*args, **kwargs):
 
     return object_list(*args, **kwargs)
 
+def error(request):
+    error=request.GET["error"]
+    return render_to_response('whitelist/whitelist_error.html', 
+                            { 'error_text':error},
+                            context_instance=RequestContext(request))
+
+

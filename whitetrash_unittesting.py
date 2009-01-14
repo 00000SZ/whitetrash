@@ -1,11 +1,30 @@
 #!/usr/bin/env python
 
+# Author: gregsfdev@users.sourceforge.net
+# License: GPL
+#
+# This file is part of Whitetrash.
+# 
+#     Whitetrash is free software; you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation; either version 2 of the License, or
+#     (at your option) any later version.
+# 
+#     Whitetrash is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+# 
+#     You should have received a copy of the GNU General Public License
+#     along with Whitetrash; if not, write to the Free Software
+#     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#
+
 import unittest
 from whitetrash_db.configobj import ConfigObj
 from whitetrash import WTSquidRedirector
 from whitetrash import WTSquidRedirectorCached
 import httplib
-
 
 class SquidRedirectorUnitTests(unittest.TestCase):
 
@@ -16,10 +35,24 @@ class SquidRedirectorUnitTests(unittest.TestCase):
         
     def testURLParsing(self):
 
-        squid_inputs=["http://whitetrash.sf.net/ 10.10.9.60/- greg GET",
-                        "whitetrash.sf.net:443 10.10.9.60/- greg CONNECT "]
-        squid_inputs_results=[True,True]
-        squid_inputs_results_url=["http://whitetrash/whitelist/getform?url=http%3A//whitetrash.sf.net/&clientaddr=10.10.9.60&domain=whitetrash.sf.net", "sslwhitetrash:80"]
+        squid_inputs=[
+                        "http://whitetrash.sf.net/ 10.10.9.60/- greg GET",
+                        "whitetrash.sf.net:443 10.10.9.60/- greg CONNECT",
+                        "http://'or1=1--.com 10.10.9.60/something.com.au - GET",
+                        "http://testwhitetrash.sf.net bad baduser 10.10.9.60/- greg GET",
+                        "testwhitetrash.sf.net 10.10.9.60/- greg GET",
+                        "whitetrash.sf.net:443 10.10.9.60/- greg CO##ECT",
+                        "http://whitetrash.sf.aaaanet/ 10.10.9.60/- greg GET",
+                        ]
+        squid_inputs_results=[True,True,False,False,False,False,False]
+        squid_inputs_results_url=["http://whitetrash/whitelist/getform?url=http%3A//whitetrash.sf.net/&clientaddr=10.10.9.60&domain=whitetrash.sf.net",
+            "sslwhitetrash:80",
+            "http://whitetrash/whitelist/error?error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
+            "http://whitetrash/whitelist/error?error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
+            "http://whitetrash/whitelist/error?error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
+            "http://whitetrash/whitelist/error?error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
+            "http://whitetrash/whitelist/error?error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
+            ]
 
         for i in range(len(squid_inputs)):
             res=self.wt_redir.parseSquidInput(squid_inputs[i])
@@ -59,7 +92,6 @@ class SquidRedirectorUnitTests(unittest.TestCase):
 
 
     def testWhitelistChecking(self):
-        #TODO: test error handling.
         self.wt_redir.fail_url=self.wt_redir.http_fail_url
         form=self.wt_redir.http_fail_url+"\n"
         url="http%3A//www.whitetrash.sf.net/FAQ"
@@ -102,6 +134,11 @@ class SquidRedirectorUnitTests(unittest.TestCase):
         self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),(True,"\n"),
                         "Auto add ssl domain")
 
+        dom="testwhitetrash.sf.net"
+        self.wt_redir.auto_add_all=False
+        #generate an error by destroying the protocol choices dictionary 
+        self.wt_redir.PROTOCOL_CHOICES={}
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url),(False,"http://whitetrash/whitelist/error?error=Error%20checking%20domain%20in%20whitelist\n"))
        
     def tearDown(self):
         self.wt_redir.cursor.execute("delete from whitelist_whitelist where username='wt_unittesting'")

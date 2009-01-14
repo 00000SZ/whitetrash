@@ -35,5 +35,6 @@ urlpatterns += patterns('whitetrash.whitelist.views',
     (r'^addentry/','addentry'),
     (r'^getform/','getform'),
     (r'^delete/$', 'limited_object_list', delete_domains),
+    (r'^error/','error'),
 )
     
