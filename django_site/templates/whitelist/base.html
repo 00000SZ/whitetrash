@@ -1,7 +1,13 @@
 <html>
     <head>
     <title>{% block title %}Whitetrash{% endblock %}</title>
-    <link rel="stylesheet" type="text/css" media="screen" href="/whitetrash/whitetrash_server.css" />
+    <link rel="stylesheet" type="text/css" media="screen"
+    {% if ssl %}
+    href="https://whitetrash/whitetrash/whitetrash_server.css"
+    {% else %}
+    href="http://whitetrash/whitetrash/whitetrash_server.css"
+    {% endif %}
+    />
     {% block meta %}{% endblock %}
     </head>
 
