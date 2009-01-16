@@ -1,4 +1,5 @@
 from django.db import models
+from datetime import datetime
 
 # Create your models here.
 
@@ -30,8 +31,13 @@ class Whitelist(models.Model):
     comment=models.CharField(maxlength=100,blank=True)
     enabled=models.BooleanField(db_index=True,default=False,help_text="If TRUE the domain is whitelisted",blank=False)
     hitcount=models.PositiveIntegerField(db_index=True,default=0,editable=False,blank=False)
-    last_accessed=models.DateTimeField(auto_now=True,db_index=True,
+    last_accessed=models.DateTimeField(default=datetime.now(),db_index=True,
                                     help_text="Time this domain was last requested",blank=False)
+
+    def save(self):
+        if not self.whitelist_id:
+            self.date_added = datetime.now()
+        super(Whitelist, self).save() 
 
     class Meta:
         unique_together = (("domain", "protocol"),)

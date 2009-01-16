@@ -187,8 +187,10 @@ class WTSquidRedirector:
             if spliturl[3]=="CONNECT":
                 #syslog.syslog("Protocol=SSL")
                 self.protocol=self.PROTOCOL_CHOICES["SSL"]
-                self.url_domain_only=self.domain_sanitise.match(spliturl[0].split(":")[0]).group()
-                self.fail_url=self.ssl_fail_url
+                domain = self.domain_sanitise.match(spliturl[0].split(":")[0]).group()
+                self.url_domain_only = domain
+                self.newurl_safe = "https://%s" % domain
+                self.fail_url = self.ssl_fail_url
                 return True
 
             else:

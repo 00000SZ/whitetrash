@@ -10,8 +10,8 @@ The packages you will need (this is an Ubuntu/debian command line, but other dis
 
 sudo apt-get install \
 squid \
-python2.4-dev \
-python2.4-mysqldb \
+python-dev \
+python-mysqldb \
 python-pyopenssl \
 mysql-server
 
@@ -140,7 +140,7 @@ If you have an upstream cache parent you want traffic to go through, you should 
 
 If your whitetrash box is the last thing between you and the internet you will want it to go and get all the requests for you.  The stuff for the whitelist will still need to go through our cache peer however, so use:
 
-    never_direct allow cgi_server
+    never_direct allow whitetrash
 
 
 This is important to protect webservers (such as whitetrash_serv) listening on localhost:
@@ -235,7 +235,9 @@ python-django \
 libapache2-mod-python
 
  - Copy the apache static files: cp -r example_configs/apache2/www/whitetrash /var/www/
- - Copy the whitetrash apache config: cp example_configs/apache2/whitetrash /etc/apache2/sites-available/
+ - Copy the whitetrash apache config:
+    cp example_configs/apache2/whitetrash /etc/apache2/sites-available/
+    cp example_configs/apache2/httpd.conf /etc/apache2/httpd.conf
  - Enable the whitetrash site: a2ensite whitetrash
  - Create ssl cert and enable apache ssl module:
     a2enmod ssl
@@ -245,7 +247,7 @@ libapache2-mod-python
     openssl x509 -req -days 365 -in server.csr -signkey /etc/apache2/ssl/server.key -out /etc/apache2/ssl/server.crt
  - Create a symlink: ln -s /usr/share/python-support/python-django/django/contrib/admin/media/ /var/www/whitetrash/media
 
-Django config:
+Django config (create whitetrash db first):
  - cd django_site
  - python manage.py syncdb
 

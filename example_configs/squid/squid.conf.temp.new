@@ -593,7 +593,8 @@ acl Safe_ports port 873		# rsync
 acl Safe_ports port 901		# SWAT
 acl purge method PURGE
 acl CONNECT method CONNECT
-acl whitetrash dstdomain whitetrash
+acl whitetrash dstdomain whitetrash 
+acl sslwhitetrash dstdomain sslwhitetrash
 
 #  TAG: http_access
 #	Allowing or Denying access based on defined access lists
@@ -648,9 +649,11 @@ http_access deny CONNECT !SSL_ports
 
 #Let the redirector handle access control.
 http_access allow all
+#always_direct allow whitetrash
+never_direct allow sslwhitetrash 
 
 # And finally deny all other access to this proxy
-http_access deny all
+#http_access deny all
 
 #  TAG: http_access2
 #	Allowing or Denying access based on defined access lists
@@ -1505,6 +1508,10 @@ http_port 3128
 #
 #Default:
 # none
+#cache_peer proxy.dsd.gov.au parent 8080 0 no-query no-digest
+#cache_peer_domain proxy.dsd.gov.au !whitetrash !sslwhitetrash
+cache_peer whitetrash parent 80 0 no-query no-digest
+cache_peer_domain whitetrash sslwhitetrash
 
 #  TAG: cache_peer_domain
 #	Use to limit the domains for which a neighbor cache will be
@@ -2355,7 +2362,7 @@ url_rewrite_children 5
 #Default:
 # none
 
-    url_rewrite_access allow !whitetrash 
+    url_rewrite_access allow !whitetrash !sslwhitetrash
 
 #  TAG: redirector_bypass
 #	When this is 'on', a request will not go through the

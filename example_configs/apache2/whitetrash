@@ -1,6 +1,7 @@
 <VirtualHost whitetrash:443>
 SSLEngine on
-SSLCertificateFile /etc/apache2/ssl/apache.pem
+SSLCertificateFile /etc/apache2/ssl/server.crt
+SSLCertificateKeyFile /etc/apache2/ssl/server.key
 ServerName whitetrash
 </VirtualHost>
 
