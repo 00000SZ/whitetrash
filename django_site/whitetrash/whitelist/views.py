@@ -8,6 +8,22 @@ from django.http import HttpResponsePermanentRedirect
 import re
 
 def index(request):
+    """Handle a request for the domain with a blank path.
+
+    We need to handle CONNECT (SSL) in a special manner as below:
+
+    Browser --CONNECT-->        Squid -------check---------->   url_rewriter
+                                Squid <---sslwhitetrash:80--   url_rewriter 
+
+                                Squid ------CONNECT--------->   sslwhitetrash
+    Browser <-HTTP forbidden--  Squid <---HTTP forbidden----   sslwhitetrash
+    
+    We can't just start doing SSL since the certificate domain won't match that
+    requested by the user.  Can't just return HTTP either since the client asked for
+    SSL, *except* if there is an error, which is why I send back a forbidden.  To get
+    squid to go out with a connect instead of just client hello we require sslwhitetrash
+    to be a cache peer.
+    """
     if request.method == 'CONNECT':
         t = loader.get_template('whitelist/whitelist_getform.html')
         c = RequestContext(request,{ 'protocol':'SSL',
