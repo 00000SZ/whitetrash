@@ -26,9 +26,6 @@
         <div id="requestDetails">
             <div id="requestDetailsText">
                 <p><b>Protocol: </b>{{ protocol }}</p>
-                {% if src_ip %}
-                <p><b>Client IP: </b>{{ src_ip }}</p>
-                {% endif %}
                 {% if user.is_authenticated %}
                 <p><b>Client Username: </b>{{ user.username }}</p>
                 {% endif %}
