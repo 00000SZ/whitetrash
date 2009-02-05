@@ -2,7 +2,7 @@
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render_to_response
-from whitetrash.whitelist.models import Whitelist,get_protocol_choice
+from whitetrash.whitelist.models import Whitelist,WhiteListForm
 from django.http import HttpResponseForbidden
 from django.template import loader, Context, RequestContext
 from django.views.generic.list_detail import object_list
@@ -39,6 +39,97 @@ def index(request):
         return HttpResponsePermanentRedirect("http://whitetrash/whitelist/view/list/")
 
 
+#@login_required
+#def addentryold(request):
+#    """Add an entry to the whitelist.
+
+#    The domain will usually exist since it is created with enabled=False by the redirector the first
+#    time it is requested.
+#    """
+#    try:
+#        url=request.POST["url"]
+#        protocol=whitetrash_filters.protocolnum(request.POST["protocol"])
+#        domain=whitetrash_filters.domain(request.POST["domain"])
+#        comment=request.POST["comment"]
+#        src_ip=whitetrash_filters.ip(request.META.get('REMOTE_ADDR'))
+#    except KeyError:
+#        return render_to_response('whitelist/whitelist_error.html', 
+#                            { 'error_text':"Bad request: url, protocol, domain, and comment required"},
+#                            context_instance=RequestContext(request))
+
+
+#    if protocol and domain:
+
+#        if re.match("^www[0-9]?\.",domain):
+#    	    # If this is a www domain, strip off the www.
+#    	    dom_temp=domain
+#            domain=re.sub("^[a-z0-9-]+\.","",dom_temp,1)
+
+#        w,created = Whitelist.objects.get_or_create(domain=domain,protocol=protocol, defaults={'username':request.user,
+#                                    'original_request':url,'comment':comment,'enabled':True,'client_ip':src_ip})
+
+#        if not url:
+#            #Handle SSL by refreshing to the domain added
+#            if protocol=="SSL":
+#                url="https://%s" % domain
+#            else:
+#                #assume HTTP
+#                url="http://%s" % domain
+
+#        #TODO: error if already whitelisted and enabled.
+#        if not created:
+#    	    w.username = request.user
+#    	    w.url = url
+#    	    w.comment = comment
+#    	    w.enabled = True
+#    	    w.client_ip = src_ip
+#            w.save()
+
+#        return render_to_response('whitelist/whitelist_added.html', 
+#                                    { 'url':url,'protocol':protocol,'domain':domain,'client_ip':src_ip,'comment':comment, 'ssl':protocol=="SSL" },
+#                                    context_instance=RequestContext(request)) 
+#    else:
+#        return render_to_response('whitelist/whitelist_error.html', 
+#                    { 'error_text':"Bad parameters for domain, protocol, or src_ip"},
+#                    #{ 'error_text':"Bad parameters %s,%s,%s" % (request.POST["protocol"],request.POST["domain"],request.META.get('REMOTE_ADDR'))},
+#                    context_instance=RequestContext(request))
+
+
+#@login_required
+#def getform(request):
+#    """Return a form for a HTTP request.
+
+#    SSL is handled in the index view since the squid redirector just sends CONNECTs to the domain
+#    without any path information.
+
+#    We use the raw url here because it is HTML-sanitised at display time by django.
+#    """
+#    try:
+#        url=request.GET["url"]
+#        domain=request.GET["domain"]
+
+#        if domain:
+#            domain=whitetrash_filters.domain(request.GET["domain"])
+
+#            if not domain:
+#                return render_to_response('whitelist/whitelist_error.html', 
+#                        { 'error_text':"Bad domain"},
+#                        context_instance=RequestContext(request))
+            
+#    except KeyError:
+#        return render_to_response('whitelist/whitelist_error.html', 
+#                            { 'error_text':"Bad request: url, domain required"},
+#                            context_instance=RequestContext(request))
+        
+#    #FIXME:Shouldn't this ssl param be sent in the index view on CONNECT?
+#    return render_to_response('whitelist/whitelist_getform.html', 
+#                            { 'url':url,'domain':domain,
+#                            'protocol':'HTTP',
+#                            'form_target':'http://whitetrash/whitelist/addentry/', 'ssl':domain=="" },
+#                            context_instance=RequestContext(request))
+
+
+
 @login_required
 def addentry(request):
     """Add an entry to the whitelist.
@@ -46,79 +137,66 @@ def addentry(request):
     The domain will usually exist since it is created with enabled=False by the redirector the first
     time it is requested.
     """
-    try:
-        url=request.POST["url"]
-        protocol=whitetrash_filters.protocol(request.POST["protocol"])
-        domain=whitetrash_filters.domain(request.POST["domain"])
-        comment=request.POST["comment"]
-        src_ip=whitetrash_filters.ip(request.META.get('REMOTE_ADDR'))
-    except KeyError:
-        return render_to_response('whitelist/whitelist_error.html', 
-                            { 'error_text':"Bad request: url, protocol, domain, and comment required"},
-                            context_instance=RequestContext(request))
+
+    if request.method == 'POST':
+        form = WhiteListForm(request.POST)
+
+        if form.is_valid(): 
+            domain = form.cleaned_data['domain']
+            protocol = form.cleaned_data['protocol']
+            url = form.cleaned_data['url']
+            comment = form.cleaned_data['comment']
+            src_ip=whitetrash_filters.ip(request.META.get('REMOTE_ADDR'))
+
+            if re.match("^www[0-9]?\.",domain):
+    	        # If this is a www domain, strip off the www.
+    	        dom_temp=domain
+                domain=re.sub("^[a-z0-9-]+\.","",dom_temp,1)
+
+            w,created = Whitelist.objects.get_or_create(domain=domain,protocol=protocol, defaults={'username':request.user,
+                                        'original_request':url,'comment':comment,'enabled':True,'client_ip':src_ip})
+
+            if not url:
+                #Handle SSL by refreshing to the domain added
+                if protocol=="SSL":
+                    url="https://%s" % domain
+                else:
+                    #assume HTTP
+                    url="http://%s" % domain
+
+            #TODO: error if already whitelisted and enabled.
+            if not created:
+    	        w.username = request.user
+    	        w.url = url
+    	        w.comment = comment
+    	        w.enabled = True
+    	        w.client_ip = src_ip
+                w.save()
 
 
-    if protocol and domain:
-
-        if re.match("^www[0-9]?\.",domain):
-    	    # If this is a www domain, strip off the www.
-    	    dom_temp=domain
-            domain=re.sub("^[a-z0-9-]+\.","",dom_temp,1)
-
-        w,created = Whitelist.objects.get_or_create(domain=domain,protocol=get_protocol_choice(protocol), defaults={'username':request.user,
-                                    'original_request':url,'comment':comment,'enabled':True})
-
-        if not url:
-            #Handle SSL by refreshing to the domain added
-            if protocol=="SSL" and domain:
-                url="https://%s" % domain
-            elif protocol=="HTTP" and domain:
-                url="http://%s" % domain
-
-        if not created:
-    	    w.username = request.user
-    	    w.url = url
-    	    w.comment = comment
-    	    w.enabled = True
-            w.save()
-
-        return render_to_response('whitelist/whitelist_added.html', 
-                                    { 'url':url,'protocol':protocol,'domain':domain,'comment':comment, 'ssl':protocol=="SSL" },
+            return render_to_response('whitelist/whitelist_added.html', 
+                                    { 'url':url,'protocol':protocol,'domain':domain,'client_ip':src_ip,'comment':comment, 'ssl':protocol=="SSL" },
                                     context_instance=RequestContext(request)) 
+
     else:
-        return render_to_response('whitelist/whitelist_error.html', 
-                    { 'error_text':"Bad parameters for domain or protocol"},
-                    context_instance=RequestContext(request))
+        #Pre-populate the form
+        #Do some quick checks on the pre-population data, if anything fails
+        #just present an empty form.
+        try:
+            url=request.GET["url"]
+            domain=whitetrash_filters.domain(request.GET["domain"])
+                
+        except KeyError:
+            url=""
+            domain=""
+                    
+        form = WhiteListForm(initial={'url': url,'protocol':'HTTP',
+                            'form_target':'http://whitetrash/whitelist/addentry/'})
 
+    return render_to_response('whitelist/whitelist_getform.html', {
+        'form': form,
+    })
 
-@login_required
-def getform(request):
-    """Return a form for a HTTP request.
-
-    SSL is handled in the index view since the squid redirector just sends CONNECTs to the domain
-    without any path information.
-
-    We use the raw url here because it is HTML-sanitised at display time by django.
-    """
-    try:
-        url=request.GET["url"]
-        domain=whitetrash_filters.domain(request.GET["domain"])
-
-        if not domain:
-            return render_to_response('whitelist/whitelist_error.html', 
-                    { 'error_text':"Bad domain"},
-                    context_instance=RequestContext(request))
-            
-    except KeyError:
-        return render_to_response('whitelist/whitelist_error.html', 
-                            { 'error_text':"Bad request: url, domain required"},
-                            context_instance=RequestContext(request))
-        
-    return render_to_response('whitelist/whitelist_getform.html', 
-                            { 'url':url,'domain':domain,
-                            'protocol':'HTTP',
-                            'form_target':'http://whitetrash/whitelist/addentry/', 'ssl':domain=="" },
-                            context_instance=RequestContext(request))
 
 
 @login_required

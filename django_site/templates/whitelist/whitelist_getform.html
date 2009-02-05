@@ -11,14 +11,10 @@
             </div>
             {% if ssl %}
             <input name="domain" id="hostInputText" value="" maxlength="71" size="30" type="text"/>
+            <!--TODO, fix this nasty XSS -->
             <script type="text/javascript">
                 document.getElementById("hostInputText").value = location.hostname;
             </script>
-            <!--<script type="text/javascript">
-                window.onload = function() {
-                    document.getElementById("hostInputText").value = location.hostname;
-                }
-            </script>--!>
             {% else %}
             <input name="domain" id="hostInputText" value="{{ domain }}" maxlength="70" size="30" type="text"/>
             {% endif %}

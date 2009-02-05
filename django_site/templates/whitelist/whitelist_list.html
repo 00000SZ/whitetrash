@@ -27,7 +27,7 @@
         <td><b>Domain Hitcount</b></td>
         <td><b>First Whitelisted</b></td>
         <td><b>Last Accessed</b></td>
-        <td><b>Whitelisted by User</b></td>
+        <td><b>Whitelisted by User@IP</b></td>
         <td><b>Protocol</b></td>
         <td><b>Comment</b></td>
         <td><b>Original Request</b></td></tr>
@@ -44,7 +44,7 @@
             <td>{{item.hitcount}}</td>
             <td>{{item.date_added}}</td>
             <td>{{item.last_accessed}}</td>
-            <td>{{item.username}}</td>
+            <td>{{item.username}}@{{item.client_ip}}</td>
             <td>{{item.get_protocol_display}}</td>
             <td>{{item.comment}}</td>
             <td>{{item.original_request}}</td>
