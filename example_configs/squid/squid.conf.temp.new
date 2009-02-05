@@ -511,10 +511,6 @@
 #	  # (the counter is reset each time the limit is reached and a
 #	  # request is denied)
 #	  # NOTE: in acceleration mode or where there is mesh of child proxies,
-#
-#	  We need a cache peer for sslwhitetrash to force it to make CONNECT
-#	  requests rather than just SSL client hello (see views.py).  Might
-#	  as well use a cache peer as a 
 #	  # clients may appear to come from multiple addresses if they are
 #	  # going through proxy farms, so a limit of 1 may cause user problems.
 #

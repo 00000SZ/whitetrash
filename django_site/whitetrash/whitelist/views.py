@@ -29,9 +29,12 @@ def index(request):
     to be a cache peer.
     """
     if request.method == 'CONNECT':
+    	#TODO:fix this form target. SSL broken atm.
         t = loader.get_template('whitelist/whitelist_getform.html')
-        c = RequestContext(request,{ 'protocol':'SSL',
-                     'form_target':'https://whitetrash/whitelist/addentry/', })
+        form = WhiteListForm(initial={'protocol':Whitelist.get_protocol_choice('SSL'),
+                            'form_target':'https://whitetrash/whitelist/addentry/'})
+
+        c = RequestContext(request,{ 'form':form })
         resp=HttpResponseForbidden(t.render(c))
         resp["Proxy-Connection"]="close"
         return resp
@@ -66,7 +69,7 @@ def index(request):
 #            domain=re.sub("^[a-z0-9-]+\.","",dom_temp,1)
 
 #        w,created = Whitelist.objects.get_or_create(domain=domain,protocol=protocol, defaults={'username':request.user,
-#                                    'original_request':url,'comment':comment,'enabled':True,'client_ip':src_ip})
+#                                    'url':url,'comment':comment,'enabled':True,'client_ip':src_ip})
 
 #        if not url:
 #            #Handle SSL by refreshing to the domain added
@@ -153,15 +156,15 @@ def addentry(request):
     	        dom_temp=domain
                 domain=re.sub("^[a-z0-9-]+\.","",dom_temp,1)
 
-            w,created = Whitelist.objects.get_or_create(domain=domain,protocol=protocol, defaults={'username':request.user,
-                                        'original_request':url,'comment':comment,'enabled':True,'client_ip':src_ip})
+            w,created = Whitelist.objects.get_or_create(domain=domain,protocol=protocol, 
+                                defaults={'username':request.user,'url':url,
+                                'comment':comment,'enabled':True,'client_ip':src_ip})
 
             if not url:
                 #Handle SSL by refreshing to the domain added
                 if protocol=="SSL":
                     url="https://%s" % domain
                 else:
-                    #assume HTTP
                     url="http://%s" % domain
 
             #TODO: error if already whitelisted and enabled.
@@ -190,13 +193,13 @@ def addentry(request):
             url=""
             domain=""
                     
-        form = WhiteListForm(initial={'url': url,'protocol':'HTTP',
-                            'form_target':'http://whitetrash/whitelist/addentry/'})
+        form = WhiteListForm(initial={'url': url,
+                            'protocol':Whitelist.get_protocol_choice('HTTP'),
+                            'domain':domain})
 
     return render_to_response('whitelist/whitelist_getform.html', {
-        'form': form,
-    })
-
+        'form': form},
+        context_instance=RequestContext(request)) 
 
 
 @login_required

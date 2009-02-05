@@ -1,6 +1,6 @@
 from django.db import models
 from datetime import datetime
-from django.forms import ModelForm
+from django.forms import ModelForm,HiddenInput,CharField
 
 class Whitelist(models.Model):
     """Model describes the whitelist.  Contains entries for ALL domains that have ever been requested
@@ -29,9 +29,9 @@ class Whitelist(models.Model):
                             to the whitelist.  If the domain is not whitelisted, it is the time the domain was 
                             first requested.""",blank=False)
     protocol=models.PositiveSmallIntegerField(db_index=True,choices=PROTOCOL_CHOICES,blank=False)
-    username=models.CharField("Added By User",max_length=30,db_index=True,blank=False,editable=False)
-    client_ip=models.IPAddressField(db_index=True,blank=False,editable=False)
-    original_request=models.CharField(max_length=255,blank=False,blank=True,editable=False)
+    username=models.CharField("Added By User",max_length=30,db_index=True,blank=False)
+    client_ip=models.IPAddressField(db_index=True,blank=False)
+    url=models.CharField(max_length=255,blank=True)
     comment=models.CharField(max_length=100,blank=True)
     enabled=models.BooleanField(db_index=True,default=False,help_text="If TRUE the domain is whitelisted",blank=False)
     hitcount=models.PositiveIntegerField(db_index=True,default=0,editable=False,blank=False)
@@ -53,9 +53,11 @@ class Whitelist(models.Model):
 
 
 class WhiteListForm(ModelForm):
+    url=CharField(max_length=255,widget=HiddenInput,required=False)
+
     class Meta:
         model = Whitelist 
-        fields = ("domain", "protocol", "original_request")
+        fields = ("domain", "protocol", "url", "comment")
 
     #TODO:clean_domain
 

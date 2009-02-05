@@ -29,11 +29,9 @@ urlpatterns = patterns('django.views.generic.list_detail',
     (r'^view/disabledlist/$', 'object_list', not_enabled_whitelist),
 )
 
-#http://whitetrash/whitelist/getform/?url=http%3A%2F%2Fwww.lkjsdljsld.com%2F&clientaddr=192.168.1.2&domain=www.lkjsdljsld.com&clientident=-
 urlpatterns += patterns('whitetrash.whitelist.views',
     (r'^$', 'index'),
     (r'^addentry/','addentry'),
-    (r'^getform/','getform'),
     (r'^delete/$', 'limited_object_list', delete_domains),
     (r'^error/','error'),
 )

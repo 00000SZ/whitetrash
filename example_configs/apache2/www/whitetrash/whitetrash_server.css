@@ -52,7 +52,7 @@ a:hover, a:active {
     color:#000;
     }
 
-#hostInputText{
+#id_domain{
     position:relative;
     font-size:1em;
     left:1em;

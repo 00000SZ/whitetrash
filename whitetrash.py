@@ -40,7 +40,7 @@ class WTSquidRedirector:
 
     def __init__(self,config):
         self.PROTOCOL_CHOICES={'HTTP':1,'SSL':2}
-        self.http_fail_url="http://%s/whitelist/getform?" % config["whitetrash_add_domain"]
+        self.http_fail_url="http://%s/whitelist/addentry?" % config["whitetrash_add_domain"]
         self.error_url="http://%s/whitelist/error" % config["whitetrash_add_domain"]
         self.dummy_content_url="%s/empty" % config["whitetrash_add_domain"]
 
@@ -89,7 +89,7 @@ class WTSquidRedirector:
         return self.cursor.fetchone()
             
     def add_to_whitelist(self,domain,protocol,username,url):
-        self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),username=%s,protocol=%s,original_request=%s,comment='Auto add, learning mode',enabled=1,hitcount=1,last_accessed=NOW()", (domain,username,protocol,url))
+        self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),username=%s,protocol=%s,url=%s,comment='Auto add, learning mode',enabled=1,hitcount=1,last_accessed=NOW()", (domain,username,protocol,url))
 
     def add_disabled_domain(self,domain,protocol,username,url):
         """Add a domain to the table with enabled = 0.
@@ -97,7 +97,7 @@ class WTSquidRedirector:
         This allows us to keep track of domains that have been requested but not added 
         since they are proabably spyware/trackers/malware."""
 
-        self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),username=%s,protocol=%s,original_request=%s, comment='', enabled=0,hitcount=1,last_accessed=NOW()", (domain,username,protocol,url))
+        self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),username=%s,protocol=%s,url=%s, comment='', enabled=0,hitcount=1,last_accessed=NOW()", (domain,username,protocol,url))
 
     def enable_domain(self,whitelist_id):
         """Update db entry to set enabled=1."""
