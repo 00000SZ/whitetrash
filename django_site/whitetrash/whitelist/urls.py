@@ -32,7 +32,8 @@ urlpatterns = patterns('django.views.generic.list_detail',
 urlpatterns += patterns('whitetrash.whitelist.views',
     (r'^$', 'index'),
     (r'^addentry/','addentry'),
-    (r'^delete/$', 'limited_object_list', delete_domains),
+    (r'^deletelist/$', 'limited_object_list', delete_domains),
+    (r'^delete/', 'delete_entries'),
     (r'^error/','error'),
 )
     

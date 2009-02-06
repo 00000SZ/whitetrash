@@ -1,6 +1,7 @@
 from django.db import models
 from datetime import datetime
-from django.forms import ModelForm,HiddenInput,CharField
+from django.forms import ModelForm,HiddenInput,CharField,ValidationError
+import re
 
 class Whitelist(models.Model):
     """Model describes the whitelist.  Contains entries for ALL domains that have ever been requested
@@ -46,7 +47,11 @@ class Whitelist(models.Model):
         super(Whitelist, self).save(force_insert) 
 
     class Meta:
-        unique_together = (("domain", "protocol"),)
+        #This is more correct, but it causes problems with form submission
+        #I want to be able to enable an existing entry, with this constraint
+        #django invalidates my form submission because an entry already exists.
+        #unique_together = (("domain", "protocol"),)
+        unique_together = (("domain", "protocol","enabled"),)
 
     def __str__(self):
         return "%s: %s - %s %s %s hits" % (self.whitelist_id,self.get_protocol_display(),self.domain,self.username,self.hitcount)
@@ -55,9 +60,16 @@ class Whitelist(models.Model):
 class WhiteListForm(ModelForm):
     url=CharField(max_length=255,widget=HiddenInput,required=False)
 
+    def clean_domain(self):
+
+        data = self.cleaned_data['domain']
+        try:
+            re.match("^([a-z0-9-]{1,50}\.){1,6}[a-z]{2,6}$",data).group()
+            return data
+        except AttributeError:
+            raise ValidationError("Bad domain name.")
+
     class Meta:
         model = Whitelist 
         fields = ("domain", "protocol", "url", "comment")
-
-    #TODO:clean_domain
 

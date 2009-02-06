@@ -17,34 +17,12 @@ def domain(value):
     except:
         return ""
 
-#FIXME:don't need any of these now since django model is doing the validation?
-
 @stringfilter
 @register.filter
 def ip(value):
     try:
-        inet_aton(input)
-        return input
-    except:
-        return ""
-
-@stringfilter
-@register.filter
-def protocolnum(value):
-    try:
-        for (num,proto_string) in Whitelist.PROTOCOL_CHOICES:
-    	    if int(num) == int(value):
-    		    return int(value)
-        return ""
-    except:
-        return ""
-
-@stringfilter
-@register.filter
-def protocol(value):
-    try:
-        if Whitelist.get_protocol_choice(value):
-            return value
+        inet_aton(value)
+        return value
     except:
         return ""
 

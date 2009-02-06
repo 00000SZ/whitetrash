@@ -22,7 +22,7 @@
             Your access request for:</p>
             <p>{{ domain }}</p>
             <p>has been granted.  Your browser should automatically take you to the website. If it doesn't you can use this link:</p>
-            <p><a href="{{ url }}">{{ url }}</a></p>
+            <p><a href="{{ url|escape }}">{{ url|escape }}</a></p>
         </div>
 
 {% endblock %}

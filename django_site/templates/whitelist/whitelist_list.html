@@ -12,7 +12,7 @@
         <div id="whitelistTable">
 
         {% if delete_domains %}
-        <form name="delete" action="%s" method="POST"> 
+        <form name="delete" action="/whitelist/delete/" method="POST"> 
         {% endif %}
 
         <table border=1 frame=box>
@@ -46,8 +46,8 @@
             <td>{{item.last_accessed}}</td>
             <td>{{item.username}}@{{item.client_ip}}</td>
             <td>{{item.get_protocol_display}}</td>
-            <td>{{item.comment}}</td>
-            <td>{{item.url}}</td>
+            <td>{{item.comment|escape}}</td>
+            <td>{{item.url|escape}}</td>
             </tr>
         {% endfor %}
         </table>

@@ -1,0 +1,18 @@
+{% extends "whitelist/base.html" %}
+
+{% block title %}Whitetrash Deleted Entries{% endblock %}
+{% block meta %}<meta http-equiv="refresh" CONTENT="1;URL=http://whitetrash/" />{% endblock %}
+
+{% block content %}
+
+    <div id="viewlist">
+        {% include "whitelist/sidebar.html" %}
+    </div>
+
+    <div id="centreContent">
+        <h2>Deleted {{ num_deleted }} entr{{ num_deleted|pluralize:"y,ies" }}</h2>
+    </div>
+
+
+{% endblock %}
+
