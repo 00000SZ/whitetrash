@@ -13,9 +13,8 @@
             {{ form.domain|escape }}
             {{ form.domain.errors }}
             {% if ssl %}
-            <!--TODO, fix this nasty XSS -->
             <script type="text/javascript">
-                document.getElementById("id_domain").value = location.hostname;
+                document.getElementById("id_domain").value = escape(location.hostname);
             </script>
             {% endif %}
         </div>
@@ -44,6 +43,8 @@
                 <p>{{form.non_field_errors|escape}}</p>
             </div>
             {% endif %}
+            {{ form.recaptcha_response_field|safe }}
+            {{ form.recaptcha_challenge_field }}
 
         </div>
     </form>

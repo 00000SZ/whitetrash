@@ -69,7 +69,7 @@ def addentry(request):
 
             if not url:
                 #Handle SSL by refreshing to the domain added
-                if protocol=="SSL":
+                if protocol == Whitelist.get_protocol_choice('SSL'):
                     url="https://%s" % domain
                 else:
                     url="http://%s" % domain
@@ -88,7 +88,7 @@ def addentry(request):
 
 
             return render_to_response('whitelist/whitelist_added.html', 
-                                    { 'url':url,'protocol':protocol,'domain':domain,'client_ip':src_ip,'comment':comment, 'ssl':protocol=="SSL" },
+                                    { 'url':url,'protocol':protocol,'domain':domain,'client_ip':src_ip,'comment':comment},
                                     context_instance=RequestContext(request)) 
 
     else:
