@@ -1,4 +1,9 @@
 # Django settings for whitetrash project.
+CAPTCHA_HTTP = True
+CAPTCHA_SSL = True
+RECAPTCHA_PUBLIC_KEY=""
+RECAPTCHA_PRIVATE_KEY=""
+RECAPTCHA_IP_ADDR = ""
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG

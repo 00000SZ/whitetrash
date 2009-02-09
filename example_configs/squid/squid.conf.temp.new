@@ -3065,7 +3065,7 @@ extension_methods REPORT MERGE MKACTIVITY CHECKOUT
 #	Suppress Squid version string info in HTTP headers and HTML error pages.
 #
 #Default:
-# httpd_suppress_version_string off
+httpd_suppress_version_string on
 
 #  TAG: visible_hostname
 #	If you want to present a special hostname in error messages, etc,
@@ -4329,7 +4329,7 @@ hosts_file /etc/hosts
 #		X-Forwarded-For: unknown
 #
 #Default:
-# forwarded_for on
+forwarded_for off
 
 #  TAG: cachemgr_passwd
 #	Specify passwords for cachemgr operations.

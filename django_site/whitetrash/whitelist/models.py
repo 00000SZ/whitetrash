@@ -103,10 +103,16 @@ class WhiteListForm(ModelForm):
     def clean(self):
 
         #TODO:wrap in try
-        check = captcha.submit(self.cleaned_data['recaptcha_challenge_field'],
-                                self.cleaned_data['recaptcha_response_field'],
-                                settings.RECAPTCHA_PRIVATE_KEY,
-                                settings.RECAPTCHA_IP_ADDR)
+        try:
+            check = captcha.submit(self.cleaned_data['recaptcha_challenge_field'],
+                                    self.cleaned_data['recaptcha_response_field'],
+                                    settings.RECAPTCHA_PRIVATE_KEY,
+                                    settings.RECAPTCHA_IP_ADDR)
+        except ValueError:
+            raise ValidationError("Recaptcha error: fields missing")
+#        except:
+#            raise ValidationError("Error contacting recaptcha server")
+
         if not check.is_valid:
             raise ValidationError('You have not entered the correct words.  Use the mp3 link to listen to spoken words.')
         else:
