@@ -207,10 +207,10 @@ class WTSquidRedirector:
                 #syslog.syslog("sanitised_url: %s" % self.newurl_safe)
 
                 #Get just the client IP
-                clientaddr=spliturl[1].split("/")[0]
+                self.clientaddr=spliturl[1].split("/")[0]
                 #use inet_aton to validate the IP
-                inet_aton(clientaddr)
-                #syslog.syslog("client address: %s" % clientaddr)
+                inet_aton(self.clientaddr)
+                #syslog.syslog("client address: %s" % self.clientaddr)
 
                 #strip out the domain.
                 #syslog.syslog("unsafe: %s" % url_domain_only_unsafe)
@@ -222,7 +222,7 @@ class WTSquidRedirector:
                 #sanitise it
                 self.url_domain_only=self.domain_sanitise.match(url_domain_only_unsafe).group()
                 #syslog.syslog("domainonly: %s" % self.url_domain_only)
-                self.fail_url+="url=%s&clientaddr=%s&domain=%s" % (self.newurl_safe,clientaddr,self.url_domain_only)
+                self.fail_url+="url=%s&domain=%s" % (self.newurl_safe,self.url_domain_only)
                 return True
 
         except Exception,e:

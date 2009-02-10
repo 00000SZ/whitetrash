@@ -3,14 +3,20 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render_to_response
 from whitetrash.whitelist.models import Whitelist,WhiteListForm
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden,HttpResponsePermanentRedirect,HttpResponse
 from django.template import loader, Context, RequestContext
 from django.views.generic.list_detail import object_list
-from django.http import HttpResponsePermanentRedirect
 import whitetrash.whitelist.templatetags.whitetrash_filters as whitetrash_filters
 from django.template.defaultfilters import force_escape
 from django.forms import ValidationError
 import re
+
+try:
+    from Captcha.Visual.Tests import PseudoGimpy
+    from Captcha import Factory
+except ImportError:
+    print "PyCAPTCHA not installed.  Use: easy_install http://pypi.python.org/packages/2.4/P/PyCAPTCHA/PyCAPTCHA-0.4-py2.4.egg"
+
 
 def index(request):
     """Handle a request for the domain with a blank path.
@@ -33,12 +39,23 @@ def index(request):
         t = loader.get_template('whitelist/whitelist_getform.html')
         form = WhiteListForm(initial={'protocol':Whitelist.get_protocol_choice('SSL')})
 
-        c = RequestContext(request,{ 'form':form, 'form_target':'https://whitetrash/whitelist/addentry/' ,'ssl':True})
+        c = RequestContext(request,{ 'form':form, 'form_target':'https://whitetrash/whitelist/addentry/' ,'ssl':True, 'captcha':settings.CAPTCHA_SSL})
         resp=HttpResponseForbidden(t.render(c))
         resp["Proxy-Connection"]="close"
         return resp
     else:
         return HttpResponsePermanentRedirect("http://whitetrash/whitelist/view/list/")
+
+@login_required
+def show_captcha(request):
+    response = HttpResponse()
+    response['Content-type'] = "image/png"
+    g = PseudoGimpy()
+    i = g.render()
+    i.save(response, "png")
+    safe_solutions = [hash(s) for s in g.solutions]
+    request.session['captcha_solns'] = safe_solutions
+    return response
 
 @login_required
 def addentry(request):
@@ -107,8 +124,9 @@ def addentry(request):
                             'protocol':Whitelist.get_protocol_choice('HTTP'),
                             'domain':domain})
 
+
     return render_to_response('whitelist/whitelist_getform.html', {
-        'form': form, 'form_target':'http://whitetrash/whitelist/addentry/'},
+        'form': form, 'form_target':'http://whitetrash/whitelist/addentry/','captcha':settings.CAPTCHA_HTTP},
         context_instance=RequestContext(request)) 
 
 

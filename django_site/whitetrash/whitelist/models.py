@@ -4,14 +4,6 @@ from django.forms import ModelForm,HiddenInput,CharField,ValidationError,Widget
 from django.conf import settings
 import re
 
-try:
-    from recaptcha.client import captcha
-except ImportError:
-    if settings.CAPTCHA_HTTP or settings.CAPTCHA_SSL:
-    	raise
-    else:
-        print "Recaptcha not installed.  Download from http://pypi.python.org/pypi/recaptcha-client."
-
 
 class Whitelist(models.Model):
     """Model describes the whitelist.  Contains entries for ALL domains that have ever been requested
@@ -49,8 +41,6 @@ class Whitelist(models.Model):
     last_accessed=models.DateTimeField(default=datetime.now(),db_index=True,
                                     help_text="Time this domain was last requested",blank=False,editable=False)
 
-
-
     def save(self,force_insert=False, force_update=False):
         if not self.whitelist_id:
             self.date_added = datetime.now()
@@ -66,30 +56,10 @@ class Whitelist(models.Model):
     def __str__(self):
         return "%s: %s - %s %s %s hits" % (self.whitelist_id,self.get_protocol_display(),self.domain,self.username,self.hitcount)
 
-
-class RecaptchaWidget(Widget):
-    """ A Widget which "renders" the output of captcha.displayhtml """
-    def render(self, *args, **kwargs):
-        #FIXME: Should I just always use SSL here?
-        return captcha.displayhtml(settings.RECAPTCHA_PUBLIC_KEY)
-
-
-class DummyWidget(Widget):
-    """
-    A dummy Widget class for a placeholder input field which will
-    be created by captcha.displayhtml
-
-    """
-    # make sure that labels are not displayed either
-    is_hidden=True
-    def render(self, *args, **kwargs):
-        return ''
-
-
 class WhiteListForm(ModelForm):
     url=CharField(max_length=255,widget=HiddenInput,required=False)
-    recaptcha_response_field = CharField(max_length=50,widget=RecaptchaWidget,required=True)
-    recaptcha_challenge_field = CharField(widget=DummyWidget)
+    if settings.CAPTCHA_HTTP or settings.CAPTCHA_SSL:
+        captcha_response_field = CharField(max_length=20,required=True)
 
     def clean_domain(self):
 
@@ -99,24 +69,6 @@ class WhiteListForm(ModelForm):
             return data
         except AttributeError:
             raise ValidationError("Bad domain name.")
-
-    def clean(self):
-
-        #TODO:wrap in try
-        try:
-            check = captcha.submit(self.cleaned_data['recaptcha_challenge_field'],
-                                    self.cleaned_data['recaptcha_response_field'],
-                                    settings.RECAPTCHA_PRIVATE_KEY,
-                                    settings.RECAPTCHA_IP_ADDR)
-        except ValueError:
-            raise ValidationError("Recaptcha error: fields missing")
-#        except:
-#            raise ValidationError("Error contacting recaptcha server")
-
-        if not check.is_valid:
-            raise ValidationError('You have not entered the correct words.  Use the mp3 link to listen to spoken words.')
-        else:
-            return self.cleaned_data
 
     class Meta:
         model = Whitelist 
