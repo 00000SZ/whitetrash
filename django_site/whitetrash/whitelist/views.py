@@ -9,11 +9,13 @@ from django.views.generic.list_detail import object_list
 import whitetrash.whitelist.templatetags.whitetrash_filters as whitetrash_filters
 from django.template.defaultfilters import force_escape
 from django.forms import ValidationError
+from django.conf import settings
+import sha
+import datetime
 import re
 
 try:
     from Captcha.Visual.Tests import PseudoGimpy
-    from Captcha import Factory
 except ImportError:
     print "PyCAPTCHA not installed.  Use: easy_install http://pypi.python.org/packages/2.4/P/PyCAPTCHA/PyCAPTCHA-0.4-py2.4.egg"
 
@@ -48,13 +50,32 @@ def index(request):
 
 @login_required
 def show_captcha(request):
+    """Return a captcha image.
+    Can't think of a good way to tie IDs of generated images to the form input field
+    Instead timestamp each and have a timeout checked on submission.  
+    User could potentially have a large array of captcha solutions per session.
+    So will also cull the list here when it gets big.
+    """
+
     response = HttpResponse()
     response['Content-type'] = "image/png"
     g = PseudoGimpy()
     i = g.render()
     i.save(response, "png")
-    safe_solutions = [hash(s) for s in g.solutions]
-    request.session['captcha_solns'] = safe_solutions
+    safe_solutions = [sha.sha(s).hexdigest() for s in g.solutions]
+    try:
+        if len(request.session['captcha_solns']) > 100:
+            for (sol,createtime) in request.session['captcha_solns']:
+                if ((datetime.datetime.now()-createtime) > 
+                    datetime.timedelta(seconds=settings.CAPTCHA_WINDOW_SEC)):
+                    request.session['captcha_solns'].remove((sol,createtime))
+
+        request.session['captcha_solns'].append((safe_solutions,datetime.datetime.now()))
+        #Need explicit save here because we don't add a new element and
+        #SESSION_SAVE_EVERY_REQUEST is false
+        request.session.save()
+    except KeyError:
+        request.session['captcha_solns'] = [(safe_solutions,datetime.datetime.now())]
     return response
 
 @login_required
@@ -75,9 +96,28 @@ def addentry(request):
             comment = form.cleaned_data['comment']
             src_ip=whitetrash_filters.ip(request.META.get('REMOTE_ADDR'))
 
+            if settings.CAPTCHA_HTTP or settings.CAPTCHA_SSL:
+                captcha_passed = False 
+
+                for (sol,createtime) in request.session['captcha_solns']:
+                    if sha.sha(form.cleaned_data['captcha_response']).hexdigest() == sol:
+
+                        if ((datetime.datetime.now()-createtime) < 
+                            datetime.timedelta(seconds=settings.CAPTCHA_WINDOW_SEC)):
+                            request.session['captcha_solns'].remove((sol,createtime))
+                            request.session.save()
+                            captcha_passed = True
+                        else:
+                            return render_to_response('whitelist/whitelist_error.html',{ 'error_text':"Captcha time window expired. Refresh and try again."})
+
+                if not captcha_passed:
+                    return render_to_response('whitelist/whitelist_error.html', 
+                            { 'error_text':"Captcha test failed. Refresh and try again."})
+
+
             if re.match("^www[0-9]?\.",domain):
-    	        # If this is a www domain, strip off the www.
-    	        dom_temp=domain
+                # If this is a www domain, strip off the www.
+                dom_temp=domain
                 domain=re.sub("^[a-z0-9-]+\.","",dom_temp,1)
 
             w,created = Whitelist.objects.get_or_create(domain=domain,protocol=protocol, 
@@ -95,12 +135,13 @@ def addentry(request):
                 return render_to_response('whitelist/whitelist_error.html', 
                             { 'error_text':"Domain already whitelisted."})
 
+
             elif not created and not w.enabled:
-    	        w.username = request.user
-    	        w.url = url
-    	        w.comment = comment
-    	        w.enabled = True
-    	        w.client_ip = src_ip
+                w.username = request.user
+                w.url = url
+                w.comment = comment
+                w.enabled = True
+                w.client_ip = src_ip
                 w.save()
 
 
@@ -144,13 +185,13 @@ def limited_object_list(*args, **kwargs):
 def delete_entries(request):
 
     if request.method == 'POST':
-    	try:
+        try:
             idlist = request.POST.getlist("DeleteId")
             #sanitise
             for id in idlist:
-        	    int(id)
-        	    if id < 0:
-        		    raise ValidationError("Bad ID passed")
+                int(id)
+                if id < 0:
+                    raise ValidationError("Bad ID passed")
 
             Whitelist.objects.filter(pk__in=idlist).filter(username=request.user).delete()
             return render_to_response('whitelist/whitelist_deleted.html', 

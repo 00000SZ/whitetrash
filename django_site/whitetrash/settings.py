@@ -1,9 +1,14 @@
 # Django settings for whitetrash project.
 CAPTCHA_HTTP = True
 CAPTCHA_SSL = True
+CAPTCHA_WINDOW_SEC = 30
 RECAPTCHA_PUBLIC_KEY=""
 RECAPTCHA_PRIVATE_KEY=""
 RECAPTCHA_IP_ADDR = ""
+
+#session expiry time in seconds.
+SESSION_COOKIE_AGE = 28800
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG

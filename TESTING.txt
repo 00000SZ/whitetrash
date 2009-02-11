@@ -42,3 +42,10 @@ Results
 
 Whitetrash has been shown to scale well, since the code is very small, and the database accesses simple.  Memcached support has been added to support very large scale enterprise deployments.  I hope to be able to test WT on a large scale with memcached in the near future.
 
+======
+Django
+======
+
+Disable apache caching for testing by putting the following in /etc/apache2/httpd.conf:
+
+    MaxRequestsPerChild 1
