@@ -58,8 +58,7 @@ class Whitelist(models.Model):
 
 class WhiteListForm(ModelForm):
     url=CharField(max_length=255,widget=HiddenInput,required=False)
-    if settings.CAPTCHA_HTTP or settings.CAPTCHA_SSL:
-        captcha_response = CharField(max_length=20,required=True)
+    captcha_response = CharField(max_length=20,required=False)
 
     def clean_domain(self):
 

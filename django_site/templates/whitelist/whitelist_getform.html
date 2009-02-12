@@ -4,7 +4,11 @@
 
 {% block content %}
     <h1>Internet Access Request</h1>
-    <form action={{ form_target }} method="post">
+    {% if ssl %}
+    <form action="https://whitetrash/whitelist/addentry/" method="post">
+    {% else %}
+    <form action="/whitelist/addentry/" method="post">
+    {% endif %}
             
         <div id="host">
             <div id="hostText">
@@ -39,7 +43,11 @@
             {{ form.url|escape }}
             {% if captcha %}
                 <div id="captchaContent">
+                    {% if ssl %}
+                    <p><img id="captchaImage" src="https://whitetrash/whitelist/captcha/"/></p>
+                    {% else %}
                     <p><img id="captchaImage" src="/whitelist/captcha/"/></p>
+                    {% endif %}
                     <p>Enter the word shown: 
                     {{ form.captcha_response}}
                     {{ form.captcha_response.errors }}

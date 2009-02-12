@@ -42,7 +42,7 @@ def index(request):
         t = loader.get_template('whitelist/whitelist_getform.html')
         form = WhiteListForm(initial={'protocol':Whitelist.get_protocol_choice('SSL')})
 
-        c = RequestContext(request,{ 'form':form, 'form_target':'https://whitetrash/whitelist/addentry/' ,'ssl':True, 'captcha':settings.CAPTCHA_SSL})
+        c = RequestContext(request,{ 'form':form, 'ssl':True, 'captcha':settings.CAPTCHA_SSL})
         resp=HttpResponseForbidden(t.render(c))
         resp["Proxy-Connection"]="close"
         return resp
@@ -114,15 +114,15 @@ def addentry(request):
                                 request.session.save()
                                 captcha_passed = True
                             else:
-                                form._errors["captcha_response"] = ErrorList(["Captcha time window expired. Refresh and try again."])
+                                form._errors["captcha_response"] = ErrorList(["Captcha time window expired."])
                                 return render_to_response('whitelist/whitelist_getform.html', {
-                                    'form': form, 'form_target':'http://whitetrash/whitelist/addentry/','captcha':True},
+                                    'form': form, 'captcha':True},
                                     context_instance=RequestContext(request)) 
                 
                 if not captcha_passed:
                     form._errors["captcha_response"] = ErrorList(["Captcha test failed.  Please try again."])
                     return render_to_response('whitelist/whitelist_getform.html', {
-                        'form': form, 'form_target':'http://whitetrash/whitelist/addentry/','captcha':True},
+                        'form': form, 'captcha':True},
                         context_instance=RequestContext(request)) 
 
             if re.match("^www[0-9]?\.",domain):
@@ -144,7 +144,7 @@ def addentry(request):
             if not created and w.enabled:
                 form._errors["domain"] = ErrorList(["Domain already whitelisted."])
                 return render_to_response('whitelist/whitelist_getform.html', {
-                    'form': form, 'form_target':'http://whitetrash/whitelist/addentry/','captcha':captcha_required},
+                    'form': form, 'captcha':captcha_required},
                     context_instance=RequestContext(request)) 
 
             elif not created and not w.enabled:
@@ -178,7 +178,7 @@ def addentry(request):
 
 
     return render_to_response('whitelist/whitelist_getform.html', {
-        'form': form, 'form_target':'http://whitetrash/whitelist/addentry/','captcha':settings.CAPTCHA_HTTP},
+        'form': form, 'captcha':settings.CAPTCHA_HTTP},
         context_instance=RequestContext(request)) 
 
 

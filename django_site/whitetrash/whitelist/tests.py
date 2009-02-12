@@ -53,7 +53,6 @@ class WhitetrashTestAddEntry(TestCase):
         response = self.client.post("/whitelist/addentry/", {"url":"http%3A//sldjflksjdf.com/",
                         "domain":"test1.com",
                         "protocol":Whitelist.get_protocol_choice("HTTP"),"comment":"testing"} )
-        self.assertTemplateUsed(response, 'whitelist/whitelist_added.html')
         self.assertContains(response, "Whitetrash: Access Granted", status_code=200)
         self.assertContains(response, "Thank you testuser", status_code=200)
         self.assertTrue(Whitelist.objects.filter(domain="test1.com",protocol=Whitelist.get_protocol_choice("HTTP")))
@@ -81,7 +80,7 @@ class WhitetrashTestAddEntry(TestCase):
         response = self.client.post("/whitelist/addentry/", {"url":"",
                         "domain":"testing1.com",
                         "protocol":Whitelist.get_protocol_choice("HTTP"),"comment":"testing"} )
-        self.assertTemplateUsed(response, 'whitelist/whitelist_error.html')
+        self.assertTemplateUsed(response, 'whitelist/whitelist_getform.html')
         self.assertContains(response, "Domain already whitelisted", status_code=200)
 
     def testAddBadDomain(self):
@@ -100,6 +99,27 @@ class WhitetrashTestAddEntry(TestCase):
         response = self.client.post("/whitelist/addentry/", {"url":"http://sdlfjksldfjl"} )
         self.assertTemplateUsed(response, 'whitelist/whitelist_getform.html')
         self.assertContains(response, 'class="errorlist"', status_code=200)
+
+#class WhitetrashTestCaptcha(TestCase):
+#    """Test captcha display.
+
+#    It is really annoying to test things that require changes in django.settings.
+#    I tried this snippet http://www.djangosnippets.org/snippets/1011/ but it didn't work.
+#    For now will have to leave this commented out and change settings manually. Suck!
+#    """
+#    fixtures = ["testing.json"]
+
+#    def setUp(self):
+#        self.client.login(username='testuser', password='passwd')
+
+#    def testGetFormHTTP(self):
+#        response = self.client.get("/whitelist/addentry/", {"url":"http%3A//sldjflksjdf.com/","domain":"sldjflksjdf.com"} )
+#        self.assertTemplateUsed(response, 'whitelist/whitelist_getform.html')
+#        self.assertContains(response, 'name="domain" value="sldjflksjdf.com"', status_code=200)
+#        self.assertContains(response, 'selected="selected">HTTP', status_code=200)
+#        self.assertContains(response, 'Client Username: </b>testuser', status_code=200)
+#        self.assertContains(response, '<input type="hidden" name="url" value="http%3A//sldjflksjdf.com/"', status_code=200)
+#        self.assertContains(response, '<img id="captchaImage"', status_code=200)
 
 class WhitetrashTestDelEntry(TestCase):
     fixtures = ["testing.json"]
