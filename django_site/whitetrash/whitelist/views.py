@@ -10,6 +10,7 @@ import whitetrash.whitelist.templatetags.whitetrash_filters as whitetrash_filter
 from django.template.defaultfilters import force_escape
 from django.forms import ValidationError
 from django.conf import settings
+from django.forms.util import ErrorList
 import sha
 import datetime
 import re
@@ -95,25 +96,34 @@ def addentry(request):
             url = form.cleaned_data['url']
             comment = form.cleaned_data['comment']
             src_ip=whitetrash_filters.ip(request.META.get('REMOTE_ADDR'))
+            captcha_required = False
 
-            if settings.CAPTCHA_HTTP or settings.CAPTCHA_SSL:
+            if ((settings.CAPTCHA_HTTP and protocol == Whitelist.get_protocol_choice('HTTP')) or
+                (settings.CAPTCHA_SSL and protocol == Whitelist.get_protocol_choice('SSL'))):
+
+                captcha_required = True
                 captcha_passed = False 
 
                 for (sol,createtime) in request.session['captcha_solns']:
-                    if sha.sha(form.cleaned_data['captcha_response']).hexdigest() == sol:
+                    for thissol in sol:
+                        if sha.sha(form.cleaned_data['captcha_response']).hexdigest() == thissol:
 
-                        if ((datetime.datetime.now()-createtime) < 
-                            datetime.timedelta(seconds=settings.CAPTCHA_WINDOW_SEC)):
-                            request.session['captcha_solns'].remove((sol,createtime))
-                            request.session.save()
-                            captcha_passed = True
-                        else:
-                            return render_to_response('whitelist/whitelist_error.html',{ 'error_text':"Captcha time window expired. Refresh and try again."})
-
+                            if ((datetime.datetime.now()-createtime) < 
+                                datetime.timedelta(seconds=settings.CAPTCHA_WINDOW_SEC)):
+                                request.session['captcha_solns'].remove((sol,createtime))
+                                request.session.save()
+                                captcha_passed = True
+                            else:
+                                form._errors["captcha_response"] = ErrorList(["Captcha time window expired. Refresh and try again."])
+                                return render_to_response('whitelist/whitelist_getform.html', {
+                                    'form': form, 'form_target':'http://whitetrash/whitelist/addentry/','captcha':True},
+                                    context_instance=RequestContext(request)) 
+                
                 if not captcha_passed:
-                    return render_to_response('whitelist/whitelist_error.html', 
-                            { 'error_text':"Captcha test failed. Refresh and try again."})
-
+                    form._errors["captcha_response"] = ErrorList(["Captcha test failed.  Please try again."])
+                    return render_to_response('whitelist/whitelist_getform.html', {
+                        'form': form, 'form_target':'http://whitetrash/whitelist/addentry/','captcha':True},
+                        context_instance=RequestContext(request)) 
 
             if re.match("^www[0-9]?\.",domain):
                 # If this is a www domain, strip off the www.
@@ -132,9 +142,10 @@ def addentry(request):
                     url="http://%s" % domain
 
             if not created and w.enabled:
-                return render_to_response('whitelist/whitelist_error.html', 
-                            { 'error_text':"Domain already whitelisted."})
-
+                form._errors["domain"] = ErrorList(["Domain already whitelisted."])
+                return render_to_response('whitelist/whitelist_getform.html', {
+                    'form': form, 'form_target':'http://whitetrash/whitelist/addentry/','captcha':captcha_required},
+                    context_instance=RequestContext(request)) 
 
             elif not created and not w.enabled:
                 w.username = request.user
