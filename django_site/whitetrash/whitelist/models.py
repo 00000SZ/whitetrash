@@ -61,6 +61,7 @@ class WhiteListForm(ModelForm):
     captcha_response = CharField(max_length=20,required=False)
 
     def clean_domain(self):
+        #TODO check against the google blacklist
 
         data = self.cleaned_data['domain']
         try:
@@ -72,4 +73,12 @@ class WhiteListForm(ModelForm):
     class Meta:
         model = Whitelist 
         fields = ("domain", "protocol", "url", "comment")
+
+
+class WhiteListCheckDomainForm(WhiteListForm):
+    """Form for checking if a domain is in the whitelist via AJAX."""
+
+    class Meta:
+        model = Whitelist 
+        fields = ("domain", "protocol")
 

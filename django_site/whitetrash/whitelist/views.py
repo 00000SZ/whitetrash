@@ -181,6 +181,22 @@ def addentry(request):
         'form': form, 'captcha':settings.CAPTCHA_HTTP},
         context_instance=RequestContext(request)) 
 
+def check_domain(request):
+    """Ajax request to check if a domain is in the whitelist.
+
+    Returns a JSON object 'in_whitelist' with True if the value is in the whitelist.
+    """
+    if request.method == 'GET':
+        form = WhiteListCheckDomainForm(request.GET)
+
+        if form.is_valid(): 
+            domain = form.cleaned_data['domain']
+            protocol = form.cleaned_data['protocol']
+
+            #TODO: finish, somehow return true/false/error.
+
+    return HttpResponse("{'in_whitelist': 'Success'}", mimetype="application/json")
+   
 
 @login_required
 def limited_object_list(*args, **kwargs):
