@@ -2,7 +2,7 @@
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render_to_response
-from whitetrash.whitelist.models import Whitelist,WhiteListForm
+from whitetrash.whitelist.models import Whitelist,WhiteListForm,WhiteListCheckDomainForm
 from django.http import HttpResponseForbidden,HttpResponsePermanentRedirect,HttpResponse
 from django.template import loader, Context, RequestContext
 from django.views.generic.list_detail import object_list
@@ -181,23 +181,6 @@ def addentry(request):
         'form': form, 'captcha':settings.CAPTCHA_HTTP},
         context_instance=RequestContext(request)) 
 
-def check_domain(request):
-    """Ajax request to check if a domain is in the whitelist.
-
-    Returns a JSON object 'in_whitelist' with True if the value is in the whitelist.
-    """
-    if request.method == 'GET':
-        form = WhiteListCheckDomainForm(request.GET)
-
-        if form.is_valid(): 
-            domain = form.cleaned_data['domain']
-            protocol = form.cleaned_data['protocol']
-
-            #TODO: finish, somehow return true/false/error.
-
-    return HttpResponse("{'in_whitelist': 'Success'}", mimetype="application/json")
-   
-
 @login_required
 def limited_object_list(*args, **kwargs):
     """Require login for generic views, display only results owned by the user.
@@ -229,8 +212,25 @@ def delete_entries(request):
 
     return HttpResponsePermanentRedirect("http://whitetrash/whitelist/delete/")
 
+def check_domain(request):
+    """Ajax request to check if a domain is in the whitelist.
 
+    Returns a JSON object 'in_whitelist' with True if the value is in the whitelist.
+    """
+    if request.method == 'GET':
+        form = WhiteListCheckDomainForm(request.GET)
 
+        if form.is_valid(): 
+            domain = form.cleaned_data['domain']
+            protocol = form.cleaned_data['protocol']
+            if Whitelist.objects.filter(enabled=True,domain=domain,protocol=protocol):
+                return HttpResponse("True")
+                #return HttpResponse("{'in_whitelist': 'True'}", mimetype="application/json")
+            else:
+                return HttpResponse("False")
+
+    return HttpResponse("Error")
+ 
 def error(request):
     error=request.GET["error"]
     return render_to_response('whitelist/whitelist_error.html', 

@@ -127,25 +127,52 @@ class WhitetrashTestDelEntry(TestCase):
     def setUp(self):
         self.client.login(username='testuser', password='passwd')
 
-    def delMultipleEntries(self):
+    def testdelMultipleEntries(self):
         self.assertTrue(Whitelist.objects.filter(pk=1))
         self.assertTrue(Whitelist.objects.filter(pk=3))
-        response = self.client.post("/whitelist/delete/", {"DeleteId":"1,3"} )
+        response = self.client.post("/whitelist/delete/", {"DeleteId":[1,3]} )
         self.assertTemplateUsed(response, 'whitelist/whitelist_deleted.html')
         self.assertFalse(Whitelist.objects.filter(pk=1))
         self.assertFalse(Whitelist.objects.filter(pk=3))
 
-    def delEntryOwnedByDifferentUser(self):
+    def testdelEntryOwnedByDifferentUser(self):
         """ID 2 is owned by a different user, so shouldn't have been deleted."""
-        self.assertTrue(len(Whitelist.objects.filter(pk__in=[1,2,3]) == 3))
-        response = self.client.post("/whitelist/delete/", {"DeleteId":"1,2,3"} )
+        self.assertTrue(len(Whitelist.objects.filter(pk__in=[1,2,3])) == 3)
+        response = self.client.post("/whitelist/delete/", {"DeleteId":[1,2,3]} )
         self.assertTemplateUsed(response, 'whitelist/whitelist_deleted.html')
         self.assertFalse(Whitelist.objects.filter(pk=1))
         self.assertTrue(Whitelist.objects.filter(pk=2))
         self.assertFalse(Whitelist.objects.filter(pk=3))
 
-    def delBadIds(self):
+    def testdelBadIds(self):
         """If any IDs are bad, the operation is aborted so ID 1 should still be there"""
-        response = self.client.post("/whitelist/delete/", {"DeleteId":"1,'--"} )
+        response = self.client.post("/whitelist/delete/", {"DeleteId":"'--"} )
         self.assertTrue(Whitelist.objects.filter(pk=1))
         self.assertTemplateUsed(response, 'whitelist/whitelist_error.html')
+
+
+class WhitetrashTestAjaxDomainCheck(TestCase):
+    fixtures = ["testing.json"]
+
+    def setUp(self):
+        self.client.login(username='testuser', password='passwd')
+
+    def testCheckDomainInList(self):
+        response = self.client.get("/whitelist/checkdomain/", {"domain":"testing1.com","protocol":Whitelist.get_protocol_choice("HTTP")} )
+        self.assertContains(response, "{'in_whitelist': 'True'}", status_code=200)
+
+    def testCheckDomainNotInList(self):
+        response = self.client.get("/whitelist/checkdomain/", {"domain":"notinwhitelist.com","protocol":Whitelist.get_protocol_choice("HTTP")} )
+        self.assertContains(response, "{'in_whitelist': 'False'}", status_code=200)
+
+        response = self.client.get("/whitelist/checkdomain/", {"domain":"testing4.com","protocol":Whitelist.get_protocol_choice("HTTP")} )
+        self.assertContains(response, "{'in_whitelist': 'False'}", status_code=200)
+
+    def testCheckError(self):
+        response = self.client.get("/whitelist/checkdomain/", {"domain":"testing1.comsdfsds","protocol":Whitelist.get_protocol_choice("HTTP")} )
+        self.assertContains(response, "{'in_whitelist': 'Error'}", status_code=200)
+
+        response = self.client.get("/whitelist/checkdomain/", {"domain":"testing1.com","protocol":"invalid"} )
+        self.assertContains(response, "{'in_whitelist': 'Error'}", status_code=200)
+
+

@@ -116,20 +116,23 @@ whitetrashOverlay = {
 ,
     checkDomainInWhitelist: function(aPopup,display_domain,domain,uri,protocol,this_class) {
     	//Assuming domain and protocol have already been sanitised.
-        var url="http://whitetrash/check_domain?domain="+domain+"&protocol="+protocol
+        var url="http://whitetrash/checkdomain?domain="+domain+"&protocol="+protocol
         var req = new XMLHttpRequest();
         req.open("GET", url, true);
         //req.onreadystatechange = this.onEvtCheckDomain(req,aPopup,display_domain,domain,uri,protocol,this_class);
         req.onreadystatechange = function (aPopup,display_domain,domain,uri,protocol,this_class) {
-    	    //Maybe use XML instead?  This way is giving me a javascript syntax error.
             whitetrashOverlay.logger.logStringMessage("check domain response"+req.responseText+req.status);
             if (req.readyState == 4) {
         	    if(req.status == 200) {
-                    var item = document.createElement("menuitem"); // create a new XUL menuitem
-                    item.setAttribute("label", display_domain);
-                    item.setAttribute("class", this_class);
-                    item.setAttribute("oncommand", "whitetrashOverlay.addToWhitelist(\""+domain+'","'+protocol+'","'+uri+"\")");
-                    aPopup.appendChild(item);
+        	    	//TODO: add to tab whitelist?
+        	    	//syntax error?
+        	    	if req.responseText=="False" {
+                        var item = document.createElement("menuitem"); // create a new XUL menuitem
+                        item.setAttribute("label", display_domain);
+                        item.setAttribute("class", this_class);
+                        item.setAttribute("oncommand", "whitetrashOverlay.addToWhitelist(\""+domain+'","'+protocol+'","'+uri+"\")");
+                        aPopup.appendChild(item);
+                    }
 
                 }else{
                     whitetrashOverlay.logger.logStringMessage(req.responseText);

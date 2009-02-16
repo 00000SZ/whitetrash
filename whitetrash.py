@@ -88,16 +88,16 @@ class WTSquidRedirector:
 
         return self.cursor.fetchone()
             
-    def add_to_whitelist(self,domain,protocol,username,url):
-        self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),username=%s,protocol=%s,url=%s,comment='Auto add, learning mode',enabled=1,hitcount=1,last_accessed=NOW()", (domain,username,protocol,url))
+    def add_to_whitelist(self,domain,protocol,username,url,clientaddr):
+        self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),username=%s,protocol=%s,url=%s,comment='Auto add, learning mode',enabled=1,hitcount=1,last_accessed=NOW(),client_ip=%s", (domain,username,protocol,url,clientaddr))
 
-    def add_disabled_domain(self,domain,protocol,username,url):
+    def add_disabled_domain(self,domain,protocol,username,url,clientaddr):
         """Add a domain to the table with enabled = 0.
         
         This allows us to keep track of domains that have been requested but not added 
         since they are proabably spyware/trackers/malware."""
 
-        self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),username=%s,protocol=%s,url=%s, comment='', enabled=0,hitcount=1,last_accessed=NOW()", (domain,username,protocol,url))
+        self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),username=%s,protocol=%s,url=%s, comment='', enabled=0,hitcount=1,last_accessed=NOW(), client_ip=%s", (domain,username,protocol,url,clientaddr))
 
     def enable_domain(self,whitelist_id):
         """Update db entry to set enabled=1."""
@@ -110,7 +110,7 @@ class WTSquidRedirector:
     def get_error_url(self,errortext):
         return "%s?error=%s\n" % (self.error_url,urllib.quote(errortext))
 
-    def check_whitelist_db(self,domain,protocol,url,orig_url):
+    def check_whitelist_db(self,domain,protocol,url,orig_url,clientaddr):
         """Check the db for domain with protocol.
 
         @param domain:      Domain to be checked
@@ -149,7 +149,7 @@ class WTSquidRedirector:
             	    if whitelist_id:
             		    self.enable_domain(whitelist_id)
                     else:
-                        self.add_to_whitelist(domain,protocol,'auto',url)
+                        self.add_to_whitelist(domain,protocol,'auto',url,clientaddr)
 
                     result = (True,"\n")
                 else:
@@ -157,7 +157,7 @@ class WTSquidRedirector:
                     if whitelist_id:
                         self.update_hitcount(whitelist_id)
                     else:
-                        self.add_disabled_domain(domain,protocol,'notwhitelisted',url)
+                        self.add_disabled_domain(domain,protocol,'notwhitelisted',url,clientaddr)
 
                     if protocol == self.PROTOCOL_CHOICES["HTTP"] and	\
                         self.nonhtml_suffix_re.match(orig_url):
@@ -241,7 +241,7 @@ class WTSquidRedirector:
 
                 try:
                     (res,url)=self.check_whitelist_db(self.url_domain_only,self.protocol,self.newurl_safe,
-                                            self.original_url)
+                                            self.original_url,self.clientaddr)
                     sys.stdout.write(url)
 
                 except Exception,e:
@@ -250,7 +250,7 @@ class WTSquidRedirector:
                         self.cursor=db_connect()
                         (res,url)=self.check_whitelist_db(self.url_domain_only,
                                                         self.protocol,self.newurl_safe,
-                                                        self.original_url)
+                                                        self.original_url,self.clientaddr)
                         sys.stdout.write(url)
 
                     except:

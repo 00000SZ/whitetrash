@@ -1,10 +1,13 @@
 # Django settings for whitetrash project.
-CAPTCHA_HTTP = True
-CAPTCHA_SSL = True
+CAPTCHA_HTTP = False 
+CAPTCHA_SSL = False
 CAPTCHA_WINDOW_SEC = 30
-RECAPTCHA_PUBLIC_KEY=""
-RECAPTCHA_PRIVATE_KEY=""
-RECAPTCHA_IP_ADDR = ""
+
+#Fix weird need to specify absolute paths
+import os.path
+ROOT = os.path.dirname(os.path.realpath(__file__))
+def absp(path):
+    return os.path.join(ROOT,path)
 
 #session expiry time in seconds.
 SESSION_COOKIE_AGE = 28800
@@ -80,7 +83,7 @@ TEMPLATE_DIRS = (
     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
     # Always use forward slashes, even on Windows.
     # Don't forget to use absolute paths, not relative paths.
-    "/home/greg/whitetrash/django_site/templates"
+    absp("../templates")
 )
 
 
