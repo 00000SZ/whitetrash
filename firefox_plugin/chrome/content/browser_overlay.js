@@ -115,23 +115,41 @@ whitetrashOverlay = {
     }
 ,
     checkDomainInWhitelist: function(aPopup,display_domain,domain,uri,protocol,this_class) {
+    	//This function is run on every tab change to rebuild menu, so we are hitting the wt server to check the
+    	//non-whitelisted domains on each tab change.  If performance is bad may need to change this behaviour.
+    	//Currently I am caching whitelisted entries for the duration of the session.  See addtoPrefsWhitelist
+    	//if you want to cache across sessions.
     	//Assuming domain and protocol have already been sanitised.
-        var url="http://whitetrash/checkdomain?domain="+domain+"&protocol="+protocol
+        var url="http://whitetrash/whitelist/checkdomain?domain="+domain+"&protocol="+protocol
+        var pagetab = getBrowser().selectedTab;
         var req = new XMLHttpRequest();
         req.open("GET", url, true);
-        //req.onreadystatechange = this.onEvtCheckDomain(req,aPopup,display_domain,domain,uri,protocol,this_class);
-        req.onreadystatechange = function (aPopup,display_domain,domain,uri,protocol,this_class) {
-            whitetrashOverlay.logger.logStringMessage("check domain response"+req.responseText+req.status);
+
+        req.onreadystatechange = function () {
             if (req.readyState == 4) {
         	    if(req.status == 200) {
-        	    	//TODO: add to tab whitelist?
-        	    	//syntax error?
-        	    	if req.responseText=="False" {
-                        var item = document.createElement("menuitem"); // create a new XUL menuitem
-                        item.setAttribute("label", display_domain);
-                        item.setAttribute("class", this_class);
-                        item.setAttribute("oncommand", "whitetrashOverlay.addToWhitelist(\""+domain+'","'+protocol+'","'+uri+"\")");
-                        aPopup.appendChild(item);
+                    whitetrashOverlay.logger.logStringMessage("domain: "+domain+", resp: "+req.responseText);
+
+        	    	if (req.responseText=="0") {
+
+                        //Check this is still our original tab, if the user has moved on we shouldn't
+                        //be displaying domains from other tabs.
+                        var newcurrentTab = getBrowser().selectedTab;
+                        if (newcurrentTab == pagetab) {
+
+                            var item = document.createElement("menuitem"); // create a new XUL menuitem
+                            item.setAttribute("label", display_domain);
+                            item.setAttribute("class", this_class);
+                            item.setAttribute("oncommand", "whitetrashOverlay.addToWhitelist(\""+domain+'","'+protocol+'","'+uri+"\")");
+                            aPopup.appendChild(item);
+
+                        }
+
+                    } else if (req.responseText=="1") {
+                    	//Add to our session whitelist
+                        whitetrashOverlay.addToPrefsWhitelist(domain,protocol);
+                    } else {
+                        whitetrashOverlay.logger.logStringMessage("Error checking domain: "+req.responseText);
                     }
 
                 }else{
@@ -144,15 +162,18 @@ whitetrashOverlay = {
 ,
     createMenuItem: function(aPopup,display_domain,domain,uri,protocol,this_class) {
     	//Don't display item in the menu if it is already in the whitelist.
-        if (protocol=="HTTP") {
+        if (protocol==this.getProtocolCode("HTTP")) {
     	    if (whitetrashOverlay.whitelist_http[domain]) { return }
-    	} else if (protocol=="SSL") {
+    	} else if (protocol==this.getProtocolCode("SSL")) {
     	    if (whitetrashOverlay.whitelist_ssl[domain]) { return }
     	} else {
             this.logger.logStringMessage("CreateMenuItem bad protocol: "+protocol);
             return;
     	}
 
+        //TODO: opening tabs without visiting them will result in the domains being assigned to the menu in the wrong tab
+        //Can I parse the html on page load but hold off building the menu until it is clicked?  Will drastically reduce checking
+        //queries sent to the server.
         this.checkDomainInWhitelist(aPopup,display_domain,domain,uri,protocol,this_class);
 
     }
@@ -167,6 +188,16 @@ whitetrashOverlay = {
         }
     }
 ,
+    getProtocolCode: function(stringname) {
+        if (stringname == "HTTP") {
+        	return 1;
+        } else if (stringname == "SSL") {
+            return 2;
+        } else {
+        	return -1;
+        }
+    }
+,
     parseHTML: function(wt_sb_menu_popup,tag_name,attribute,this_doc) {
 
         var tags = this_doc.getElementsByTagName(tag_name); 
@@ -178,12 +209,16 @@ whitetrashOverlay = {
 
                 var domain=null;
                 if (domain=domain_re.exec(uri)) {
-
-                    if (!whitetrashOverlay.domainMenuList.isDup(domain[2])) {
-                        var	display_domain=this_doc.domain+":"+domain[2];
-                        whitetrashOverlay.createMenuItem(wt_sb_menu_popup,display_domain,domain[2],uri,domain[1].toUpperCase(),"menuitem-iconic whitetrash-can");
-
-                        whitetrashOverlay.domainMenuList.storeDomainInfo(domain[2],display_domain,uri,domain[1].toUpperCase());
+                    var proto = this.getProtocolCode(domain[1].toUpperCase())
+                    if (proto!= -1) {
+                        if (!whitetrashOverlay.domainMenuList.isDup(domain[2])) {
+                            var	display_domain=this_doc.domain+":"+domain[2];
+                            whitetrashOverlay.createMenuItem(wt_sb_menu_popup,display_domain,domain[2],uri,proto,"menuitem-iconic whitetrash-can");
+                            //store all unique valid domains in the page so we don't have to re-parse on tab change.
+                            whitetrashOverlay.domainMenuList.storeDomainInfo(domain[2],display_domain,uri,proto);
+                        }
+                    } else {
+                        this.logger.logStringMessage("Bad protocol: "+uri);
                     }
                 } else {
                     this.logger.logStringMessage("Bad domain: "+uri);
@@ -354,14 +389,16 @@ whitetrashOverlay = {
     	//we know not to display those domains in the menu.
     	//Problem is if domain is whitelisted, then removed it will not show up.
     	//perhaps don't store in prefs so list is only maintained for browser session?
-        this.logger.logStringMessage("adding to prefs:"+domain+proto);
-    	var cur=this.getPref("whitetrash."+proto+".whitelist");
-    	if (proto=="HTTP") {
+    	//This is what I'm doing, uncomment lines below to store in prefs
+
+        //this.logger.logStringMessage("adding to prefs:"+domain+proto);
+    	//var cur=this.getPref("whitetrash."+proto+".whitelist");
+    	if (proto==this.getProtocolCode("HTTP")) {
     	    this.whitelist_http[domain]=true;
-    	} else if (proto=="SSL") {
+    	} else if (proto==this.getProtocolCode("SSL")) {
     	    this.whitelist_ssl[domain]=true;
     	}
-    	this.setPref("whitetrash."+proto+".whitelist",cur+=domain+"|");
+    	//this.setPref("whitetrash."+proto+".whitelist",cur+=domain+"|");
     }
 ,
   getPref: function(name, def) {

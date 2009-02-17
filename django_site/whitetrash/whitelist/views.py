@@ -215,7 +215,7 @@ def delete_entries(request):
 def check_domain(request):
     """Ajax request to check if a domain is in the whitelist.
 
-    Returns a JSON object 'in_whitelist' with True if the value is in the whitelist.
+    Returns 1 if the value is in the whitelist, 0 if not, -1 if error.
     """
     if request.method == 'GET':
         form = WhiteListCheckDomainForm(request.GET)
@@ -224,12 +224,12 @@ def check_domain(request):
             domain = form.cleaned_data['domain']
             protocol = form.cleaned_data['protocol']
             if Whitelist.objects.filter(enabled=True,domain=domain,protocol=protocol):
-                return HttpResponse("True")
+                return HttpResponse("1")
                 #return HttpResponse("{'in_whitelist': 'True'}", mimetype="application/json")
             else:
-                return HttpResponse("False")
+                return HttpResponse("0")
 
-    return HttpResponse("Error")
+    return HttpResponse("Error %s" % request.GET)
  
 def error(request):
     error=request.GET["error"]
