@@ -17,7 +17,7 @@
             class="statusbarpanel-menu-iconic whitetrash-can"
 		    tooltiptext="&whitetrashDefaultTooltip;">
 
-            <menupopup id="wt_sb_menu">
+            <menupopup id="wt_sb_menu" onpopupshowing="whitetrashOverlay.reloadMenu();">
                 <menuitem 
                 label="&whitetrashAbout;"
                 tooltiptext="&whitetrashAbout;"

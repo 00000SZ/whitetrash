@@ -32,8 +32,8 @@ whitetrashOverlay = {
             return count;
         }
         ,
-        isDup: function(d) {
-        	if (this.domains[d]) {
+        isDup: function(thislist,d) {
+        	if (thislist[d]) {
         		return true;
             } else {
             	return false;
@@ -66,11 +66,12 @@ whitetrashOverlay = {
         	var dlist = flatlist.split("|");
         	for (var i = 0; i < dlist.length; i++) {
             	var thisd = dlist[i].split(",");
-            	this.storeDomainInfo(thisd[0],thisd[1],thisd[2],thisd[3]);
+            	this.storeDomainInfo(this.domains,thisd[0],thisd[1],thisd[2],thisd[3]);
             }
         }
         ,
         restoreMenu: function() {
+        	//Restore menu list from list of saved domains
         	for (var d in this.domains) {
                 whitetrashOverlay.createMenuItem(document.getElementById("wt_sb_menu"),
                                         this.domains[d].disp_domain,this.domains[d].domain,
@@ -78,9 +79,8 @@ whitetrashOverlay = {
         	}
         }
         ,
-        storeDomainInfo: function(domain,disp_domain,uri,proto) {
-            this.domains[domain]= new this.domainStruct(domain,disp_domain,uri.replace(",","%2c"),proto);
-        	whitetrashOverlay.logger.logStringMessage("storing entry:"+this.domains[domain].printString);
+        storeDomainInfo: function(domainlist,domain,disp_domain,uri,proto) {
+            domainlist[domain]= new this.domainStruct(domain,disp_domain,uri.replace(",","%2c"),proto);
         }
         ,
         saveList: function() {
@@ -171,9 +171,8 @@ whitetrashOverlay = {
             return;
     	}
 
-        //TODO: opening tabs without visiting them will result in the domains being assigned to the menu in the wrong tab
-        //Can I parse the html on page load but hold off building the menu until it is clicked?  Will drastically reduce checking
-        //queries sent to the server.
+        //TODO: Create menu items disabled and enable them once we have checked the dom isn't
+        //in the whitelist.
         this.checkDomainInWhitelist(aPopup,display_domain,domain,uri,protocol,this_class);
 
     }
@@ -199,33 +198,58 @@ whitetrashOverlay = {
     }
 ,
     parseHTML: function(wt_sb_menu_popup,tag_name,attribute,this_doc) {
+    	//Parse HTML, add domains to the whitelist in the relevant tab.
+    	//There may be a locking problem here since this is called asynchronously on content load
+    	//A page with lots of iframes may cause conflict over the session store for whitetrash.test.list
 
         var tags = this_doc.getElementsByTagName(tag_name); 
         domain_re = /^(https?):\/\/(([a-z0-9-]{1,50}\.){1,6}[a-z]{2,6})\//;
 
-        for (var i = 0; i < tags.length; i++) { 
-        	var uri=null;
-            if (uri = tags[i].getAttribute(attribute)) {
+        //Check this event was for the current tab:
+        var targetBrowserIndex = getBrowser().getBrowserIndexForDocument(this_doc);
+        
+        //handle the case where there was no tab associated with the request (rss, etc)
+        if (targetBrowserIndex != -1) {
 
-                var domain=null;
-                if (domain=domain_re.exec(uri)) {
-                    var proto = this.getProtocolCode(domain[1].toUpperCase())
-                    if (proto!= -1) {
-                        if (!whitetrashOverlay.domainMenuList.isDup(domain[2])) {
-                            var	display_domain=this_doc.domain+":"+domain[2];
-                            whitetrashOverlay.createMenuItem(wt_sb_menu_popup,display_domain,domain[2],uri,proto,"menuitem-iconic whitetrash-can");
-                            //store all unique valid domains in the page so we don't have to re-parse on tab change.
-                            whitetrashOverlay.domainMenuList.storeDomainInfo(domain[2],display_domain,uri,proto);
+            var thistab = gBrowser.tabContainer.childNodes[targetBrowserIndex];
+            var tabWhitelistData = this.ss.getTabValue(thistab, "whitetrash.test.list");
+            if (tabWhitelistData!=""){
+            	//If the list already has something in it, we'll need a pipe.
+            	tabWhitelistData+="|";
+            }
+            var domainslist = {};
+
+            for (var i = 0; i < tags.length; i++) { 
+        	    var uri=null;
+                if (uri = tags[i].getAttribute(attribute)) {
+
+                    var domain=null;
+                    if (domain=domain_re.exec(uri.toLowerCase())) {
+
+                        var proto = this.getProtocolCode(domain[1].toUpperCase());
+                        var thedomain = domain[2];
+
+                        if (proto!= -1) {
+
+                            if (!whitetrashOverlay.domainMenuList.isDup(domainslist,thedomain)) {
+
+                                var	display_domain=this_doc.domain+":"+thedomain;
+                                tabWhitelistData+=thedomain+","+display_domain+","+escape(uri)+","+proto+"|";
+                                whitetrashOverlay.domainMenuList.storeDomainInfo(domainslist,thedomain,display_domain,uri,proto);
+                            }
+                        } else {
+                            this.logger.logStringMessage("Bad protocol: "+uri);
                         }
                     } else {
-                        this.logger.logStringMessage("Bad protocol: "+uri);
+                        this.logger.logStringMessage("Bad domain: "+uri);
                     }
-                } else {
-                    this.logger.logStringMessage("Bad domain: "+uri);
                 }
             }
-        }
 
+            //Strip off the last pipe and save.
+            //this.logger.logStringMessage("Whitelistdata final: "+tabWhitelistData.substring(0,tabWhitelistData.length-1));
+            this.ss.setTabValue(thistab, "whitetrash.test.list",tabWhitelistData.substring(0,tabWhitelistData.length-1));
+        }
     }
 ,
     wrapOnContentLoad: function(ev) {
@@ -259,15 +283,13 @@ whitetrashOverlay = {
                 whitetrashOverlay.parseHTML(wt_sb_menu_popup,"img","src",doc);
                 whitetrashOverlay.parseHTML(wt_sb_menu_popup,"script","src",doc);
 
-                this.domainMenuList.saveList();
-
             }else {
                 this.logger.logStringMessage("Empty document");
             }
         }
     }
 ,
-    tabChanged: function(ev) {
+    reloadMenu: function() {
         //Clear the current menu list and load the stored domain list if present.  
         //If this is a new tab the oncontent load listener will build the new list.
         this.logger.logStringMessage("Tab change");
@@ -281,6 +303,7 @@ whitetrashOverlay = {
 
         http.open("POST", "http://whitetrash/addentry", true);
         //TODO:Fix hard-coded username, remove from form since ignored anyway.
+        //TODO:set a username as a preference.  If set we are doing per-username whitelisting?
         var params="domain="+domain+"&comment=&url="+escape(uri)+"&protocol="+protocol;
 
         //Send the proper header information along with the request
@@ -327,7 +350,7 @@ whitetrashOverlay = {
         onLocationChange: function(aWebProgress, aRequest, aLocation) {
             const domWindow = aWebProgress.DOMWindow;
             if (domWindow) {
-            whitetrashOverlay.tabChanged(domWindow);
+            whitetrashOverlay.reloadMenu();
             }
         },
         onStatusChange: function() {}, 

@@ -215,7 +215,8 @@ def delete_entries(request):
 def check_domain(request):
     """Ajax request to check if a domain is in the whitelist.
 
-    Returns 1 if the value is in the whitelist, 0 if not, -1 if error.
+    Returns 1 if the value is in the whitelist, 0 if not, Error and the get request on error.
+    Wildcarding of the first label is performed for consistency with www.  wildcarding in redirector.
     """
     if request.method == 'GET':
         form = WhiteListCheckDomainForm(request.GET)
@@ -223,7 +224,9 @@ def check_domain(request):
         if form.is_valid(): 
             domain = form.cleaned_data['domain']
             protocol = form.cleaned_data['protocol']
-            if Whitelist.objects.filter(enabled=True,domain=domain,protocol=protocol):
+            domain_wild=re.sub("^[a-z0-9-]+\.","",domain,1)
+            if (Whitelist.objects.filter(enabled=True,domain=domain,protocol=protocol) or 
+            	Whitelist.objects.filter(enabled=True,domain=domain_wild,protocol=protocol)):
                 return HttpResponse("1")
                 #return HttpResponse("{'in_whitelist': 'True'}", mimetype="application/json")
             else:

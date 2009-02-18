@@ -159,20 +159,30 @@ class WhitetrashTestAjaxDomainCheck(TestCase):
 
     def testCheckDomainInList(self):
         response = self.client.get("/whitelist/checkdomain/", {"domain":"testing1.com","protocol":Whitelist.get_protocol_choice("HTTP")} )
-        self.assertContains(response, "{'in_whitelist': 'True'}", status_code=200)
+        self.assertContains(response, "1", status_code=200)
+
+    def testCheckDomainWildcarded(self):
+        """If testing.com is in the whitelist, one level of subdomain should be allowed.""" 
+        response = self.client.get("/whitelist/checkdomain/", {"domain":"www.testing1.com","protocol":Whitelist.get_protocol_choice("HTTP")} )
+        self.assertContains(response, "1", status_code=200)
+
+    def testCheckDomainNotWildcarded(self):
+        """If testing.com is in the whitelist, ONLY one level of subdomain should be allowed.""" 
+        response = self.client.get("/whitelist/checkdomain/", {"domain":"www.test.testing1.com","protocol":Whitelist.get_protocol_choice("HTTP")} )
+        self.assertContains(response, "0", status_code=200)
 
     def testCheckDomainNotInList(self):
         response = self.client.get("/whitelist/checkdomain/", {"domain":"notinwhitelist.com","protocol":Whitelist.get_protocol_choice("HTTP")} )
-        self.assertContains(response, "{'in_whitelist': 'False'}", status_code=200)
+        self.assertContains(response, "0", status_code=200)
 
         response = self.client.get("/whitelist/checkdomain/", {"domain":"testing4.com","protocol":Whitelist.get_protocol_choice("HTTP")} )
-        self.assertContains(response, "{'in_whitelist': 'False'}", status_code=200)
+        self.assertContains(response, "0", status_code=200)
 
     def testCheckError(self):
         response = self.client.get("/whitelist/checkdomain/", {"domain":"testing1.comsdfsds","protocol":Whitelist.get_protocol_choice("HTTP")} )
-        self.assertContains(response, "{'in_whitelist': 'Error'}", status_code=200)
+        self.assertContains(response, "Error", status_code=200)
 
         response = self.client.get("/whitelist/checkdomain/", {"domain":"testing1.com","protocol":"invalid"} )
-        self.assertContains(response, "{'in_whitelist': 'Error'}", status_code=200)
+        self.assertContains(response, "Error", status_code=200)
 
 
