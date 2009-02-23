@@ -40,11 +40,11 @@ class WTSquidRedirector:
 
     def __init__(self,config):
         self.PROTOCOL_CHOICES={'HTTP':1,'SSL':2}
-        self.http_fail_url="http://%s/whitelist/addentry?" % config["whitetrash_add_domain"]
-        self.error_url="http://%s/whitelist/error" % config["whitetrash_add_domain"]
-        self.dummy_content_url="%s/empty" % config["whitetrash_add_domain"]
+        self.http_fail_url="http://%s/whitelist/addentry?" % config["whitetrash_domain"]
+        self.error_url="http://%s/whitelist/error" % config["whitetrash_domain"]
+        self.dummy_content_url="%s/empty" % config["whitetrash_domain"]
 
-        self.whitetrash_admin_path="http://%s" % config["whitetrash_admin_domain"]
+        self.whitetrash_admin_path="http://%s" % config["whitetrash_domain"]
         self.nonhtml_suffix_re=re.compile(config["nonhtml_suffix_re"])
         self.ssl_fail_url="sslwhitetrash:80"
         self.fail_string=config["domain_fail_string"]
@@ -262,11 +262,7 @@ class WTSquidRedirector:
 
 
 class WTSquidRedirectorCached(WTSquidRedirector):
-    """Squid redirector with memcache support.
-    
-    Currently only caching the whitelist table.  Not as much value in caching the hitcount table, since I
-    still need to update the database each time to keep it consistent.
-    """
+    """Squid redirector with memcache support."""
 
     def __init__(self,config):
         WTSquidRedirector.__init__(self,config)

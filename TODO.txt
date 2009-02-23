@@ -8,4 +8,6 @@ Remove added successfully page - just do the refresh straight away with a
 301 moved temporarily?  This page is not necessary and just slows things
 down.
 
+Add in support for the google safebrowsing blacklists.  Insert into a memcache store in a cronjob, check urls in the redirector, have a special error page available in the whitetrash server.
+
 

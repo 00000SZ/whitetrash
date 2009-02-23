@@ -251,6 +251,8 @@ Django config (create whitetrash db first):
  - cd django_site
  - python manage.py syncdb
 
+Change django settings in settings.py, change redirector settings in whitetrash.conf
+
 
 
 
