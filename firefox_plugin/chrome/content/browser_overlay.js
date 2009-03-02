@@ -95,6 +95,8 @@ whitetrashOverlay = {
             }
         }
         ,
+        //TODO: can I do all of this just before the menu is displayed when the user clicks on it?
+        //will avoid lots of unnecessary checkdomain queries.
         loadList: function() {
             var currentTab = getBrowser().selectedTab;
         	whitetrashOverlay.logger.logStringMessage("current tab:"+currentTab.label);
@@ -292,6 +294,9 @@ whitetrashOverlay = {
     reloadMenu: function() {
         //Clear the current menu list and load the stored domain list if present.  
         //If this is a new tab the oncontent load listener will build the new list.
+        //
+        //FIXME: domains pile up from all the pages you have visited.  Need to clear
+        //the whole list on location change but not tab change?
         this.logger.logStringMessage("Tab change");
         var wt_sb_menu_popup = document.getElementById("wt_sb_menu");
         whitetrashOverlay.deleteDynamicMenuItems(wt_sb_menu_popup);
@@ -301,8 +306,7 @@ whitetrashOverlay = {
     addToWhitelist: function(domain,protocol,uri) {
         var http = new XMLHttpRequest();
 
-        http.open("POST", "http://whitetrash/addentry", true);
-        //TODO:Fix hard-coded username, remove from form since ignored anyway.
+        http.open("POST", "http://whitetrash/whitelist/addentry/", true);
         //TODO:set a username as a preference.  If set we are doing per-username whitelisting?
         var params="domain="+domain+"&comment=&url="+escape(uri)+"&protocol="+protocol;
 
