@@ -44,12 +44,6 @@ db_connections=0
 DBUSER=config["database_user"]
 DBPASSWD=config["database_password"]
 
-#Sanitisation params
-DOMAIN_LEN=int(config["domain_name_length"])
-USER_LEN=int(config["username_length"])
-URL_LEN=int(config["url_length"])
-COMMENT_LEN=int(config["comment_length"])
-
 DATABASE=config["database"]
 DBUNIXSOCKET=config["db_unix_socket"]
 STRICTSQL=False

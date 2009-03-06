@@ -19,11 +19,11 @@ class WhitetrashTestGeneral(TestCase):
     def testPostLoginRedirect(self):
         response = self.client.post("/accounts/login/", {"username":"testuser",
                             "password":"passwd",
-                            "next":"/whitelist/addentry/?url=http%3A//www.testing.com/&amp;domain=www.testing.com"} )
+                            "next":"/whitelist/addentry/?url=http%3A%2F%2Fwww.testing.com%2F%26domain=www.testing.com"} )
         print response.status_code
         print response
-        self.assertRedirects(response, "/whitelist/addentry/",
-                status_code=301, target_status_code=200)
+        self.assertRedirects(response, "whitelist/addentry/?url=http%3A%2F%2Fwww.testing.com%2F%26domain=www.testing.com",
+                status_code=302, target_status_code=200)
 
 class WhitetrashTestGetForm(TestCase):
     fixtures = ["testing.json"]

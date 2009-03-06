@@ -3,7 +3,7 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render_to_response
 from whitetrash.whitelist.models import Whitelist,WhiteListForm,WhiteListCheckDomainForm
-from django.http import HttpResponseForbidden,HttpResponsePermanentRedirect,HttpResponse
+from django.http import HttpResponseForbidden,HttpResponsePermanentRedirect,HttpResponse,HttpResponseRedirect
 from django.template import loader, Context, RequestContext
 from django.views.generic.list_detail import object_list
 import whitetrash.whitelist.templatetags.whitetrash_filters as whitetrash_filters
@@ -37,13 +37,13 @@ def index(request):
     SSL, *except* if there is an error, which is why I send back a forbidden.  To get
     squid to go out with a connect instead of just client hello we require sslwhitetrash
     to be a cache peer.
+
+    Changed to a redirect.  TODO: do I need the proxy in this loop?  just returning a redirect, can't I go direct?
+
     """
     if request.method == 'CONNECT':
         t = loader.get_template('whitelist/whitelist_getform.html')
-        form = WhiteListForm(initial={'protocol':Whitelist.get_protocol_choice('SSL')})
-
-        c = RequestContext(request,{ 'form':form, 'ssl':True, 'captcha':settings.CAPTCHA_SSL})
-        resp=HttpResponseForbidden(t.render(c))
+        resp=HttpResponseRedirect("whitelist/addentry/?url=&domain=&protocol=%s" % Whitelist.get_protocol_choice('SSL'))
         resp["Proxy-Connection"]="close"
         return resp
     else:
@@ -79,6 +79,7 @@ def show_captcha(request):
         request.session['captcha_solns'] = [(safe_solutions,datetime.datetime.now())]
     return response
 
+#TODO: add custom filter tag to strip slashes from the 'next' variable and put it in the form.
 @login_required
 def addentry(request):
     """Add an entry to the whitelist.
@@ -167,13 +168,20 @@ def addentry(request):
         try:
             url=request.GET["url"]
             domain=whitetrash_filters.domain(request.GET["domain"])
-                
         except KeyError:
             url=""
             domain=""
-                    
+
+        #If this is SSL, it will come with proto set.  Otherwise assume HTTP.
+        try:
+            proto=int(request.GET["protocol"])
+            if not (proto == Whitelist.get_protocol_choice('HTTP') or proto == Whitelist.get_protocol_choice('SSL')):
+                proto=Whitelist.get_protocol_choice('HTTP')
+        except KeyError:
+            proto = Whitelist.get_protocol_choice('HTTP')
+
         form = WhiteListForm(initial={'url': url,
-                            'protocol':Whitelist.get_protocol_choice('HTTP'),
+                            'protocol':proto,
                             'domain':domain})
 
 
@@ -193,6 +201,7 @@ def limited_object_list(*args, **kwargs):
 
 @login_required
 def delete_entries(request):
+#TODO: delete from memcache if memcache is on.
 
     if request.method == 'POST':
         try:
@@ -226,7 +235,7 @@ def check_domain(request):
             protocol = form.cleaned_data['protocol']
             domain_wild=re.sub("^[a-z0-9-]+\.","",domain,1)
             if (Whitelist.objects.filter(enabled=True,domain=domain,protocol=protocol) or 
-            	Whitelist.objects.filter(enabled=True,domain=domain_wild,protocol=protocol)):
+                Whitelist.objects.filter(enabled=True,domain=domain_wild,protocol=protocol)):
                 return HttpResponse("1")
                 #return HttpResponse("{'in_whitelist': 'True'}", mimetype="application/json")
             else:
