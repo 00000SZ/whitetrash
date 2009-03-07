@@ -79,7 +79,6 @@ def show_captcha(request):
         request.session['captcha_solns'] = [(safe_solutions,datetime.datetime.now())]
     return response
 
-#TODO: add custom filter tag to strip slashes from the 'next' variable and put it in the form.
 @login_required
 def addentry(request):
     """Add an entry to the whitelist.

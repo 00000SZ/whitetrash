@@ -30,8 +30,7 @@ def setup_args():
         'license': 'GPL',
         'platforms': 'Linux',
         'packages': ['whitetrash_db'],
-        'scripts' : ['whitetrash_serv',
-                     'whitetrash_cleanup.py',
+        'scripts' : ['whitetrash_cleanup.py',
                      'whitetrash.py'],
         'classifiers' : [
             'License :: OSI-Approved Open Source :: GNU General Public License (GPL)',

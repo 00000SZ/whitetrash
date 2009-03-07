@@ -14,6 +14,8 @@ def absp(path):
 SESSION_COOKIE_AGE = 28800
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
+LOGIN_REDIRECT_URL = "/whitelist/addentry/?url=&domain="
+
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
@@ -26,7 +28,7 @@ MANAGERS = ADMINS
 DATABASE_ENGINE = 'mysql'           # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'ado_mssql'.
 DATABASE_NAME = 'whitetrash'             # Or path to database file if using sqlite3.
 DATABASE_USER = 'root'             # Not used with sqlite3.
-DATABASE_PASSWORD = 'Cripgod2'         # Not used with sqlite3.
+DATABASE_PASSWORD = 'ssa3200fl-'         # Not used with sqlite3.
 DATABASE_HOST = ''             # Set to empty string for localhost. Not used with sqlite3.
 DATABASE_PORT = '3306'             # Set to empty string for default. Not used with sqlite3.
 

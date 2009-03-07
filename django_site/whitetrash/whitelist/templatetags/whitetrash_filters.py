@@ -5,6 +5,7 @@ from django.template.defaultfilters import stringfilter
 from whitetrash.whitelist.models import Whitelist
 from socket import inet_aton
 import re
+from urllib import quote
 
 register = template.Library()
 
@@ -23,6 +24,20 @@ def ip(value):
     try:
         inet_aton(value)
         return value
+    except:
+        return ""
+
+@stringfilter
+@register.filter
+def quoteall(value):
+    """Quote everything between url= and the next parameter, 
+    including slashes, but leave the existing %'s."""
+    try:
+        index_start=value.find("url=")
+        index_stop=value.find("&",index_start)
+        return "%s%s%s" % (value[:index_start],
+                        quote(value[index_start:index_stop],safe="%="),
+                        value[index_stop:])
     except:
         return ""
 
