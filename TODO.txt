@@ -10,4 +10,5 @@ down.
 
 Add in support for the google safebrowsing blacklists.  Insert into a memcache store in a cronjob, check urls in the redirector, have a special error page available in the whitetrash server.
 
-
+The full SSL site seems to break SSL whitelisting, as does the SSL middleware.  Also need to sort out extr
+a escaping happening in the url - means redirection is broken.

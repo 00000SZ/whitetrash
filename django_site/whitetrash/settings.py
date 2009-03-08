@@ -13,6 +13,7 @@ def absp(path):
 #session expiry time in seconds.
 SESSION_COOKIE_AGE = 28800
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_SECURE = True
 
 LOGIN_REDIRECT_URL = "/whitelist/addentry/?url=&domain="
 
@@ -80,6 +81,7 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.doc.XViewMiddleware',
 )
 
+#    'whitetrash.SSLMiddleware.SSLRedirect',
 ROOT_URLCONF = 'whitetrash.urls'
 
 TEMPLATE_DIRS = (

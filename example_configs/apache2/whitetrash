@@ -3,6 +3,7 @@ SSLEngine on
 SSLCertificateFile /etc/apache2/ssl/server.crt
 SSLCertificateKeyFile /etc/apache2/ssl/server.key
 ServerName whitetrash
+SSLCipherSuite HIGH:MEDIUM
 </VirtualHost>
 
 DocumentRoot /var/www/
@@ -15,6 +16,10 @@ PythonHandler django.core.handlers.modpython
 PythonPath "['/home/greg/whitetrash/django_site/'] + sys.path"
 SetEnv DJANGO_SETTINGS_MODULE whitetrash.settings
 PythonDebug On
+
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
 
 </Location>
 

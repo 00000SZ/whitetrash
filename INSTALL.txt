@@ -80,7 +80,7 @@ libapache2-mod-python
     cp example_configs/apache2/httpd.conf /etc/apache2/httpd.conf
  - Enable the whitetrash site: a2ensite whitetrash
  - Create ssl cert and enable apache ssl module:
-    a2enmod ssl
+    a2enmod ssl,rewrite
     mkdir /etc/apache2/ssl
     openssl genrsa -out /etc/apache2/ssl/server.key 4096
     openssl req -new -key /etc/apache2/ssl/server.key -out server.csr
@@ -96,6 +96,14 @@ Change django settings in settings.py, change redirector settings in whitetrash.
 ===========
 Performance
 ===========
+
+Django
+------
+
+By default the whole web-interface uses SSL.  If this causes a performance problem you can drop back to just SSL for the login pages and admin interface by:
+
+ - Removing the rewrite directives from /etc/apache2/sites-available/whitetrash
+ - Setting SESSION_COOKIE_SECURE = False in settings.py
 
 MySQL
 -----
