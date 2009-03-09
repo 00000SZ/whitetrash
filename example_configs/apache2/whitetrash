@@ -17,9 +17,9 @@ PythonPath "['/home/greg/whitetrash/django_site/'] + sys.path"
 SetEnv DJANGO_SETTINGS_MODULE whitetrash.settings
 PythonDebug On
 
-RewriteEngine On
-RewriteCond %{HTTPS} off
-RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
+#RewriteEngine On
+#RewriteCond %{HTTPS} off
+#RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
 
 </Location>
 

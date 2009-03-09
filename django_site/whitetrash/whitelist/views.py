@@ -43,7 +43,7 @@ def index(request):
     """
     if request.method == 'CONNECT':
         t = loader.get_template('whitelist/whitelist_getform.html')
-        resp=HttpResponseRedirect("whitelist/addentry/?url=&domain=&protocol=%s" % Whitelist.get_protocol_choice('SSL'))
+        resp=HttpResponseRedirect("https://whitetrash/whitelist/addentry/?url=&domain=&protocol=%s" % Whitelist.get_protocol_choice('SSL'))
         resp["Proxy-Connection"]="close"
         return resp
     else:
