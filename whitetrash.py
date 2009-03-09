@@ -178,6 +178,12 @@ class WTSquidRedirector:
         """Parse squid input line. Return true if parsing is successful.
 
         Store result in self.fail_url.  On error, return false and self.error_url.
+
+        Example HTTP:
+        http://www.slkdfjlksjd.com/ 127.0.1.2/sslwhitetrash - GET - myip=127.0.1.2 myport=3128
+
+        Example SSL:
+        sdfsdfsdf.com:443 127.0.1.2/sslwhitetrash - CONNECT - myip=127.0.1.2 myport=3128
         """
 
         try:
@@ -188,6 +194,12 @@ class WTSquidRedirector:
                 #syslog.syslog("Protocol=SSL")
                 self.protocol=self.PROTOCOL_CHOICES["SSL"]
                 domain = self.domain_sanitise.match(spliturl[0].split(":")[0]).group()
+
+                #Get just the client IP
+                self.clientaddr=spliturl[1].split("/")[0]
+                #use inet_aton to validate the IP
+                inet_aton(self.clientaddr)
+
                 self.url_domain_only = domain
                 self.newurl_safe = "https://%s" % domain
                 self.fail_url = self.ssl_fail_url
@@ -242,6 +254,7 @@ class WTSquidRedirector:
                 try:
                     (res,url)=self.check_whitelist_db(self.url_domain_only,self.protocol,self.newurl_safe,
                                             self.original_url,self.clientaddr)
+                    #syslog.syslog("Output url: %s" % url)
                     sys.stdout.write(url)
 
                 except Exception,e:
