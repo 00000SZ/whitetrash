@@ -42,7 +42,7 @@ class WTSquidRedirector:
         self.PROTOCOL_CHOICES={'HTTP':1,'SSL':2}
         self.http_fail_url="http://%s/whitelist/addentry?" % config["whitetrash_domain"]
         self.error_url="http://%s/whitelist/error" % config["whitetrash_domain"]
-        self.dummy_content_url="%s/empty" % config["whitetrash_domain"]
+        self.dummy_content_url="http://blocked%s/empty" % config["whitetrash_domain"]
 
         self.whitetrash_admin_path="http://%s" % config["whitetrash_domain"]
         self.nonhtml_suffix_re=re.compile(config["nonhtml_suffix_re"])
@@ -254,7 +254,8 @@ class WTSquidRedirector:
                 try:
                     (res,url)=self.check_whitelist_db(self.url_domain_only,self.protocol,self.newurl_safe,
                                             self.original_url,self.clientaddr)
-                    #syslog.syslog("Output url: %s" % url)
+                    syslog.syslog("Dom: %s, proto:%s, Result: %s, Output url: %s" % 
+                            (self.url_domain_only,self.protocol,res,url))
                     sys.stdout.write(url)
 
                 except Exception,e:

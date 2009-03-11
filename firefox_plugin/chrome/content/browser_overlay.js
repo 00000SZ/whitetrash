@@ -10,6 +10,7 @@ whitetrashOverlay = {
     prefs:null,
     logger:null,
     ss:null,
+    wt_protocol: "https",
     whitelist_http: {},
     whitelist_ssl: {},
 
@@ -122,7 +123,7 @@ whitetrashOverlay = {
     	//Currently I am caching whitelisted entries for the duration of the session.  See addtoPrefsWhitelist
     	//if you want to cache across sessions.
     	//Assuming domain and protocol have already been sanitised.
-        var url="http://whitetrash/whitelist/checkdomain?domain="+domain+"&protocol="+protocol
+        var url=this.wt_protocol+"://whitetrash/whitelist/checkdomain?domain="+domain+"&protocol="+protocol
         var pagetab = getBrowser().selectedTab;
         var req = new XMLHttpRequest();
         req.open("GET", url, true);
@@ -306,7 +307,7 @@ whitetrashOverlay = {
     addToWhitelist: function(domain,protocol,uri) {
         var http = new XMLHttpRequest();
 
-        http.open("POST", "http://whitetrash/whitelist/addentry/", true);
+        http.open("POST", this.wt_protocol+"://whitetrash/whitelist/addentry/", true);
         //TODO:set a username as a preference.  If set we are doing per-username whitelisting?
         var params="domain="+domain+"&comment=&url="+escape(uri)+"&protocol="+protocol;
 

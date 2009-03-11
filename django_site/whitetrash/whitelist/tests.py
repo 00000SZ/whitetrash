@@ -27,6 +27,7 @@ class WhitetrashTestGeneral(TestCase):
         self.assertRedirects(response, "https://testserver/accounts/login/",
                 status_code=301, target_status_code=301)
 
+#TODO: request that will result in a blockedwhitetrash domain.
 class WhitetrashTestGetForm(TestCase):
     fixtures = ["testing.json"]
 

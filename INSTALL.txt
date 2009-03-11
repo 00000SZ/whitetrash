@@ -64,6 +64,15 @@ netstat -plant should show you the following listeners:
 - mysqld             127.0.0.1:3306
 - squid              0.0.0.0:3128
 
+===
+DNS
+===
+
+The following domains should resolve to the whitetrash IP:
+whitetrash
+sslwhitetrash
+blockedwhitetrash
+
 ====================
 In progress - django
 ====================
