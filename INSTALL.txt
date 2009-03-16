@@ -43,7 +43,7 @@ If you intend to whitelist SSL you will need a certificate.  You can use the lin
 
 Edit /etc/whitetrash.conf to perform the necessary customisations.  The essential things you should change are:
 
-- database_password
+- All database user passwords. 
 
 ============
 Squid Config
@@ -69,9 +69,10 @@ DNS
 ===
 
 The following domains should resolve to the whitetrash IP:
-whitetrash
-sslwhitetrash
-blockedwhitetrash
+
+ - whitetrash
+ - sslwhitetrash
+ - blockedwhitetrash
 
 ====================
 In progress - django
@@ -99,8 +100,6 @@ libapache2-mod-python
 Django config (create whitetrash db first):
  - cd django_site
  - python manage.py syncdb
-
-Change django settings in settings.py, change redirector settings in whitetrash.conf
 
 ===========
 Performance

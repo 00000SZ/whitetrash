@@ -12,11 +12,10 @@ syslog.syslog("Running whitetrash_cleanup")
 try:
 
     config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
-
-    dbh = MySQLdb.Connect(user = config["db_cleanup_user"],
-                                passwd = config["db_cleanup_passwd"],
-                                db = DB.DATABASE,
-                                unix_socket = DB.DBUNIXSOCKET,
+    dbh = MySQLdb.Connect(user = config['DATABASE_CLEANUP_USER'],
+                                passwd = config['DATABASE_CLEANUP_PASSWORD'],
+                                db = config['DATABASE_NAME'],
+                                unix_socket = config['DATABASE_UNIX_SOCKET'],
                                 use_unicode = False
                                 )
     cursor=dbh.cursor()

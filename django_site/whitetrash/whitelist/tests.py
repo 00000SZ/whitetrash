@@ -27,7 +27,6 @@ class WhitetrashTestGeneral(TestCase):
         self.assertRedirects(response, "https://testserver/accounts/login/",
                 status_code=301, target_status_code=301)
 
-#TODO: request that will result in a blockedwhitetrash domain.
 class WhitetrashTestGetForm(TestCase):
     fixtures = ["testing.json"]
 
@@ -94,23 +93,43 @@ class WhitetrashTestAddEntry(TestCase):
                         "protocol":Whitelist.get_protocol_choice("HTTP"),"comment":"testing"} )
         self.assertTemplateUsed(response, 'whitelist/whitelist_getform.html')
         self.assertContains(response, "Domain already whitelisted", status_code=200)
+        self.assertFormError(response, 'form', 'domain', 'Domain already whitelisted.')
 
     def testAddBadDomain(self):
         response = self.client.post("/whitelist/addentry/", {"url":"http%3A//sldjflksjdf.com/","domain":"test1.invalidtoolong",
                                                             "protocol":Whitelist.get_protocol_choice("HTTP"),"comment":"testing"} )
         self.assertTemplateUsed(response, 'whitelist/whitelist_getform.html')
-        self.assertContains(response, 'class="errorlist"', status_code=200)
         self.assertFalse(Whitelist.objects.filter(domain="test1.invalidtoolong",protocol=Whitelist.get_protocol_choice("HTTP")))
+        self.assertFormError(response, 'form', 'domain', 'Bad domain name.')
+
+    def testAddLongComment(self):
+        response = self.client.post("/whitelist/addentry/", {"url":"http%3A//sldjflksjdf.com/",
+                        "domain":"testlong1.com",
+                        "protocol":Whitelist.get_protocol_choice("HTTP"),
+                        "comment":"hundredandonehundredandonehundredandonehundredandonehundredandonehundredandonehundredandonehundredand"} )
+        self.assertTemplateUsed(response, 'whitelist/whitelist_getform.html')
+        self.assertFalse(Whitelist.objects.filter(domain="testlong1.com",protocol=Whitelist.get_protocol_choice("HTTP")))
+        self.assertFormError(response, 'form', 'comment', 'Ensure this value has at most 100 characters (it has 101).')
+
+    def testAddBadProtocol(self):
+        response = self.client.post("/whitelist/addentry/", {"url":"http%3A//sldjflksjdf.com/",
+                        "domain":"testbadproto.com",
+                        "protocol":78,
+                        "comment":"bad"} )
+        self.assertTemplateUsed(response, 'whitelist/whitelist_getform.html')
+        self.assertFalse(Whitelist.objects.filter(domain="testbadproto.com",protocol=78))
+        self.assertFormError(response, 'form', 'protocol', 'Select a valid choice. 78 is not one of the available choices.')
 
     def testAddBlank(self):
         response = self.client.post("/whitelist/addentry/", {"url":"","domain":""} )
         self.assertTemplateUsed(response, 'whitelist/whitelist_getform.html')
-        self.assertContains(response, 'class="errorlist"', status_code=200)
+        self.assertFormError(response, 'form', 'domain', 'This field is required.')
         
     def testAddNoDomain(self):
         response = self.client.post("/whitelist/addentry/", {"url":"http://sdlfjksldfjl"} )
         self.assertTemplateUsed(response, 'whitelist/whitelist_getform.html')
         self.assertContains(response, 'class="errorlist"', status_code=200)
+        self.assertFormError(response, 'form', 'domain', 'This field is required.')
 
 #class WhitetrashTestCaptcha(TestCase):
 #    """Test captcha display.
@@ -162,8 +181,7 @@ class WhitetrashTestDelEntry(TestCase):
         self.assertTrue(Whitelist.objects.filter(pk=1))
         self.assertTemplateUsed(response, 'whitelist/whitelist_error.html')
 
-
-class WhitetrashTestAjaxDomainCheck(TestCase):
+class WhitetrashTestDomainCheck(TestCase):
     fixtures = ["testing.json"]
 
     def setUp(self):
@@ -191,10 +209,11 @@ class WhitetrashTestAjaxDomainCheck(TestCase):
         self.assertContains(response, "0", status_code=200)
 
     def testCheckError(self):
+        """Attempt checks with bad domain and bad protocol"""
         response = self.client.get("/whitelist/checkdomain/", {"domain":"testing1.comsdfsds","protocol":Whitelist.get_protocol_choice("HTTP")} )
         self.assertContains(response, "Error", status_code=200)
 
-        response = self.client.get("/whitelist/checkdomain/", {"domain":"testing1.com","protocol":"invalid"} )
+        response = self.client.get("/whitelist/checkdomain/", {"domain":"testing1.com","protocol":"'"} )
         self.assertContains(response, "Error", status_code=200)
 
 

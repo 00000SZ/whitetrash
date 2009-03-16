@@ -1,8 +1,13 @@
 # Django settings for whitetrash project.
-#TODO: import settings from /etc/whitetrash.conf
-CAPTCHA_HTTP = False 
-CAPTCHA_SSL = False
-CAPTCHA_WINDOW_SEC = 30
+from whitetrash_db.configobj import ConfigObj
+config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
+
+def conf(config_item):
+    return config[config_item].upper() == "TRUE"
+
+CAPTCHA_HTTP = conf("CAPTCHA_HTTP") 
+CAPTCHA_SSL = conf("CAPTCHA_SSL")
+CAPTCHA_WINDOW_SEC = int(conf("CAPTCHA_WINDOW_SEC"))
 
 #Fix weird need to specify absolute paths
 import os.path
@@ -27,11 +32,11 @@ ADMINS = (
 MANAGERS = ADMINS
 
 DATABASE_ENGINE = 'mysql'           # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'ado_mssql'.
-DATABASE_NAME = 'whitetrash'             # Or path to database file if using sqlite3.
-DATABASE_USER = 'root'             # Not used with sqlite3.
-DATABASE_PASSWORD = 'ssa3200fl-'         # Not used with sqlite3.
-DATABASE_HOST = ''             # Set to empty string for localhost. Not used with sqlite3.
-DATABASE_PORT = '3306'             # Set to empty string for default. Not used with sqlite3.
+DATABASE_NAME = config['DATABASE_NAME']             # Or path to database file if using sqlite3.
+DATABASE_USER = config['DATABASE_DJANGO_USER']             # Not used with sqlite3.
+DATABASE_PASSWORD = config['DATABASE_DJANGO_PASSWORD']         # Not used with sqlite3.
+DATABASE_HOST = config['DATABASE_HOST']      # Set to empty string for localhost. Not used with sqlite3.
+DATABASE_PORT = config['DATABASE_PORT']      # Set to empty string for default. Not used with sqlite3.
 
 # Local time zone for this installation. Choices can be found here:
 # http://www.postgresql.org/docs/8.1/static/datetime-keywords.html#DATETIME-TIMEZONE-SET-TABLE

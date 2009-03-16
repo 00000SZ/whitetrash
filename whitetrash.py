@@ -27,7 +27,6 @@ import urllib
 import re
 import MySQLdb
 import MySQLdb.cursors
-import whitetrash_db.DB as DB
 from whitetrash_db.configobj import ConfigObj
 from socket import inet_aton
 try:
@@ -39,6 +38,7 @@ class WTSquidRedirector:
     """Whitetrash squid redirector."""
 
     def __init__(self,config):
+        self.config=config
         self.PROTOCOL_CHOICES={'HTTP':1,'SSL':2}
         self.http_fail_url="http://%s/whitelist/addentry?" % config["whitetrash_domain"]
         self.error_url="http://%s/whitelist/error" % config["whitetrash_domain"]
@@ -60,10 +60,10 @@ class WTSquidRedirector:
     def db_connect(self):
         """Connect to the database and return a DB cursor"""
 
-        dbh = MySQLdb.Connect(user = DB.DBUSER,
-                                    passwd = DB.DBPASSWD,
-                                    db = DB.DATABASE,
-                                    unix_socket = DB.DBUNIXSOCKET,
+        dbh = MySQLdb.Connect(user = self.config['DATABASE_WHITETRASH_USER'],
+                                    passwd = self.config['DATABASE_WHITETRASH_PASSWORD'],
+                                    db = self.config['DATABASE_NAME'],
+                                    unix_socket = self.config['DATABASE_UNIX_SOCKET'],
                                     use_unicode = False
                                     )
 

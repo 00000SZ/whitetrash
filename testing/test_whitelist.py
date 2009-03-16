@@ -46,6 +46,14 @@ class whitelist(FunkLoadTestCase):
         response=self.get(url_404)
         self.assertEquals(response.code,404,"Got %s, should have been 404" % response.code)
 
+#TODO replace with something like below
+#    def testGetFormNonHTTP(self):
+#        """Test we are blocking the blocked domain to avoid returning forms that are
+#        not requests for renderable HTML - e.g. *.jpg"""
+#        response = self.client.get("https://blockedwhitetrash/empty")
+#        self.failUnlessEqual(response.status_code, 200)
+
+
     def test_viewwhitelist(self):
         """This test is pretty CPU intensive as it parses the whole page each time looking for a /table tag (which is at the very end) to make sure we got a complete page.
         Might be a better way to do this...."""
