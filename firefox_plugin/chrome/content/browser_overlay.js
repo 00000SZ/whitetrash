@@ -89,20 +89,18 @@ whitetrashOverlay = {
         	var count=this.countDomains(this.domains);
         	if (count!=0) {
         	    whitetrashOverlay.logger.logStringMessage("list length:"+count);
-                whitetrashOverlay.ss.setTabValue(currentTab, "whitetrash.test.list",this.flattenList());
+                whitetrashOverlay.ss.setTabValue(currentTab, "whitetrash.domain.list",this.flattenList());
         	    whitetrashOverlay.logger.logStringMessage("post save tab state:"+ whitetrashOverlay.ss.getTabState(currentTab));
             } else {
         	    whitetrashOverlay.logger.logStringMessage("not saving empty list");
             }
         }
         ,
-        //TODO: can I do all of this just before the menu is displayed when the user clicks on it?
-        //will avoid lots of unnecessary checkdomain queries.
         loadList: function() {
             var currentTab = getBrowser().selectedTab;
         	whitetrashOverlay.logger.logStringMessage("current tab:"+currentTab.label);
         	whitetrashOverlay.logger.logStringMessage("current tab state:"+ whitetrashOverlay.ss.getTabState(currentTab));
-            var retrievedList = whitetrashOverlay.ss.getTabValue(currentTab, "whitetrash.test.list");
+            var retrievedList = whitetrashOverlay.ss.getTabValue(currentTab, "whitetrash.domain.list");
             if (retrievedList) {
             	this.inflateList(retrievedList);
             	this.restoreMenu();
@@ -118,11 +116,19 @@ whitetrashOverlay = {
     }
 ,
     checkDomainInWhitelist: function(aPopup,display_domain,domain,uri,protocol,this_class) {
-    	//This function is run on every tab change to rebuild menu, so we are hitting the wt server to check the
-    	//non-whitelisted domains on each tab change.  If performance is bad may need to change this behaviour.
     	//Currently I am caching whitelisted entries for the duration of the session.  See addtoPrefsWhitelist
-    	//if you want to cache across sessions.
+    	//if you want to cache across sessions.  Non-whitelisted domains are checked when the user clicks the menu
     	//Assuming domain and protocol have already been sanitised.
+    	//
+    	//Add element disabled, then enable asynchronously when XMLhttprequest returns
+    	var item = document.createElement("menuitem"); // create a new XUL menuitem
+        item.setAttribute("label", display_domain);
+        item.setAttribute("id", domain+protocol);
+        item.setAttribute("class", this_class);
+        item.setAttribute("disabled", "true");
+        item.setAttribute("oncommand", "whitetrashOverlay.addToWhitelist(\""+domain+'","'+protocol+'","'+uri+"\")");
+        aPopup.appendChild(item);
+
         var url=this.wt_protocol+"://whitetrash/whitelist/checkdomain?domain="+domain+"&protocol="+protocol
         var pagetab = getBrowser().selectedTab;
         var req = new XMLHttpRequest();
@@ -139,13 +145,8 @@ whitetrashOverlay = {
                         //be displaying domains from other tabs.
                         var newcurrentTab = getBrowser().selectedTab;
                         if (newcurrentTab == pagetab) {
-
-                            var item = document.createElement("menuitem"); // create a new XUL menuitem
-                            item.setAttribute("label", display_domain);
-                            item.setAttribute("class", this_class);
-                            item.setAttribute("oncommand", "whitetrashOverlay.addToWhitelist(\""+domain+'","'+protocol+'","'+uri+"\")");
-                            aPopup.appendChild(item);
-
+                            var disableditem = document.getElementById(domain+protocol);
+                            disableditem.setAttribute("disabled","false");
                         }
 
                     } else if (req.responseText=="1") {
@@ -203,7 +204,7 @@ whitetrashOverlay = {
     parseHTML: function(wt_sb_menu_popup,tag_name,attribute,this_doc) {
     	//Parse HTML, add domains to the whitelist in the relevant tab.
     	//There may be a locking problem here since this is called asynchronously on content load
-    	//A page with lots of iframes may cause conflict over the session store for whitetrash.test.list
+    	//A page with lots of iframes may cause conflict over the session store for whitetrash.domain.list
 
         var tags = this_doc.getElementsByTagName(tag_name); 
         //The normal case is uri = "http://www.iinet.net.au/index.html"
@@ -221,7 +222,7 @@ whitetrashOverlay = {
         if (targetBrowserIndex != -1) {
 
             var thistab = gBrowser.tabContainer.childNodes[targetBrowserIndex];
-            var tabWhitelistData = this.ss.getTabValue(thistab, "whitetrash.test.list");
+            var tabWhitelistData = this.ss.getTabValue(thistab, "whitetrash.domain.list");
             if (tabWhitelistData!=""){
             	//If the list already has something in it, we'll need a pipe.
             	tabWhitelistData+="|";
@@ -262,7 +263,7 @@ whitetrashOverlay = {
 
             //Strip off the last pipe and save.
             //this.logger.logStringMessage("Whitelistdata final: "+tabWhitelistData.substring(0,tabWhitelistData.length-1));
-            this.ss.setTabValue(thistab, "whitetrash.test.list",tabWhitelistData.substring(0,tabWhitelistData.length-1));
+            this.ss.setTabValue(thistab, "whitetrash.domain.list",tabWhitelistData.substring(0,tabWhitelistData.length-1));
         }
     }
 ,
@@ -309,7 +310,7 @@ whitetrashOverlay = {
         //
         //FIXME: domains pile up from all the pages you have visited.  Need to clear
         //the whole list on location change but not tab change?
-        this.logger.logStringMessage("Tab change");
+        this.logger.logStringMessage("Reloading Menu");
         var wt_sb_menu_popup = document.getElementById("wt_sb_menu");
         whitetrashOverlay.deleteDynamicMenuItems(wt_sb_menu_popup);
         whitetrashOverlay.domainMenuList.loadList()
@@ -319,7 +320,6 @@ whitetrashOverlay = {
         var http = new XMLHttpRequest();
 
         http.open("POST", this.wt_protocol+"://whitetrash/whitelist/addentry/", true);
-        //TODO:set a username as a preference.  If set we are doing per-username whitelisting?
         var params="domain="+domain+"&comment=&url="+escape(uri)+"&protocol="+protocol;
 
         //Send the proper header information along with the request
@@ -331,6 +331,8 @@ whitetrashOverlay = {
         var entry=tab.webNavigation.sessionHistory.getEntryAtIndex(tab.webNavigation.sessionHistory.index, false);
         var referrer = entry.QueryInterface(Components.interfaces.nsISHEntry).referrerURI;
         tab.webNavigation.loadURI(tab.webNavigation.currentURI.spec, null, referrer, null, null);
+        //maybe don't do this? If it is not correctly added will still be in list, if is added, will
+        //return 1 on next whitelisted check and not be in the list anyway.
         this.addToPrefsWhitelist(domain,protocol);
     }
 ,
@@ -351,6 +353,55 @@ whitetrashOverlay = {
 ,
     listeners: {
     
+    webProgressListener: {
+
+        QueryInterface: function(aIID)
+        {
+        if (aIID.equals(Components.interfaces.nsISupportsWeakReference) ||
+            aIID.equals(Components.interfaces.nsIObserver) ||
+            aIID.equals(Components.interfaces.nsISupports))
+            return this;
+        throw Components.results.NS_NOINTERFACE;
+        },
+
+        STATE_STOP: Components.interfaces.nsIWebProgressListener.STATE_STOP,
+        onLocationChange: function(aWebProgress, aRequest, aLocation) {
+            const domWindow = aWebProgress.DOMWindow;
+            if (domWindow) {
+                //We want to capture location changes that aren't tab changes - ie. user follows link
+                //in existing window.  We want to delete the list of domains we parsed out of the old page
+                //so that the user doesn't continuously accumulate domains as they browse.
+                //FIXME (maybe): when the user hits back or forwards, the lists are empty.  Page refresh will fix it
+                //do we care?  TODO: put in refresh page menu option
+                //FIXME: how can I uniquely identify a tab?  Tabindex is always 0.
+                //could i use http://forums.mozillazine.org/viewtopic.php?f=19&t=655936&start=0&st=0&sk=t&sd=a
+                //google onlocationchange same tab
+                var wto = whitetrashOverlay;
+                var currentTab = getBrowser().selectedTab;
+                wto.logger.logStringMessage("current loc:"+currentTab);
+                var prevtabindex = wto.ss.getWindowValue(window,"whitetrash.prevtabindex");
+
+                if (prevtabindex) {
+                	//This is an existing tab
+                    wto.logger.logStringMessage("Location old: "+prevtabindex+" new: "+currentTab);
+            	    if (prevtabindex === currentTab) {
+            		    //We have gone to a new page in the same tab, so delete the old list for the current tab.
+                        wto.logger.logStringMessage("Location change in same tab, deleting list");
+                        wto.ss.deleteWindowValue(window, "whitetrash.domain.list");
+                    }
+
+                }
+                wto.ss.setWindowValue(window,"whitetrash.prevtabindex",currentTab);
+                
+            }
+
+        },
+        onStatusChange: function() {}, 
+        onStateChange: function() {},
+        onSecurityChange: function() {}, 
+        onProgressChange: function() {}
+        },
+    
     onLoad: function(ev) {
         window.removeEventListener("load", arguments.callee, false);
         window.addEventListener("unload", whitetrashOverlay.listeners.onUnload, false);
@@ -367,6 +418,7 @@ whitetrashOverlay = {
     setup: function() {
         var b = getBrowser();
         const nsIWebProgress = Components.interfaces.nsIWebProgress;
+        b.addProgressListener(this.webProgressListener, nsIWebProgress.NOTIFY_STATE_WINDOW | nsIWebProgress.NOTIFY_LOCATION);
     
         whitetrashOverlay.logger.logStringMessage("setup finished");
 
@@ -374,6 +426,11 @@ whitetrashOverlay = {
       
     teardown: function() {
 
+      var b = getBrowser();
+      if (b) {
+        b.removeProgressListener(this.webProgressListener);
+      }
+  
       window.removeEventListener("DOMContentLoaded", this.wrapOnContentLoad, false);
     }
     
