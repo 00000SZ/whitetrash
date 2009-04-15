@@ -71,16 +71,51 @@ whitetrashOverlay = {
             }
         }
         ,
+        getArrayElement: function(list) {
+        	//Get any element from the list.  This is a bit retarded but
+        	//needed to get an element from a dictionary when you don't know any keys.
+        	var element;
+
+            for (var i in list) {
+            	element=list[i];
+            	break;
+            }
+
+            return element;
+        }
+        ,
+        trimOldEntries: function(disp_domain) {
+
+        	//var new_dom = disp_domain.split(":")[0];
+        	var popup = document.getElementById("wt_sb_menu");
+            whitetrashOverlay.logger.logStringMessage("Trim domains not starting with "+disp_domain);
+            var list = document.getElementById("wt_sb_menu").getElementsByClassName("menuitem-iconic");
+
+            for (var i=0; i<list.length; i++) {
+                if (list.item(i).getAttribute("label").split(":")[0]!=disp_domain) {
+            	    whitetrashOverlay.logger.logStringMessage("Removing "+list.item(i).getAttribute("label"));
+            	    //FIXME: this screws iteration.
+                    //popup.removeChild(list.item(i));
+                    old_dom = list.item(i).getAttribute("label").split(":")[1];
+                    delete this.domains[old_dom];
+                }
+            }
+
+        }
+        ,
         restoreMenu: function() {
         	//Restore menu list from list of saved domains
-        	for (var d in this.domains) {
-                whitetrashOverlay.createMenuItem(document.getElementById("wt_sb_menu"),
-                                        this.domains[d].disp_domain,this.domains[d].domain,
-                                        this.domains[d].uri,this.domains[d].proto,"menuitem-iconic whitetrash-can");
+        	var popup = document.getElementById("wt_sb_menu");
+
+        	for (var dom in this.domains) {
+                whitetrashOverlay.createMenuItem(popup,
+                                        this.domains[dom].disp_domain,this.domains[dom].domain,
+                                        this.domains[dom].uri,this.domains[dom].proto);
         	}
         }
         ,
         storeDomainInfo: function(domainlist,domain,disp_domain,uri,proto) {
+        	//Shouldn't the key be by protocol too???
             domainlist[domain]= new this.domainStruct(domain,disp_domain,uri.replace(",","%2c"),proto);
         }
         ,
@@ -115,19 +150,13 @@ whitetrashOverlay = {
         this.logger.logStringMessage(e.responseText);
     }
 ,
-    checkDomainInWhitelist: function(aPopup,display_domain,domain,uri,protocol,this_class) {
+    checkDomainInWhitelist: function(aPopup,display_domain,domain,uri,protocol) {
     	//Currently I am caching whitelisted entries for the duration of the session.  See addtoPrefsWhitelist
     	//if you want to cache across sessions.  Non-whitelisted domains are checked when the user clicks the menu
     	//Assuming domain and protocol have already been sanitised.
-    	//
+    	
     	//Add element disabled, then enable asynchronously when XMLhttprequest returns
-    	var item = document.createElement("menuitem"); // create a new XUL menuitem
-        item.setAttribute("label", display_domain);
-        item.setAttribute("id", domain+protocol);
-        item.setAttribute("class", this_class);
-        item.setAttribute("disabled", "true");
-        item.setAttribute("oncommand", "whitetrashOverlay.addToWhitelist(\""+domain+'","'+protocol+'","'+uri+"\")");
-        aPopup.appendChild(item);
+	    this.addDisabledMenuItem(aPopup,display_domain,domain,uri,protocol,"menuitem-iconic whitetrash-can");
 
         var url=this.wt_protocol+"://whitetrash/whitelist/checkdomain?domain="+domain+"&protocol="+protocol
         var pagetab = getBrowser().selectedTab;
@@ -139,19 +168,20 @@ whitetrashOverlay = {
         	    if(req.status == 200) {
                     whitetrashOverlay.logger.logStringMessage("domain: "+domain+", resp: "+req.responseText);
 
+                    var disableditem = document.getElementById(domain+protocol);
         	    	if (req.responseText=="0") {
 
                         //Check this is still our original tab, if the user has moved on we shouldn't
                         //be displaying domains from other tabs.
                         var newcurrentTab = getBrowser().selectedTab;
                         if (newcurrentTab == pagetab) {
-                            var disableditem = document.getElementById(domain+protocol);
                             disableditem.setAttribute("disabled","false");
                         }
 
                     } else if (req.responseText=="1") {
                     	//Add to our session whitelist
                         whitetrashOverlay.addToPrefsWhitelist(domain,protocol);
+                        disableditem.setAttribute("class","menuitem-iconic whitetrash-can-tick");
                     } else {
                         whitetrashOverlay.logger.logStringMessage("Error checking domain: "+req.responseText);
                     }
@@ -164,20 +194,35 @@ whitetrashOverlay = {
         req.send(null);
     }
 ,
-    createMenuItem: function(aPopup,display_domain,domain,uri,protocol,this_class) {
-    	//Don't display item in the menu if it is already in the whitelist.
+    addDisabledMenuItem: function(aPopup,display_domain,domain,uri,protocol,this_class) {
+    	var item = document.createElement("menuitem"); // create a new XUL menuitem
+        item.setAttribute("label", display_domain);
+        item.setAttribute("id", domain+protocol);
+        item.setAttribute("class",this_class);
+        item.setAttribute("disabled", "true");
+        item.setAttribute("oncommand", "whitetrashOverlay.addToWhitelist(\""+domain+'","'+protocol+'","'+uri+"\")");
+        aPopup.appendChild(item);
+    }
+,
+    createMenuItem: function(aPopup,display_domain,domain,uri,protocol) {
+    	//Display ticks for domains already in the whitelist.
         if (protocol==this.getProtocolCode("HTTP")) {
-    	    if (whitetrashOverlay.whitelist_http[domain]) { return }
+    	    if (whitetrashOverlay.whitelist_http[domain]) { 
+                this.addDisabledMenuItem(aPopup,display_domain,domain,uri,
+                                    protocol,"menuitem-iconic whitetrash-can-tick");
+    	    	return }
     	} else if (protocol==this.getProtocolCode("SSL")) {
-    	    if (whitetrashOverlay.whitelist_ssl[domain]) { return }
+    	    if (whitetrashOverlay.whitelist_ssl[domain]) { 
+    	    	this.addDisabledMenuItem(aPopup,display_domain,domain,uri,
+                                    protocol,"menuitem-iconic whitetrash-can-tick");
+    	    	return }
+
     	} else {
             this.logger.logStringMessage("CreateMenuItem bad protocol: "+protocol);
             return;
     	}
 
-        //TODO: Create menu items disabled and enable them once we have checked the dom isn't
-        //in the whitelist.
-        this.checkDomainInWhitelist(aPopup,display_domain,domain,uri,protocol,this_class);
+        this.checkDomainInWhitelist(aPopup,display_domain,domain,uri,protocol);
 
     }
 ,
@@ -375,24 +420,9 @@ whitetrashOverlay = {
                 //do we care?  TODO: put in refresh page menu option
                 //FIXME: how can I uniquely identify a tab?  Tabindex is always 0.
                 //could i use http://forums.mozillazine.org/viewtopic.php?f=19&t=655936&start=0&st=0&sk=t&sd=a
-                //google onlocationchange same tab
-                var wto = whitetrashOverlay;
-                var currentTab = getBrowser().selectedTab;
-                wto.logger.logStringMessage("current loc:"+currentTab);
-                var prevtabindex = wto.ss.getWindowValue(window,"whitetrash.prevtabindex");
-
-                if (prevtabindex) {
-                	//This is an existing tab
-                    wto.logger.logStringMessage("Location old: "+prevtabindex+" new: "+currentTab);
-            	    if (prevtabindex === currentTab) {
-            		    //We have gone to a new page in the same tab, so delete the old list for the current tab.
-                        wto.logger.logStringMessage("Location change in same tab, deleting list");
-                        wto.ss.deleteWindowValue(window, "whitetrash.domain.list");
-                    }
-
-                }
-                wto.ss.setWindowValue(window,"whitetrash.prevtabindex",currentTab);
-                
+                whitetrashOverlay.logger.logStringMessage("location"+aRequest.URI.host);
+                whitetrashOverlay.domainMenuList.trimOldEntries(aRequest.URI.host);
+                        
             }
 
         },

@@ -1,5 +1,9 @@
 .whitetrash-can {
-    list-style-image: url(icon32.png);
+    list-style-image: url(wtcan.png);
+}
+
+.whitetrash-can-tick {
+    list-style-image: url(wtcan-tick.png);
 }
 
 .whitetrash-top-level {
