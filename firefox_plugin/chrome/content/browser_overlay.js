@@ -206,7 +206,13 @@ whitetrashOverlay = {
     	//A page with lots of iframes may cause conflict over the session store for whitetrash.test.list
 
         var tags = this_doc.getElementsByTagName(tag_name); 
-        domain_re = /^(https?):\/\/(([a-z0-9-]{1,50}\.){1,6}[a-z]{2,6})\//;
+        //The normal case is uri = "http://www.iinet.net.au/index.html"
+        //which results in (http://www.iinet.net.au/,http:,http,www.iinet.net.au,net)
+        //however we also handle these because people use them, we assume http for each case:
+        //"//www.iinet.net.au/index.html" gives (http://www.iinet.net.au/,,,www.iinet.net.au,net)
+        //"/www.iinet.net.au/index.html" gives (http://www.iinet.net.au/,,,www.iinet.net.au,net)
+        //"www.iinet.net.au/index.html" gives (http://www.iinet.net.au/,,,www.iinet.net.au,net)
+        domain_re = /^((https?):)?\/?\/?(([a-z0-9-]{1,50}\.){1,6}[a-z]{2,6})\//;
 
         //Check this event was for the current tab:
         var targetBrowserIndex = getBrowser().getBrowserIndexForDocument(this_doc);
@@ -229,8 +235,13 @@ whitetrashOverlay = {
                     var domain=null;
                     if (domain=domain_re.exec(uri.toLowerCase())) {
 
-                        var proto = this.getProtocolCode(domain[1].toUpperCase());
-                        var thedomain = domain[2];
+                        if (domain[2]) {
+                            var proto = this.getProtocolCode(domain[2].toUpperCase());
+                        }else{
+                        	//assume http if it isn't explicit
+                            var proto = this.getProtocolCode("HTTP");
+                        }
+                        var thedomain = domain[3];
 
                         if (proto!= -1) {
 
