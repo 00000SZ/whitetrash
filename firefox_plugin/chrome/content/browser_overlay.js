@@ -351,30 +351,6 @@ whitetrashOverlay = {
 ,
     listeners: {
     
-    webProgressListener: {
-
-        QueryInterface: function(aIID)
-        {
-        if (aIID.equals(Components.interfaces.nsISupportsWeakReference) ||
-            aIID.equals(Components.interfaces.nsIObserver) ||
-            aIID.equals(Components.interfaces.nsISupports))
-            return this;
-        throw Components.results.NS_NOINTERFACE;
-        },
-
-        STATE_STOP: Components.interfaces.nsIWebProgressListener.STATE_STOP,
-        onLocationChange: function(aWebProgress, aRequest, aLocation) {
-            const domWindow = aWebProgress.DOMWindow;
-            if (domWindow) {
-            whitetrashOverlay.reloadMenu();
-            }
-        },
-        onStatusChange: function() {}, 
-        onStateChange: function() {},
-        onSecurityChange: function() {}, 
-        onProgressChange: function() {}
-        },
-    
     onLoad: function(ev) {
         window.removeEventListener("load", arguments.callee, false);
         window.addEventListener("unload", whitetrashOverlay.listeners.onUnload, false);
@@ -391,7 +367,6 @@ whitetrashOverlay = {
     setup: function() {
         var b = getBrowser();
         const nsIWebProgress = Components.interfaces.nsIWebProgress;
-        b.addProgressListener(this.webProgressListener, nsIWebProgress.NOTIFY_STATE_WINDOW | nsIWebProgress.NOTIFY_LOCATION);
     
         whitetrashOverlay.logger.logStringMessage("setup finished");
 
@@ -399,11 +374,6 @@ whitetrashOverlay = {
       
     teardown: function() {
 
-      var b = getBrowser();
-      if (b) {
-        b.removeProgressListener(this.webProgressListener);
-      }
-  
       window.removeEventListener("DOMContentLoaded", this.wrapOnContentLoad, false);
     }
     
