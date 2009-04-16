@@ -84,34 +84,24 @@ whitetrashOverlay = {
             return element;
         }
         ,
-        trimOldEntries: function(disp_domain) {
-
-        	//var new_dom = disp_domain.split(":")[0];
-        	var popup = document.getElementById("wt_sb_menu");
-            whitetrashOverlay.logger.logStringMessage("Trim domains not starting with "+disp_domain);
-            var list = document.getElementById("wt_sb_menu").getElementsByClassName("menuitem-iconic");
-
-            for (var i=0; i<list.length; i++) {
-                if (list.item(i).getAttribute("label").split(":")[0]!=disp_domain) {
-            	    whitetrashOverlay.logger.logStringMessage("Removing "+list.item(i).getAttribute("label"));
-            	    //FIXME: this screws iteration.
-                    //popup.removeChild(list.item(i));
-                    old_dom = list.item(i).getAttribute("label").split(":")[1];
-                    delete this.domains[old_dom];
-                }
-            }
-
-        }
-        ,
         restoreMenu: function() {
         	//Restore menu list from list of saved domains
         	var popup = document.getElementById("wt_sb_menu");
+            var trim;
+
+            //We leave all the historical domains in the list and only display
+            //the relevant ones, but if the list gets big we trim it down.
+            //It is possible that the list could get pretty big if the user visits
+            //many sites in a single tab without clicking the menu icon.
+            //FIXME: could do this check in the page parser and trim the array there?
+            if (this.countDomains(this.domains) > 50) {trim="true";}
 
         	for (var dom in this.domains) {
                 whitetrashOverlay.createMenuItem(popup,
                                         this.domains[dom].disp_domain,this.domains[dom].domain,
-                                        this.domains[dom].uri,this.domains[dom].proto);
+                                        this.domains[dom].uri,this.domains[dom].proto,trim);
         	}
+        	if (trim) {this.saveList(getBrowser().selectedTab);}
         }
         ,
         storeDomainInfo: function(domainlist,domain,disp_domain,uri,proto) {
@@ -119,26 +109,24 @@ whitetrashOverlay = {
             domainlist[domain]= new this.domainStruct(domain,disp_domain,uri.replace(",","%2c"),proto);
         }
         ,
-        saveList: function() {
-            var currentTab = getBrowser().selectedTab;
+        saveList: function(tab) {
         	var count=this.countDomains(this.domains);
         	if (count!=0) {
         	    whitetrashOverlay.logger.logStringMessage("list length:"+count);
-                whitetrashOverlay.ss.setTabValue(currentTab, "whitetrash.domain.list",this.flattenList());
-        	    whitetrashOverlay.logger.logStringMessage("post save tab state:"+ whitetrashOverlay.ss.getTabState(currentTab));
+                whitetrashOverlay.ss.setTabValue(tab, "whitetrash.domain.list",this.flattenList());
+        	    whitetrashOverlay.logger.logStringMessage("post save tab state:"+ whitetrashOverlay.ss.getTabState(tab));
             } else {
-        	    whitetrashOverlay.logger.logStringMessage("not saving empty list");
+        	    whitetrashOverlay.logger.logStringMessage("deleting empty list");
+                whitetrashOverlay.ss.deleteTabValue(tab, "whitetrash.domain.list");
             }
         }
         ,
-        loadList: function() {
-            var currentTab = getBrowser().selectedTab;
-        	whitetrashOverlay.logger.logStringMessage("current tab:"+currentTab.label);
-        	whitetrashOverlay.logger.logStringMessage("current tab state:"+ whitetrashOverlay.ss.getTabState(currentTab));
-            var retrievedList = whitetrashOverlay.ss.getTabValue(currentTab, "whitetrash.domain.list");
+        loadList: function(tab) {
+        	whitetrashOverlay.logger.logStringMessage("current tab state:"+ whitetrashOverlay.ss.getTabState(tab));
+            var retrievedList = whitetrashOverlay.ss.getTabValue(tab, "whitetrash.domain.list");
             if (retrievedList) {
             	this.inflateList(retrievedList);
-            	this.restoreMenu();
+                this.restoreMenu();
             } else {
                 whitetrashOverlay.logger.logStringMessage("ignoring retrieved null list");
             }
@@ -204,31 +192,45 @@ whitetrashOverlay = {
         aPopup.appendChild(item);
     }
 ,
-    createMenuItem: function(aPopup,display_domain,domain,uri,protocol) {
-    	//Display ticks for domains already in the whitelist.
-        if (protocol==this.getProtocolCode("HTTP")) {
-    	    if (whitetrashOverlay.whitelist_http[domain]) { 
-                this.addDisabledMenuItem(aPopup,display_domain,domain,uri,
-                                    protocol,"menuitem-iconic whitetrash-can-tick");
-    	    	return }
-    	} else if (protocol==this.getProtocolCode("SSL")) {
-    	    if (whitetrashOverlay.whitelist_ssl[domain]) { 
-    	    	this.addDisabledMenuItem(aPopup,display_domain,domain,uri,
-                                    protocol,"menuitem-iconic whitetrash-can-tick");
-    	    	return }
+    createMenuItem: function(aPopup,display_domain,domain,uri,protocol,trim_list) {
+        var new_domain = getBrowser().currentURI.host;
 
-    	} else {
-            this.logger.logStringMessage("CreateMenuItem bad protocol: "+protocol);
-            return;
-    	}
+        //Only display menuitem if it is for the current domain in the tab
+        if (display_domain.split(":")[0]==new_domain) {
 
-        this.checkDomainInWhitelist(aPopup,display_domain,domain,uri,protocol);
+    	    //Display ticks for domains already in the whitelist.
+            if (protocol==this.getProtocolCode("HTTP")) {
+    	        if (whitetrashOverlay.whitelist_http[domain]) { 
+                    this.addDisabledMenuItem(aPopup,display_domain,domain,uri,
+                                        protocol,"menuitem-iconic whitetrash-can-tick");
+    	    	    return }
+    	    } else if (protocol==this.getProtocolCode("SSL")) {
+    	        if (whitetrashOverlay.whitelist_ssl[domain]) { 
+    	    	    this.addDisabledMenuItem(aPopup,display_domain,domain,uri,
+                                        protocol,"menuitem-iconic whitetrash-can-tick");
+    	    	    return }
+
+    	    } else {
+                this.logger.logStringMessage("CreateMenuItem bad protocol: "+protocol);
+                return;
+    	    }
+
+            this.checkDomainInWhitelist(aPopup,display_domain,domain,uri,protocol);
+
+        } else {
+
+            if (trim_list){
+                //whitetrashOverlay.logger.logStringMessage("removing from array"+display_domain);
+                delete this.domainMenuList.domains[domain];
+            } else {
+                whitetrashOverlay.logger.logStringMessage("not displaying"+display_domain);
+            }
+        }
 
     }
 ,
     deleteDynamicMenuItems: function(popup) {
 
-        this.logger.logStringMessage("Removing domains");
         this.domainMenuList.clearList();
         var dynamic_sep = document.getElementById("dynamic_content_sep");
         while (popup.lastChild != dynamic_sep) {
@@ -352,13 +354,10 @@ whitetrashOverlay = {
     reloadMenu: function() {
         //Clear the current menu list and load the stored domain list if present.  
         //If this is a new tab the oncontent load listener will build the new list.
-        //
-        //FIXME: domains pile up from all the pages you have visited.  Need to clear
-        //the whole list on location change but not tab change?
         this.logger.logStringMessage("Reloading Menu");
         var wt_sb_menu_popup = document.getElementById("wt_sb_menu");
         whitetrashOverlay.deleteDynamicMenuItems(wt_sb_menu_popup);
-        whitetrashOverlay.domainMenuList.loadList()
+        whitetrashOverlay.domainMenuList.loadList(getBrowser().selectedTab);
     }
 ,
     addToWhitelist: function(domain,protocol,uri) {
@@ -398,73 +397,23 @@ whitetrashOverlay = {
 ,
     listeners: {
     
-    webProgressListener: {
-
-        QueryInterface: function(aIID)
-        {
-        if (aIID.equals(Components.interfaces.nsISupportsWeakReference) ||
-            aIID.equals(Components.interfaces.nsIObserver) ||
-            aIID.equals(Components.interfaces.nsISupports))
-            return this;
-        throw Components.results.NS_NOINTERFACE;
+        onLoad: function(ev) {
+    	    //Install our listener that will cleanup on unload
+    	    //Remove the load listener so we only run once.
+            window.removeEventListener("load", arguments.callee, false);
+            window.addEventListener("unload", whitetrashOverlay.listeners.onUnload, false);
         },
 
-        STATE_STOP: Components.interfaces.nsIWebProgressListener.STATE_STOP,
-        onLocationChange: function(aWebProgress, aRequest, aLocation) {
-            const domWindow = aWebProgress.DOMWindow;
-            if (domWindow) {
-                //We want to capture location changes that aren't tab changes - ie. user follows link
-                //in existing window.  We want to delete the list of domains we parsed out of the old page
-                //so that the user doesn't continuously accumulate domains as they browse.
-                //FIXME (maybe): when the user hits back or forwards, the lists are empty.  Page refresh will fix it
-                //do we care?  TODO: put in refresh page menu option
-                //FIXME: how can I uniquely identify a tab?  Tabindex is always 0.
-                //could i use http://forums.mozillazine.org/viewtopic.php?f=19&t=655936&start=0&st=0&sk=t&sd=a
-                whitetrashOverlay.logger.logStringMessage("location"+aRequest.URI.host);
-                whitetrashOverlay.domainMenuList.trimOldEntries(aRequest.URI.host);
-                        
-            }
-
-        },
-        onStatusChange: function() {}, 
-        onStateChange: function() {},
-        onSecurityChange: function() {}, 
-        onProgressChange: function() {}
+        onUnload: function(ev) {
+    	    //cleanup
+    	    //Remove the unload listener, so we only run once.
+            window.removeEventListener("unload", arguments.callee, false);
+            window.removeEventListener("DOMContentLoaded", this.wrapOnContentLoad, false);
+            window.browserDOMWindow = null;
+            //TODO: make sure I clean up everything here
         },
     
-    onLoad: function(ev) {
-        window.removeEventListener("load", arguments.callee, false);
-        window.addEventListener("unload", whitetrashOverlay.listeners.onUnload, false);
-        whitetrashOverlay.listeners.setup(); 
-    },
-
-    onUnload: function(ev) {
-      window.removeEventListener("unload", arguments.callee, false);
-      whitetrashOverlay.listeners.teardown();
-      window.browserDOMWindow = null;
-      whitetrashOverlay.dispose();
-    },
-    
-    setup: function() {
-        var b = getBrowser();
-        const nsIWebProgress = Components.interfaces.nsIWebProgress;
-        b.addProgressListener(this.webProgressListener, nsIWebProgress.NOTIFY_STATE_WINDOW | nsIWebProgress.NOTIFY_LOCATION);
-    
-        whitetrashOverlay.logger.logStringMessage("setup finished");
-
-    },
-      
-    teardown: function() {
-
-      var b = getBrowser();
-      if (b) {
-        b.removeProgressListener(this.webProgressListener);
-      }
-  
-      window.removeEventListener("DOMContentLoaded", this.wrapOnContentLoad, false);
-    }
-    
-  } // END listeners
+    } // END listeners
     ,
     splitIntoHash: function(str) {
 	    var split_str = str.split("|");
@@ -496,40 +445,38 @@ whitetrashOverlay = {
     	}
     	//this.setPref("whitetrash."+proto+".whitelist",cur+=domain+"|");
     }
-,
-  getPref: function(name, def) {
-  	var IPC=Components.interfaces.nsIPrefBranch;
-    try {
-      switch (this.prefs.getPrefType(name)) {
-        case IPC.PREF_STRING:
-          return this.prefs.getCharPref(name);
-        case IPC.PREF_INT:
-          return this.prefs.getIntPref(name);
-        case IPC.PREF_BOOL:
-          return this.prefs.getBoolPref(name);
-      }
-    } catch(e) {}
-    return def || "";
-  }
-,
-  setPref: function(name, value) {
-
-    switch (typeof(value)) {
-      case "string":
-          this.prefs.setCharPref(name,value);
-          break;
-      case "boolean":
-        this.prefs.setBoolPref(name,value);
-        break;
-      case "number":
-        this.prefs.setIntPref(name,value);
-        break;
-      default:
-        throw new Error("Unsupported type "+typeof(value)+" for preference "+name);
+    ,
+    getPref: function(name, def) {
+  	    var IPC=Components.interfaces.nsIPrefBranch;
+        try {
+        switch (this.prefs.getPrefType(name)) {
+            case IPC.PREF_STRING:
+            return this.prefs.getCharPref(name);
+            case IPC.PREF_INT:
+            return this.prefs.getIntPref(name);
+            case IPC.PREF_BOOL:
+            return this.prefs.getBoolPref(name);
+        }
+        } catch(e) {}
+        return def || "";
     }
-  }
+    ,
+    setPref: function(name, value) {
 
-
+        switch (typeof(value)) {
+        case "string":
+            this.prefs.setCharPref(name,value);
+            break;
+        case "boolean":
+            this.prefs.setBoolPref(name,value);
+            break;
+        case "number":
+            this.prefs.setIntPref(name,value);
+            break;
+        default:
+            throw new Error("Unsupported type "+typeof(value)+" for preference "+name);
+        }
+    }
 
 }//end namespace encapsulation
 whitetrashOverlay.install();
