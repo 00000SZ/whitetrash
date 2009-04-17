@@ -3,8 +3,7 @@
 import syslog
 
 import MySQLdb
-import whitetrash_db.DB as DB
-from whitetrash_db.configobj import ConfigObj
+from configobj import ConfigObj
 
 syslog.openlog('whitetrash.py',0,syslog.LOG_USER)
 syslog.syslog("Running whitetrash_cleanup")

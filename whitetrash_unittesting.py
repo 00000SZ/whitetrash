@@ -21,7 +21,7 @@
 #
 
 import unittest
-from whitetrash_db.configobj import ConfigObj
+from configobj import ConfigObj
 from whitetrash import WTSquidRedirector
 from whitetrash import WTSquidRedirectorCached
 import httplib

@@ -27,7 +27,7 @@ import urllib
 import re
 import MySQLdb
 import MySQLdb.cursors
-from whitetrash_db.configobj import ConfigObj
+from configobj import ConfigObj
 from socket import inet_aton
 try:
     import cmemcache

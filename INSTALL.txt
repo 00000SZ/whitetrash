@@ -17,23 +17,6 @@ mysql-server
 
 If you would like to enable the CAPTCHA (http://en.wikipedia.org/wiki/Captcha) test for whitelist additions, you will need to install PyCAPTCHA: http://cheeseshop.python.org/pypi/PyCAPTCHA/0.4 and the python-imaging package (PIL).
 
-Change the default password in db_setup.
-
-Create and populate a database called 'whitetrash'. If this is a new mysql install, please set a root password::
-
-  mysqladmin -u root password NEWPASSWORD
-
-In mysql::
-    
-    mysql -u root -p
-    create database whitetrash;
-    use whitetrash;
-    quit
-
-This will install the whitetrash python files into /usr/bin, init script into /etc/init.d, and whitetrash.conf into /etc::
-
-    sudo python setup.py install
-
 If you intend to whitelist SSL you will need a certificate.  You can use the line below to create one, or buy one from a CA (this is better because then it will be automatically trusted by users).  The code expects the cert to be in /etc/server.pem.  The common name should be the same as whatever whitetrash_add_domain is set to in whitetrash.conf (default is whitetrash) :
 
     openssl req -new -x509 -keyout /etc/server.pem -out /etc/server.pem -days 365 -nodes
@@ -84,18 +67,12 @@ sudo apt-get install \
 python-django \
 libapache2-mod-python
 
- - Copy the apache static files: cp -r example_configs/apache2/www/whitetrash /var/www/
- - Copy the whitetrash apache config:
-    cp example_configs/apache2/whitetrash /etc/apache2/sites-available/
-    cp example_configs/apache2/httpd.conf /etc/apache2/httpd.conf
- - Enable the whitetrash site: a2ensite whitetrash
  - Create ssl cert and enable apache ssl module:
     a2enmod ssl,rewrite
     mkdir /etc/apache2/ssl
     openssl genrsa -out /etc/apache2/ssl/server.key 4096
     openssl req -new -key /etc/apache2/ssl/server.key -out server.csr
     openssl x509 -req -days 365 -in server.csr -signkey /etc/apache2/ssl/server.key -out /etc/apache2/ssl/server.crt
- - Create a symlink: ln -s /usr/share/python-support/python-django/django/contrib/admin/media/ /var/www/whitetrash/media
 
 Django config (create whitetrash db first):
  - cd django_site
