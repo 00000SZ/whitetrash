@@ -1,5 +1,5 @@
 # Django settings for whitetrash project.
-from whitetrash_db.configobj import ConfigObj
+from configobj import ConfigObj
 config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
 
 def conf(config_item):

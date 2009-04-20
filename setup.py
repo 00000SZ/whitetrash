@@ -46,9 +46,9 @@ class WhitetrashInstallData(install):
         execute(self.copyApacheConfigs,())
         execute(self.copyWebStaticFiles,())
         execute(self.copySquidConfigs,())
-        execute(self.createDB,())
+        execute(self.createDBandUsers,())
 
-    def createDB(self):
+    def createDBandUsers(self):
 
         try:
             import MySQLdb
@@ -58,15 +58,35 @@ class WhitetrashInstallData(install):
             sys.exit(1)
 
         try:
+            from configobj import ConfigObj
+            config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
+        except Exception,e:
+            print """Error parsing /etc/whitetrash.conf (%s)""" % e
+
+        try:
             if self.mysql_root_passwd:
                 con=MySQLdb.Connect(user="root",passwd=self.mysql_root_passwd)
             else:
                 con=MySQLdb.Connect(user="root")
             cur=con.cursor()
             cur.execute("create database if not exists whitetrash")
+
+            #This user is for django 
+            cur.execute("CREATE USER %s@'localhost' IDENTIFIED BY %s",
+                            (config["DATABASE_DJANGO_USER"],config["DATABASE_DJANGO_PASSWORD"]))
+            cur.execute("GRANT ALL on whitetrash.* TO %s",(config["DATABASE_DJANGO_USER"]))
+
+            #This user is for the whitetrash squid redirector (url rewriter)
+            cur.execute("CREATE USER %s@'localhost' IDENTIFIED BY %s",
+                            (config["DATABASE_WHITETRASH_USER"],config["DATABASE_WHITETRASH_PASSWORD"]))
+            cur.execute("GRANT INSERT,SELECT,UPDATE on whitetrash.whitelist_whitelist TO %s",(config["DATABASE_WHITETRASH_USER"]))
+
+            #This user is used by the whitetrash_cleanup.py script
+            cur.execute("CREATE USER %s@'localhost' IDENTIFIED BY %s",(config["DATABASE_CLEANUP_USER"],config["DATABASE_CLEANUP_PASSWORD"]))
+            cur.execute("GRANT SELECT,DELETE on whitetrash.whitelist_whitelist TO %s",(config["DATABASE_CLEANUP_USER"]))
+
         except Exception,e:
-            print """Installing database failed (%s). Create it manually with:
-            mysql -u root -p -e "create database if not exists whitetrash\"""" % e
+            print """Installing database failed (%s). You may need to create database and users manually.""" % e
 
     def copyApacheConfigs(self):
         if os.path.exists(os.path.join(self.apache_configdir,"sites-available")):
@@ -81,6 +101,8 @@ class WhitetrashInstallData(install):
 
             copy_file("example_configs/apache2/httpd.conf", httpconf)
             copy_file(os.path.join(self.apache_configdir,"sites-available/whitetrash"), os.path.join(self.apache_configdir,"sites-enabled/whitetrash"),link="sym")
+
+            mkpath(os.path.join(self.apache_configdir,"ssl")) 
 
         else:
 

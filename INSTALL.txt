@@ -13,70 +13,52 @@ squid \
 python-dev \
 python-mysqldb \
 python-pyopenssl \
-mysql-server
+mysql-server \
+python-django \
+libapache2-mod-python
+
+cd whitetrash
+edit whitetrash.conf:
+
+ - Change all of the database user passwords, these users will be created for you by the installation script
+
+Run the setup script and supply your DB root password
+sudo python setup.py install --mysql-root-passwd="myrootpassword"
+
+cd django_site/whitetrash
+sudo python manage.py syncdb
+
+Create ssl cert and enable apache ssl module (this is for self-signed, better if you buy one):
+    a2enmod ssl,rewrite
+    openssl genrsa -out /etc/apache2/ssl/server.key 4096
+    openssl req -new -key /etc/apache2/ssl/server.key -out server.csr
+    openssl x509 -req -days 365 -in server.csr -signkey /etc/apache2/ssl/server.key -out /etc/apache2/ssl/server.crt
 
 If you would like to enable the CAPTCHA (http://en.wikipedia.org/wiki/Captcha) test for whitelist additions, you will need to install PyCAPTCHA: http://cheeseshop.python.org/pypi/PyCAPTCHA/0.4 and the python-imaging package (PIL).
 
-If you intend to whitelist SSL you will need a certificate.  You can use the line below to create one, or buy one from a CA (this is better because then it will be automatically trusted by users).  The code expects the cert to be in /etc/server.pem.  The common name should be the same as whatever whitetrash_add_domain is set to in whitetrash.conf (default is whitetrash) :
-
-    openssl req -new -x509 -keyout /etc/server.pem -out /etc/server.pem -days 365 -nodes
-
-/etc/whitetrash.conf
-~~~~~~~~~~~~~~~~~~~~
-
-Edit /etc/whitetrash.conf to perform the necessary customisations.  The essential things you should change are:
-
-- All database user passwords. 
-
-============
 Squid Config
-============
+~~~~~~~~~~~~
 
-You will want to add the following lines to your squid.conf
- 
-- vimdiff example_configs/squid/squid.conf /etc/squid/squid.conf
+An example config with comments has been installed in /etc/squid/squid.conf, you probably don't need to change anything in here.
+If you have a large network, check the performance section below.
+This config is for Squid 2.7.STABLE3.  Your original squid.conf is backed up in the same directory.
 
-See comments in the example config for more information.
-
-==========
 The result
-==========
+~~~~~~~~~~
 
 netstat -plant should show you the following listeners:
 
 - mysqld             127.0.0.1:3306
 - squid              0.0.0.0:3128
 
-===
 DNS
-===
+~~~
 
-The following domains should resolve to the whitetrash IP:
+Make sure the following domains resolve to the whitetrash IP:
 
  - whitetrash
  - sslwhitetrash
  - blockedwhitetrash
-
-====================
-In progress - django
-====================
-
-To use the django code:
-
-sudo apt-get install \
-python-django \
-libapache2-mod-python
-
- - Create ssl cert and enable apache ssl module:
-    a2enmod ssl,rewrite
-    mkdir /etc/apache2/ssl
-    openssl genrsa -out /etc/apache2/ssl/server.key 4096
-    openssl req -new -key /etc/apache2/ssl/server.key -out server.csr
-    openssl x509 -req -days 365 -in server.csr -signkey /etc/apache2/ssl/server.key -out /etc/apache2/ssl/server.crt
-
-Django config (create whitetrash db first):
- - cd django_site
- - python manage.py syncdb
 
 ===========
 Performance
@@ -98,6 +80,12 @@ If you have a lot of users, you will want to look at tweaking your mysql install
   set global max_connections=200;
 
 You should probably allocate mysql some more system resources, as the defaults are fairly conservative.  See mysql.com for guidance.
+
+MySQL - memcached
+-----------------
+
+To take the load off the database, the whitetrash redirector can use memcached.  Just install cmemcached, and allocate some server memory.
+List the memcache servers and enable use_memcached in whitetrash.conf.
 
 System
 ------
