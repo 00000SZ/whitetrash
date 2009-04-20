@@ -4,35 +4,38 @@ Installing Whitetrash
 
 Checkout the code:
 
-  svn co https://whitetrash.svn.sourceforge.net/svnroot/whitetrash/trunk whitetrash
+    svn co https://whitetrash.svn.sourceforge.net/svnroot/whitetrash/trunk whitetrash
 
 The packages you will need (this is an Ubuntu/debian command line, but other distros will be similar) are:
 
-sudo apt-get install \
-squid \
-python-dev \
-python-mysqldb \
-python-pyopenssl \
-mysql-server \
-python-django \
-libapache2-mod-python
+    sudo apt-get install \
+    squid \
+    python-dev \
+    python-mysqldb \
+    python-pyopenssl \
+    mysql-server \
+    python-django \
+    libapache2-mod-python
 
-cd whitetrash
+    cd whitetrash
+
 edit whitetrash.conf:
 
  - Change all of the database user passwords, these users will be created for you by the installation script
 
-Run the setup script and supply your DB root password
-sudo python setup.py install --mysql-root-passwd="myrootpassword"
+Run the setup script and supply your DB root password:
 
-cd django_site/whitetrash
-sudo python manage.py syncdb
+    sudo python setup.py install --mysql-root-passwd="myrootpassword"
 
 Create ssl cert and enable apache ssl module (this is for self-signed, better if you buy one):
-    a2enmod ssl,rewrite
-    openssl genrsa -out /etc/apache2/ssl/server.key 4096
-    openssl req -new -key /etc/apache2/ssl/server.key -out server.csr
-    openssl x509 -req -days 365 -in server.csr -signkey /etc/apache2/ssl/server.key -out /etc/apache2/ssl/server.crt
+
+    a2enmod ssl rewrite
+    sudo openssl genrsa -out /etc/apache2/ssl/server.key 4096
+    #Use whitetrash as the common name
+    sudo openssl req -new -key /etc/apache2/ssl/server.key -out server.csr
+    sudo openssl x509 -req -days 365 -in server.csr -signkey /etc/apache2/ssl/server.key -out /etc/apache2/ssl/server.crt
+
+Restart apache and squid.
 
 If you would like to enable the CAPTCHA (http://en.wikipedia.org/wiki/Captcha) test for whitelist additions, you will need to install PyCAPTCHA: http://cheeseshop.python.org/pypi/PyCAPTCHA/0.4 and the python-imaging package (PIL).
 
@@ -50,6 +53,7 @@ netstat -plant should show you the following listeners:
 
 - mysqld             127.0.0.1:3306
 - squid              0.0.0.0:3128
+- apache             0.0.0.0:80, 0.0.0.0:443
 
 DNS
 ~~~
@@ -59,6 +63,13 @@ Make sure the following domains resolve to the whitetrash IP:
  - whitetrash
  - sslwhitetrash
  - blockedwhitetrash
+
+You can do this with /etc/hosts if you don't have DNS:
+
+    127.0.1.2   whitetrash
+    127.0.1.3   sslwhitetrash
+    127.0.1.4   blockedwhitetrash
+
 
 ===========
 Performance

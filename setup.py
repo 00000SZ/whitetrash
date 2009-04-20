@@ -48,6 +48,13 @@ class WhitetrashInstallData(install):
         execute(self.copySquidConfigs,())
         execute(self.createDBandUsers,())
 
+    def installDjango(self):
+        #Need to change our 'working dir' to make sure the django install works properly
+        sys.path[0]=os.path.abspath("django_site/whitetrash")
+        from django.core.management import execute_manager
+        import settings # Assumed to be in the same directory.
+        execute_manager(settings,argv=['manage.py','syncdb'])
+
     def createDBandUsers(self):
 
         try:
@@ -76,14 +83,17 @@ class WhitetrashInstallData(install):
                             (config["DATABASE_DJANGO_USER"],config["DATABASE_DJANGO_PASSWORD"]))
             cur.execute("GRANT ALL on whitetrash.* TO %s",(config["DATABASE_DJANGO_USER"]))
 
+            #We need to install django here to get the right tables for the next grants
+            self.installDjango()
+            
             #This user is for the whitetrash squid redirector (url rewriter)
             cur.execute("CREATE USER %s@'localhost' IDENTIFIED BY %s",
                             (config["DATABASE_WHITETRASH_USER"],config["DATABASE_WHITETRASH_PASSWORD"]))
-            cur.execute("GRANT INSERT,SELECT,UPDATE on whitetrash.whitelist_whitelist TO %s",(config["DATABASE_WHITETRASH_USER"]))
+            cur.execute("GRANT INSERT,SELECT,UPDATE on whitetrash.whitelist_whitelist TO %s@'localhost'",(config["DATABASE_WHITETRASH_USER"]))
 
             #This user is used by the whitetrash_cleanup.py script
             cur.execute("CREATE USER %s@'localhost' IDENTIFIED BY %s",(config["DATABASE_CLEANUP_USER"],config["DATABASE_CLEANUP_PASSWORD"]))
-            cur.execute("GRANT SELECT,DELETE on whitetrash.whitelist_whitelist TO %s",(config["DATABASE_CLEANUP_USER"]))
+            cur.execute("GRANT SELECT,DELETE on whitetrash.whitelist_whitelist TO %s@'localhost'",(config["DATABASE_CLEANUP_USER"]))
 
         except Exception,e:
             print """Installing database failed (%s). You may need to create database and users manually.""" % e
@@ -92,8 +102,8 @@ class WhitetrashInstallData(install):
         if os.path.exists(os.path.join(self.apache_configdir,"sites-available")):
     
             #Replace the placeholder with our actual code location
-        	apache_wt_conf=open("example_configs/apache2/whitetrash","r").read()
-        	open("example_configs/apache2/whitetrash","w").write(apache_wt_conf.replace("/home/greg/whitetrash/django_site/",os.path.abspath("django_site")))
+            apache_wt_conf=open("example_configs/apache2/whitetrash","r").read()
+            open("example_configs/apache2/whitetrash","w").write(apache_wt_conf.replace("/home/greg/whitetrash/django_site/",os.path.abspath("django_site")))
 
             copy_file("example_configs/apache2/whitetrash", os.path.join(self.apache_configdir,"sites-available/whitetrash"))
             httpconf=os.path.join(self.apache_configdir,"httpd.conf")
