@@ -90,6 +90,10 @@ class WhitetrashInstallData(install):
 
     def copyApacheConfigs(self):
         if os.path.exists(os.path.join(self.apache_configdir,"sites-available")):
+    
+            #Replace the placeholder with our actual code location
+        	apache_wt_conf=open("example_configs/apache2/whitetrash","r").read()
+        	open("example_configs/apache2/whitetrash","w").write(apache_wt_conf.replace("/home/greg/whitetrash/django_site/",os.path.abspath("django_site")))
 
             copy_file("example_configs/apache2/whitetrash", os.path.join(self.apache_configdir,"sites-available/whitetrash"))
             httpconf=os.path.join(self.apache_configdir,"httpd.conf")
