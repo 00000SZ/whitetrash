@@ -55,6 +55,13 @@ class WhitetrashInstallData(install):
         import settings # Assumed to be in the same directory.
         execute_manager(settings,argv=['manage.py','syncdb'])
 
+    def createDBUser(self,dbcur,user,passwd):
+        try:
+            dbcur.execute("CREATE USER %s@'localhost' IDENTIFIED BY %s",(user,passwd))
+        except Exception,e:
+            print """Error creating user, it may already exist? (%s)""" % e
+
+
     def createDBandUsers(self):
 
         try:
@@ -79,21 +86,20 @@ class WhitetrashInstallData(install):
             cur.execute("create database if not exists whitetrash")
 
             #This user is for django 
-            cur.execute("CREATE USER %s@'localhost' IDENTIFIED BY %s",
-                            (config["DATABASE_DJANGO_USER"],config["DATABASE_DJANGO_PASSWORD"]))
-            cur.execute("GRANT ALL on whitetrash.* TO %s",(config["DATABASE_DJANGO_USER"]))
+            self.createDBUser(cur,config["DATABASE_DJANGO_USER"],config["DATABASE_DJANGO_PASSWORD"])
+
+            #This user is for the whitetrash squid redirector (url rewriter)
+            self.createDBUser(cur,config["DATABASE_WHITETRASH_USER"],config["DATABASE_WHITETRASH_PASSWORD"])
+
+            #This user is used by the whitetrash_cleanup.py script
+            self.createDBUser(cur,config["DATABASE_CLEANUP_USER"],config["DATABASE_CLEANUP_PASSWORD"])
 
             #We need to install django here to get the right tables for the next grants
             self.installDjango()
-            
-            #This user is for the whitetrash squid redirector (url rewriter)
-            cur.execute("CREATE USER %s@'localhost' IDENTIFIED BY %s",
-                            (config["DATABASE_WHITETRASH_USER"],config["DATABASE_WHITETRASH_PASSWORD"]))
-            cur.execute("GRANT INSERT,SELECT,UPDATE on whitetrash.whitelist_whitelist TO %s@'localhost'",(config["DATABASE_WHITETRASH_USER"]))
 
-            #This user is used by the whitetrash_cleanup.py script
-            cur.execute("CREATE USER %s@'localhost' IDENTIFIED BY %s",(config["DATABASE_CLEANUP_USER"],config["DATABASE_CLEANUP_PASSWORD"]))
-            cur.execute("GRANT SELECT,DELETE on whitetrash.whitelist_whitelist TO %s@'localhost'",(config["DATABASE_CLEANUP_USER"]))
+            cur.execute("GRANT ALL on whitetrash.* TO %s",(config["DATABASE_DJANGO_USER"]))
+            cur.execute("GRANT INSERT,SELECT,UPDATE on whitetrash.whitelist_whitelist TO %s",(config["DATABASE_WHITETRASH_USER"]))
+            cur.execute("GRANT SELECT,DELETE on whitetrash.whitelist_whitelist TO %s",(config["DATABASE_CLEANUP_USER"]))
 
         except Exception,e:
             print """Installing database failed (%s). You may need to create database and users manually.""" % e

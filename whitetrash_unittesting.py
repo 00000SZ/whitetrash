@@ -25,13 +25,30 @@ from configobj import ConfigObj
 from whitetrash import WTSquidRedirector
 from whitetrash import WTSquidRedirectorCached
 import httplib
+import MySQLdb
 
-class SquidRedirectorUnitTests(unittest.TestCase):
+class RedirectorTest(unittest.TestCase):
 
     def setUp(self):
-        config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
-        self.wt_redir=WTSquidRedirector(config)
-        self.wt_redir.cursor.execute("delete from whitelist_whitelist where username='wt_unittesting'")
+        self.config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
+        self.cleancur=self.getDBCleanupCursor(self.config)
+
+    def getDBCleanupCursor(self,config):
+        """Return a cursor with permissions to delete test entries from the database"""
+        dbh = MySQLdb.Connect(user = config['DATABASE_CLEANUP_USER'],
+                                    passwd = config['DATABASE_CLEANUP_PASSWORD'],
+                                    db = config['DATABASE_NAME'],
+                                    unix_socket = config['DATABASE_UNIX_SOCKET'],
+                                    use_unicode = False
+                                    )
+        return dbh.cursor()
+
+class SquidRedirectorUnitTests(RedirectorTest):
+
+    def setUp(self):
+        super(SquidRedirectorUnitTests, self).setUp() 
+        self.wt_redir=WTSquidRedirector(self.config)
+        self.cleancur.execute("delete from whitelist_whitelist where username='wt_unittesting'")
         
     def testURLParsing(self):
 
@@ -143,15 +160,14 @@ class SquidRedirectorUnitTests(unittest.TestCase):
         self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url,ip),(False,"http://whitetrash/whitelist/error?error=Error%20checking%20domain%20in%20whitelist\n"))
        
     def tearDown(self):
-        self.wt_redir.cursor.execute("delete from whitelist_whitelist where username='wt_unittesting'")
-        self.wt_redir.cursor.execute("delete from whitelist_whitelist where domain like '%testwhitetrash.sf.net'")
+        self.cleancur.execute("delete from whitelist_whitelist where username='wt_unittesting'")
+        self.cleancur.execute("delete from whitelist_whitelist where domain like '%testwhitetrash.sf.net'")
 
 class CachedSquidRedirectorUnitTests(SquidRedirectorUnitTests):
 
     def setUp(self):
-        config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
-        self.wt_redir=WTSquidRedirectorCached(config)
-        self.wt_redir.cursor.execute("delete from whitelist_whitelist where username='wt_unittesting'")
+        super(CachedSquidRedirectorUnitTests, self).setUp() 
+        self.wt_redir=WTSquidRedirectorCached(self.config)
         self.wt_redir.cache.flush_all()
 
     def testRepeatedGet(self):

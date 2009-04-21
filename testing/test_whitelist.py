@@ -21,38 +21,28 @@ class whitelist(FunkLoadTestCase):
         """Setting up whitelist test."""
         self.title=self.conf_get('main', 'title')
         self.logd("Setting up test: %s\n" % self.title)
-        self.user = self.conf_get('main', 'proxy_username')
-        self.passwd = self.conf_get('main', 'proxy_password')
-        self.basic_auth=encodestring(self.user+":"+self.passwd).strip()
         self.lipsum = Lipsum()
 
     def test_viewwebpages(self):
         
         nb_time = self.conf_getInt('test_viewwebpages', 'nb_time')
         urls = self.conf_getList('test_viewwebpages', 'urls')
-
-        self.addHeader("Proxy-Authorization","Basic %s" % self.basic_auth)
         for i in range(nb_time):
             self.logd('Try %i' % i)
             for url in urls:
                 response=self.get("http://"+url, description='Get %s' % url)
                 self.assert_(response.body.find("<img")>=0,"URL: %s returned with no <img> tags.  Probably means the request failed." % url)
 
-    def test_404_for_blocked_nonhtml(self):
-        """Get for a media file from a non-whitelisted domain should produce a 404"""
+    def testGetFormNonHTTP(self):
+        """Test we are blocking the blocked domain to avoid returning forms that are
+        not requests for renderable HTML - e.g. *.jpg"""
 
-        self.addHeader("Proxy-Authorization","Basic %s" % self.basic_auth)
         url_404 = self.conf_get('test_404_for_blocked_nonhtml', 'url_404')
         response=self.get(url_404)
         self.assertEquals(response.code,404,"Got %s, should have been 404" % response.code)
 
-#TODO replace with something like below
-#    def testGetFormNonHTTP(self):
-#        """Test we are blocking the blocked domain to avoid returning forms that are
-#        not requests for renderable HTML - e.g. *.jpg"""
-#        response = self.client.get("https://blockedwhitetrash/empty")
-#        self.failUnlessEqual(response.status_code, 200)
-
+        response = self.client.get("https://blockedwhitetrash/empty")
+        self.failUnlessEqual(response.status_code, 200)
 
     def test_viewwhitelist(self):
         """This test is pretty CPU intensive as it parses the whole page each time looking for a /table tag (which is at the very end) to make sure we got a complete page.
@@ -60,7 +50,6 @@ class whitelist(FunkLoadTestCase):
         
         nb_time = self.conf_getInt('test_viewwhitelist', 'nb_time')
         whitelist_url = self.conf_get('test_viewwhitelist', 'whitelist_url')
-        self.addHeader("Proxy-Authorization","Basic %s" % self.basic_auth)
 
         #Add a refresh header to really test the server and proxy caching
         self.addHeader("Cache-Control","max-age=0")
@@ -75,7 +64,6 @@ class whitelist(FunkLoadTestCase):
             #The next step is very slow for large tables, not sure why.  Is fine when using Firefox.
             response=self.get(whitelist_url, description='Get whitelist')
             self.assertEquals(response.getDOM().getByName('title')[0][0],"Whitetrash Whitelist Report","Expected 'Whitetrash Whitelist Report' in HTML title'")
-            self.assert_(response.body.find("</table>"),"Page returned with no closing </table>.  We may have got an incomplete table.")
             #Check page is being cached
             timestamp=response.getDOM().getByName('p')[0][0]
             if not first_timestamp:
@@ -95,7 +83,6 @@ class whitelist(FunkLoadTestCase):
             self.addHeader("Accept-Charset","ISO-8859-1,utf-8;q=0.7,*;q=0.7")
             self.addHeader("Keep-Alive","300")
             self.addHeader("Proxy-Connection","keep-alive")
-            self.setHeader("Proxy-Authorization","Basic %s" % self.basic_auth)
 
             page = self.lipsum.getUniqWord(length_min=5,length_max=40)
             self.setHeader("Host","www.%s.com" % page)

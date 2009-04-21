@@ -81,7 +81,7 @@ Django
 By default the whole web-interface uses SSL.  If this causes a performance problem you can drop back to HTTP for everything except for the login pages and admin interface by:
 
  - Removing the rewrite directives from /etc/apache2/sites-available/whitetrash
- - Setting SESSION_COOKIE_SECURE = False in settings.py
+ - Setting ssl_server_enabled = "False" in whitetrash.conf 
 
 MySQL
 -----

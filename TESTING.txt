@@ -1,8 +1,33 @@
-I have built a suite of tests for use with the "funkload" tester: http://funkload.nuxeo.org/
+==========
+Unit Tests
+==========
 
-============================
-Running the Tests - Funkload
-============================
+Django
+~~~~~~
+
+To run the Django unit tests:
+    python manage.py test
+
+You may want to disable apache caching for testing by putting the following in /etc/apache2/httpd.conf:
+
+    MaxRequestsPerChild 1
+
+Redirector
+~~~~~~~~~~
+
+Squid redirector unit tests are also available and can be run with:
+
+    python whitetrash_unittesting.py
+
+To run just the plain redirector tests (no memcached):
+
+    python whitetrash_unittesting.py SquidRedirectorUnitTests
+
+=================
+Performance Tests
+=================
+
+I have built a suite of tests for use with the "funkload" tester: http://funkload.nuxeo.org/
 
 Set your proxy environment variable to point to your WT-enabled squid:
 
@@ -26,26 +51,9 @@ To build a fancy report:
 
   fl-build-report --html whitelist_bench.xml
 
-==============================
-Running the Tests - Unit Tests
-==============================
-
-Unit tests are also available and can be run by:
-
-python whitetrash_unittesting.py
-
-Currently unit tests are only written for the redirector, tests for whitetrash server will be written soon.
-
 =======
 Results
 =======
 
-Whitetrash has been shown to scale well, since the code is very small, and the database accesses simple.  Memcached support has been added to support very large scale enterprise deployments.  I hope to be able to test WT on a large scale with memcached in the near future.
+Whitetrash has been shown to scale well, since the code is very small, and the database accesses simple.  Memcached support has been added to support very large scale enterprise deployments.
 
-======
-Django
-======
-
-Disable apache caching for testing by putting the following in /etc/apache2/httpd.conf:
-
-    MaxRequestsPerChild 1

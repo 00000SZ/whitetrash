@@ -18,7 +18,7 @@ def absp(path):
 #session expiry time in seconds.
 SESSION_COOKIE_AGE = 28800
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = conf("ssl_server_enabled")
 
 LOGIN_REDIRECT_URL = "/whitelist/addentry/?url=&domain="
 

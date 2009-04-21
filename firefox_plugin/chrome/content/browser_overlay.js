@@ -410,6 +410,7 @@ whitetrashOverlay = {
             window.removeEventListener("unload", arguments.callee, false);
             window.removeEventListener("DOMContentLoaded", this.wrapOnContentLoad, false);
             window.browserDOMWindow = null;
+            whitetrashOverlay.domainMenuList.clearList();
             //TODO: make sure I clean up everything here
         },
     
