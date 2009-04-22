@@ -61,8 +61,6 @@ class WhiteListForm(ModelForm):
     captcha_response = CharField(max_length=20,required=False)
 
     def clean_domain(self):
-        #TODO check against the google blacklist
-
         data = self.cleaned_data['domain']
         try:
             re.match("^([a-z0-9-]{1,50}\.){1,6}[a-z]{2,6}$",data).group()
@@ -74,6 +72,18 @@ class WhiteListForm(ModelForm):
         model = Whitelist 
         fields = ("domain", "protocol", "url", "comment")
 
+    def clean_url(self):
+        """We want to use the URL escaping because it protects us
+        from XSS, but unfortunately it screws up our links because it converts
+        http: to http%3A.  Use this function to fix this and we are good."""
+        #TODO check url against the google blacklist
+        #Will have to do this with with the raw url
+
+        try:
+            data = re.sub(r"^(https?)%3A",r"\1:",self.cleaned_data['url'])
+            return data
+        except Exception,e:
+            raise ValidationError("Bad url.")
 
 class WhiteListCheckDomainForm(WhiteListForm):
     """Form for checking if a domain is in the whitelist via AJAX."""

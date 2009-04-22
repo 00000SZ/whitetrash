@@ -87,6 +87,7 @@ class WhitetrashInstallData(install):
 
             #This user is for django 
             self.createDBUser(cur,config["DATABASE_DJANGO_USER"],config["DATABASE_DJANGO_PASSWORD"])
+            cur.execute("GRANT ALL on whitetrash.* TO %s",(config["DATABASE_DJANGO_USER"]))
 
             #This user is for the whitetrash squid redirector (url rewriter)
             self.createDBUser(cur,config["DATABASE_WHITETRASH_USER"],config["DATABASE_WHITETRASH_PASSWORD"])
@@ -97,7 +98,6 @@ class WhitetrashInstallData(install):
             #We need to install django here to get the right tables for the next grants
             self.installDjango()
 
-            cur.execute("GRANT ALL on whitetrash.* TO %s",(config["DATABASE_DJANGO_USER"]))
             cur.execute("GRANT INSERT,SELECT,UPDATE on whitetrash.whitelist_whitelist TO %s",(config["DATABASE_WHITETRASH_USER"]))
             cur.execute("GRANT SELECT,DELETE on whitetrash.whitelist_whitelist TO %s",(config["DATABASE_CLEANUP_USER"]))
 
