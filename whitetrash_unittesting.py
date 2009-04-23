@@ -88,24 +88,24 @@ class SquidRedirectorUnitTests(RedirectorTest):
 
         if not self.wt_redir.get_whitelist_id(self.wt_redir.PROTOCOL_CHOICES["HTTP"],
         	                                  "insertme.new.whitetrash.sf.net",
-        	                                  "new.whitetrash.sf.net"):
+        	                                  "new.whitetrash.sf.net",wild=False):
             self.fail("Domain not added")
 
-        if self.wt_redir.get_whitelist_id_wild(self.wt_redir.PROTOCOL_CHOICES["HTTP"],
-        	                                    "new.whitetrash.sf.net"):
+        if self.wt_redir.get_whitelist_id(self.wt_redir.PROTOCOL_CHOICES["HTTP"],
+        	                                    "www.new.whitetrash.sf.net","new.whitetrash.sf.net",wild=True):
             self.fail("Should return empty because wild was not inserted")
 
     def testGetWhitelistID(self):
 
         self.wt_redir.cursor.execute("insert into whitelist_whitelist set domain='testwild.whitetrash.sf.net',date_added=NOW(),username='wt_unittesting',protocol=%s,url='http://sdlkj',comment='whitetrash testing',enabled=1,hitcount=1,last_accessed=NOW(),client_ip='192.168.1.1'", (self.wt_redir.PROTOCOL_CHOICES["HTTP"]))
 
-        if not self.wt_redir.get_whitelist_id_wild(self.wt_redir.PROTOCOL_CHOICES["HTTP"],
-        	                                    "testwild.whitetrash.sf.net"):
+        if not self.wt_redir.get_whitelist_id(self.wt_redir.PROTOCOL_CHOICES["HTTP"],
+        	                                    "www.testwild.whitetrash.sf.net","testwild.whitetrash.sf.net",wild=True):
             self.fail("Did not return wild whitelist id")
         self.wt_redir.url_domain_only="images.testwild.whitetrash.sf.net"
         if not self.wt_redir.get_whitelist_id(self.wt_redir.PROTOCOL_CHOICES["HTTP"],
         	                                    "www.testwild.whitetrash.sf.net",
-        	                                    "testwild.whitetrash.sf.net"):
+        	                                    "testwild.whitetrash.sf.net",wild=False):
             self.fail("Did not return whitelist id")
 
 
@@ -175,10 +175,15 @@ class CachedSquidRedirectorUnitTests(SquidRedirectorUnitTests):
         The first get will grab from the DB.  The second will grab from the cache, so we want to test that.
         """
         self.testAddToWhitelist()
-        if not self.wt_redir.get_whitelist_id(): self.fail("Domain insertme.new.whitetrash.sf.net not added")
-        if self.wt_redir.get_whitelist_id_wild(): self.fail("Should return empty because wild was not inserted")
-        self.wt_redir.url_domain_only="notinwhitelist.sf.net"
-        if self.wt_redir.get_whitelist_id(): self.fail("Should return empty, notinwhitelist.sf.net not inserted")
+        if not self.wt_redir.get_whitelist_id(self.wt_redir.PROTOCOL_CHOICES["HTTP"],
+        	                                  "insertme.new.whitetrash.sf.net",
+        	                                  "new.whitetrash.sf.net",wild=False):
+            self.fail("Domain insertme.new.whitetrash.sf.net not added")
+
+        if not self.wt_redir.get_whitelist_id(self.wt_redir.PROTOCOL_CHOICES["HTTP"],
+        	                                  "insertme.new.whitetrash.sf.net",
+        	                                  "new.whitetrash.sf.net",wild=False):
+            self.fail("Second get failed where first succeeded.  Problem with memcache.")
 
 def allTests():
     return unittest.TestSuite((unittest.makeSuite(CachedSquidRedirectorUnitTests),

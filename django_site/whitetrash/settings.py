@@ -110,3 +110,19 @@ INSTALLED_APPS = (
     'django.contrib.admin',
     'whitetrash.whitelist',
 )
+
+if conf("LDAP_AUTH"):
+
+    import ldap
+    AUTHENTICATION_BACKENDS = (
+    'whitetrash.ldapauth.LDAPBackend',
+    # 'django.contrib.auth.backends.ModelBackend',
+    )
+    #LDAP_DEBUG=True
+    LDAP_SERVER_URI='ldaps://fqdn.com:636'
+    LDAP_SEARCHDN='dc=myorg,dc=lan'
+    LDAP_FULL_NAME='uid'
+    LDAP_BINDDN = 'ou=people,dc=myorg,dc=lan'
+    LDAP_BIND_ATTRIBUTE = 'uid'
+    LDAP_OPTIONS = {ldap.OPT_X_TLS_CACERTFILE: "/etc/ssl/ldapcacert.pem"}
+

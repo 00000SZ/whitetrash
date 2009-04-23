@@ -110,7 +110,7 @@ class LDAPBackend(object):
 
         if self.settings['LDAP_OPTIONS']:
             for k in self.settings['LDAP_OPTIONS']:
-                self.ldap.set_option(k, self.settings.LDAP_OPTIONS[k])
+                self.ldap.set_option(k, self.settings['LDAP_OPTIONS'][k])
 
         l = self.ldap.initialize(self.settings['LDAP_SERVER_URI'])
 

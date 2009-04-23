@@ -31,6 +31,7 @@ Create ssl cert and enable apache ssl module (this is for self-signed, better if
 
     a2enmod ssl rewrite
     sudo openssl genrsa -out /etc/apache2/ssl/server.key 4096
+    sudo chmod 600 /etc/apache2/ssl/server.key
     #Use whitetrash as the common name
     sudo openssl req -new -key /etc/apache2/ssl/server.key -out server.csr
     sudo openssl x509 -req -days 365 -in server.csr -signkey /etc/apache2/ssl/server.key -out /etc/apache2/ssl/server.crt
@@ -97,6 +98,15 @@ MySQL - memcached
 
 To take the load off the database, the whitetrash redirector can use memcached.  Just install cmemcached, and allocate some server memory.
 List the memcache servers and enable use_memcached in whitetrash.conf.
+
+To install memcached:
+
+    sudo apt-get install libmemcache-dev libmemcache0 memcached
+    wget http://gijsbert.org/downloads/cmemcache/cmemcache-0.95.tar.bz2
+
+    Ignore the patch for libmemcache, you don't need it with the packaged version.
+
+    Customise /etc/memcached
 
 System
 ------

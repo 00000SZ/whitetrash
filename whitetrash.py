@@ -69,25 +69,27 @@ class WTSquidRedirector:
 
         return dbh.cursor()
        
-    def get_whitelist_id(self,proto,domain,domain_wild):
-        """Get whitelist_id for non www domain.
+    def get_whitelist_id(self,proto,domain,domain_wild,wild=False):
+        """Get whitelist_id.
 
-        If we are checking images.slashdot.org and www.slashdot.org is listed, we let it through.  
-        If we don't do this pretty much every big site is trashed because images are served from a subdomain.
-        Only want this behaviour for www - we don't want to throw away the start of every domain 
-        because users won't expect this."""
+        If wild=false:
+            This is a non www domain.
+            If we are checking images.slashdot.org and www.slashdot.org is listed, we let it through.  
+            If we don't do this pretty much every big site is trashed because images are served from a subdomain.
+            Only want this behaviour for www - we don't want to throw away the start of every domain 
+            because users won't expect this.
 
-        self.cursor.execute("select whitelist_id,enabled from whitelist_whitelist where protocol=%s and ((domain=%s) or (domain=%s))", (proto,domain,domain_wild))
+        If wild=true:
+            Get whitelist ID for the wildcarded domain (i.e. www or www2).
+        """
+
+        if wild:
+            self.cursor.execute("select whitelist_id,enabled from whitelist_whitelist where domain=%s and protocol=%s", (domain_wild,proto))
+        else:
+            self.cursor.execute("select whitelist_id,enabled from whitelist_whitelist where protocol=%s and ((domain=%s) or (domain=%s))", (proto,domain,domain_wild))
 
         return self.cursor.fetchone()
 
-    def get_whitelist_id_wild(self,proto,domain_wild):
-        """Get whitelist ID for the wildcarded domain (i.e. www or www2)."""
-
-        self.cursor.execute("select whitelist_id,enabled from whitelist_whitelist where domain=%s and protocol=%s", (domain_wild,proto))
-
-        return self.cursor.fetchone()
-            
     def add_to_whitelist(self,domain,protocol,username,url,clientaddr):
         self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),username=%s,protocol=%s,url=%s,comment='Auto add, learning mode',enabled=1,hitcount=1,last_accessed=NOW(),client_ip=%s", (domain,username,protocol,url,clientaddr))
 
@@ -126,13 +128,11 @@ class WTSquidRedirector:
             domain_wild=re.sub("^[a-z0-9-]+\.","",domain,1)
 
             if self.www.match(domain):
-                white_id=self.get_whitelist_id_wild(protocol, domain_wild)
+                white_id=self.get_whitelist_id(protocol,domain,domain_wild,wild=True)
                 domain=domain_wild
 
             else:
-                white_id=self.get_whitelist_id(protocol,
-                                            domain,
-                                            domain_wild)
+                white_id=self.get_whitelist_id(protocol,domain,domain_wild,wild=False)
             if white_id:
         	    (whitelist_id,enabled)=white_id
             else:
@@ -283,26 +283,30 @@ class WTSquidRedirectorCached(WTSquidRedirector):
         self.servers=config["memcache_servers"].split(",")
         self.cache=cmemcache.StringClient(self.servers)
 
-    def find_id(self,domain,dbmethod,*args):
-        """Get whitelist id from memcache cache or, failing that, the database"""
+    def get_whitelist_id(self,proto,domain,domain_wild,wild):
+        """Get whitelist id from memcache cache or, failing that, the database
+        
+        The behaviour is to get either cache_value or cache_value_wild when wild is false
+        and only cach_value_wild when wild is true...probably need to rename some variables.
+        """
 
-        key="|".join((domain,self.protocol))
+        key="|".join((domain,str(proto)))
         cache_value=self.cache.get(key)
-        if cache_value:
+
+        key_wild="|".join((domain_wild,str(proto)))
+        cache_value_wild=self.cache.get(key_wild)
+
+        if cache_value and not wild:
             #syslog.syslog("Using cache value %s: %s" % (key,cache_value))
             return cache_value
+        elif cache_value_wild:
+            return cache_value_wild
         else:
-            result=dbmethod(self,*args)
+            result=WTSquidRedirector.get_whitelist_id(self,proto,domain,domain_wild,wild)
             if result:
                 #syslog.syslog("Got result from db %s: %s" % (key,str(result[0])))
                 self.cache.set(key,str(result[0]))
             return result
-
-    def get_whitelist_id(self):
-        return self.find_id(self.url_domain_only,WTSquidRedirector.get_whitelist_id)
-
-    def get_whitelist_id_wild(self):
-        return self.find_id(self.url_domain_only_wild,WTSquidRedirector.get_whitelist_id_wild)
 
 if __name__ == "__main__":
     config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
