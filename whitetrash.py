@@ -108,7 +108,9 @@ class WTSquidRedirector:
     def enable_domain(self,whitelist_id):
         """Update db entry to set enabled=1."""
 
-        self.cursor.execute("update whitelist_whitelist set username='auto',date_added=NOW(),last_accessed=NOW(),comment='Auto add, learning mode',enabled=1,hitcount=hitcount+1 where whitelist_id=%s", whitelist_id)
+        ret=self.cursor.execute("update whitelist_whitelist set username='auto',date_added=NOW(),last_accessed=NOW(),comment='Auto add, learning mode',enabled=1,hitcount=hitcount+1 where whitelist_id=%s", whitelist_id)
+        if ret!=1:
+        	raise ValueError("Error enabling domain, it must be present in the table")
 
     def update_hitcount(self,whitelist_id):
         self.cursor.execute("update whitelist_whitelist set last_accessed=NOW(),hitcount=hitcount+1 where whitelist_id=%s", whitelist_id)

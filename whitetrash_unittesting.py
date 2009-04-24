@@ -24,6 +24,7 @@ import unittest
 from configobj import ConfigObj
 from whitetrash import WTSquidRedirector
 from whitetrash import WTSquidRedirectorCached
+from exceptions import TypeError
 import httplib
 import MySQLdb
 
@@ -90,6 +91,11 @@ class SquidRedirectorUnitTests(RedirectorTest):
         self.assertEqual(domain,"alreadywhitelisted.whitetrash.sf.net",
                         "Got %s, Expected alreadywhitelisted.whitetrash.sf.net" % (domain))
 
+    def testEnableNonExistantDomainID(self):
+        whitelist_id=99999
+        test=self.wt_redir.get_proto_domain(whitelist_id)
+        self.assertFalse(test,"Tried to pick a whitelist_id that didn't exist (%s), but already in database" % (whitelist_id))
+        self.assertRaises(ValueError,lambda: self.wt_redir.enable_domain(whitelist_id))
 
     def testEnableDomain(self):
         self.wt_redir.add_disabled_domain("disabled.testwhitetrash.sf.net",
@@ -98,6 +104,11 @@ class SquidRedirectorUnitTests(RedirectorTest):
                                         "http%3A//www.testwhitetrash.sf.net/FAQ",
                                         "192.168.3.1")
 
+        (thisid,enabled)=self.wt_redir.get_whitelist_id(self.wt_redir.PROTOCOL_CHOICES["HTTP"],
+                                    "www.disabled.testwhitetrash.sf.net","disabled.testwhitetrash.sf.net",wild=True)
+        self.assertFalse(enabled,"This domain was added disabled, should be false")
+
+        #do this twice to exercise memcache
         (thisid,enabled)=self.wt_redir.get_whitelist_id(self.wt_redir.PROTOCOL_CHOICES["HTTP"],
                                     "www.disabled.testwhitetrash.sf.net","disabled.testwhitetrash.sf.net",wild=True)
         self.assertFalse(enabled,"This domain was added disabled, should be false")

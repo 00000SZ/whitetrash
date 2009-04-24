@@ -84,7 +84,23 @@
             "hitcount": 1, 
             "date_added": "2009-02-05 22:04:50"
         }
-    } 
+    }, 
 
+   {
+        "pk": 5, 
+        "model": "whitelist.whitelist", 
+        "fields": {
+            "username": "testuser", 
+            "comment": "to be deleted", 
+            "domain": "testwhitetrash.sf.net", 
+            "protocol": 1, 
+            "url": "http://testing1.com", 
+            "last_accessed": "2009-02-05 22:04:50", 
+            "enabled": 1, 
+            "client_ip": "222.221.1.2", 
+            "hitcount": 0, 
+            "date_added": "2009-02-05 22:04:50"
+        }
+    }
 
 ]

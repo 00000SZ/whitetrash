@@ -42,9 +42,18 @@ class Whitelist(models.Model):
                                     help_text="Time this domain was last requested",blank=False,editable=False)
 
     def save(self,force_insert=False, force_update=False):
+        """If this is a new entry add it with timestamp=NOW()
+        If we are using memcache, update the memcache entry.  Note
+        only existing domains will be added to memcache because we need to 
+        store the whitelist id and we don't have it until the entry is in the DB.
+        """
         if not self.whitelist_id:
+        	#This must be a new entry
             self.date_added = datetime.now()
         super(Whitelist, self).save(force_insert) 
+        if settings.MEMCACHE and self.whitelist_id and self.domain and self.protocol:
+            settings.MEMCACHE.set("|".join((self.domain,str(self.protocol))),(self.whitelist_id,self.enabled))
+
 
     class Meta:
         #This is more correct, but it causes problems with form submission

@@ -2,6 +2,7 @@
 
 from whitetrash.whitelist.models import Whitelist
 from django.test import TestCase
+from django.conf import settings
 
 class WhitetrashTestGeneral(TestCase):
     fixtures = ["testing.json"]
@@ -87,6 +88,12 @@ class WhitetrashTestAddEntry(TestCase):
         #Make sure we didn't create a new entry and leave the old one there.
         self.assertFalse(Whitelist.objects.filter(domain="testing4.com",protocol=Whitelist.get_protocol_choice("HTTP"),enabled=False))
 
+        if settings.MEMCACHE:
+            result=settings.MEMCACHE.get("testing4.com|%s" % Whitelist.get_protocol_choice("HTTP"))
+            self.assertTrue(result,"Domain should be present because of the save operation when enabled")
+            (id,enabled)=result
+            self.assertTrue(enabled,"Domain should be enabled in the memcache")
+
     def testAlreadyWhitelisted(self):
         response = self.client.post("/whitelist/addentry/", {"url":"",
                         "domain":"testing1.com",
@@ -131,26 +138,28 @@ class WhitetrashTestAddEntry(TestCase):
         self.assertContains(response, 'class="errorlist"', status_code=200)
         self.assertFormError(response, 'form', 'domain', 'This field is required.')
 
-#class WhitetrashTestCaptcha(TestCase):
-#    """Test captcha display.
+class WhitetrashTestCaptcha(TestCase):
+    """Test captcha display.
 
-#    It is really annoying to test things that require changes in django.settings.
-#    I tried this snippet http://www.djangosnippets.org/snippets/1011/ but it didn't work.
-#    For now will have to leave this commented out and change settings manually. Suck!
-#    """
-#    fixtures = ["testing.json"]
+    It is really annoying to test things that require changes in django.settings.
+    I tried this snippet http://www.djangosnippets.org/snippets/1011/ but it didn't work.
+    For now will have to leave this commented out and change settings manually. Suck!
+    """
+    fixtures = ["testing.json"]
 
-#    def setUp(self):
-#        self.client.login(username='testuser', password='passwd')
+    def setUp(self):
+        self.client.login(username='testuser', password='passwd')
 
-#    def testGetFormHTTP(self):
-#        response = self.client.get("/whitelist/addentry/", {"url":"http%3A//sldjflksjdf.com/","domain":"sldjflksjdf.com"} )
-#        self.assertTemplateUsed(response, 'whitelist/whitelist_getform.html')
-#        self.assertContains(response, 'name="domain" value="sldjflksjdf.com"', status_code=200)
-#        self.assertContains(response, 'selected="selected">HTTP', status_code=200)
-#        self.assertContains(response, 'Client Username: </b>testuser', status_code=200)
-#        self.assertContains(response, '<input type="hidden" name="url" value="http%3A//sldjflksjdf.com/"', status_code=200)
-#        self.assertContains(response, '<img id="captchaImage"', status_code=200)
+    def testGetFormHTTP(self):
+        if settings.CAPTCHA_HTTP:
+            response = self.client.get("/whitelist/addentry/", {"url":"http%3A//sldjflksjdf.com/","domain":"sldjflksjdf.com"} )
+            self.assertTemplateUsed(response, 'whitelist/whitelist_getform.html')
+            self.assertContains(response, 'name="domain" value="sldjflksjdf.com"', status_code=200)
+            self.assertContains(response, 'selected="selected">HTTP', status_code=200)
+            self.assertContains(response, 'Client Username: </b>testuser', status_code=200)
+            self.assertContains(response, '<input type="hidden" name="url" value="http%3A//sldjflksjdf.com/"', status_code=200)
+            self.assertContains(response, '<img id="captchaImage"', status_code=200)
+            
 
 class WhitetrashTestDelEntry(TestCase):
     fixtures = ["testing.json"]
@@ -180,6 +189,21 @@ class WhitetrashTestDelEntry(TestCase):
         response = self.client.post("/whitelist/delete/", {"DeleteId":"'--"} )
         self.assertTrue(Whitelist.objects.filter(pk=1))
         self.assertTemplateUsed(response, 'whitelist/whitelist_error.html')
+
+    def testdelMultipleEntriesMemcache(self):
+        if settings.MEMCACHE:
+            self.assertTrue(Whitelist.objects.filter(pk=1))
+            self.assertTrue(Whitelist.objects.filter(pk=5))
+            id_5_key="testwhitetrash.sf.net|%s" % Whitelist.get_protocol_choice("HTTP")
+            settings.MEMCACHE.set(id_5_key,(5,False))
+            response = self.client.post("/whitelist/delete/", {"DeleteId":[1,5]} )
+            self.assertTemplateUsed(response, 'whitelist/whitelist_deleted.html')
+            self.assertFalse(Whitelist.objects.filter(pk=1))
+            self.assertFalse(Whitelist.objects.filter(pk=5))
+
+            result=settings.MEMCACHE.get(id_5_key)
+            self.assertFalse(result,"Domain should have been removed from memcache")
+
 
 class WhitetrashTestDomainCheck(TestCase):
     fixtures = ["testing.json"]

@@ -199,7 +199,6 @@ def limited_object_list(*args, **kwargs):
 
 @login_required
 def delete_entries(request):
-#TODO: delete from memcache if memcache is on.
 
     if request.method == 'POST':
         try:
@@ -210,7 +209,17 @@ def delete_entries(request):
                 if id < 0:
                     raise ValidationError("Bad ID passed")
 
-            Whitelist.objects.filter(pk__in=idlist).filter(username=request.user).delete()
+            if settings.MEMCACHE:
+                list=Whitelist.objects.filter(pk__in=idlist).filter(username=request.user)
+                for obj in list:
+                    key = "|".join((obj.domain,str(obj.protocol)))
+                    if settings.MEMCACHE.get(key):
+                        settings.MEMCACHE.delete(key)
+                    obj.delete()
+            else:
+                Whitelist.objects.filter(pk__in=idlist).filter(username=request.user).delete()
+
+
             return render_to_response('whitelist/whitelist_deleted.html', 
                             { 'num_deleted':len(idlist)})
         except:

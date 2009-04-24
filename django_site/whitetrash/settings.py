@@ -111,6 +111,11 @@ INSTALLED_APPS = (
     'whitetrash.whitelist',
 )
 
+if conf("use_memcached"):
+    import cmemcache
+    MEMCACHE_SERVERS=config["memcache_servers"].split(",")
+    MEMCACHE=cmemcache.Client(MEMCACHE_SERVERS)
+
 if conf("LDAP_AUTH"):
 
     import ldap
