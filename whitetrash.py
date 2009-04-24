@@ -90,6 +90,10 @@ class WTSquidRedirector:
 
         return self.cursor.fetchone()
 
+    def get_proto_domain(self,whitelist_id):
+        self.cursor.execute("select protocol,domain from whitelist_whitelist where whitelist_id=%s", (whitelist_id))
+        return self.cursor.fetchone()
+    
     def add_to_whitelist(self,domain,protocol,username,url,clientaddr):
         self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),username=%s,protocol=%s,url=%s,comment='Auto add, learning mode',enabled=1,hitcount=1,last_accessed=NOW(),client_ip=%s", (domain,username,protocol,url,clientaddr))
 
@@ -133,6 +137,7 @@ class WTSquidRedirector:
 
             else:
                 white_id=self.get_whitelist_id(protocol,domain,domain_wild,wild=False)
+
             if white_id:
         	    (whitelist_id,enabled)=white_id
             else:
@@ -281,13 +286,24 @@ class WTSquidRedirectorCached(WTSquidRedirector):
     def __init__(self,config):
         WTSquidRedirector.__init__(self,config)
         self.servers=config["memcache_servers"].split(",")
-        self.cache=cmemcache.StringClient(self.servers)
+        self.cache=cmemcache.Client(self.servers)
+
+    def enable_domain(self,whitelist_id):
+        """Update db and memcache entry to set enabled=1."""
+        
+        WTSquidRedirector.enable_domain(self,whitelist_id)
+        (proto,domain)=WTSquidRedirector.get_proto_domain(self,whitelist_id)
+
+        key="|".join((domain,str(proto)))
+        self.cache.set(key,(whitelist_id,True))
+
 
     def get_whitelist_id(self,proto,domain,domain_wild,wild):
         """Get whitelist id from memcache cache or, failing that, the database
         
         The behaviour is to get either cache_value or cache_value_wild when wild is false
         and only cach_value_wild when wild is true...probably need to rename some variables.
+
         """
 
         key="|".join((domain,str(proto)))
@@ -297,7 +313,7 @@ class WTSquidRedirectorCached(WTSquidRedirector):
         cache_value_wild=self.cache.get(key_wild)
 
         if cache_value and not wild:
-            #syslog.syslog("Using cache value %s: %s" % (key,cache_value))
+            syslog.syslog("Using cache value %s: %s" % (key,cache_value))
             return cache_value
         elif cache_value_wild:
             return cache_value_wild
@@ -305,7 +321,10 @@ class WTSquidRedirectorCached(WTSquidRedirector):
             result=WTSquidRedirector.get_whitelist_id(self,proto,domain,domain_wild,wild)
             if result:
                 #syslog.syslog("Got result from db %s: %s" % (key,str(result[0])))
-                self.cache.set(key,str(result[0]))
+                if wild:
+                    self.cache.set(key_wild,result)
+                else:
+                    self.cache.set(key,result)
             return result
 
 if __name__ == "__main__":
