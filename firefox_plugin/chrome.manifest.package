@@ -1,0 +1,5 @@
+content     whitetrash      jar:chrome/whitetrash.jar!/content/
+skin        whitetrash      classic                 jar:chrome/whitetrash.jar!/skin/
+overlay     chrome://browser/content/browser.xul    chrome://whitetrash/content/browser_overlay.xul
+locale      whitetrash      en                      jar:chrome/whitetrash.jar!/locale/en/whitetrash/
+
