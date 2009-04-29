@@ -29,7 +29,7 @@ Run the setup script and supply your DB root password:
 
 Create ssl cert and enable apache ssl module (this is for self-signed, better if you buy one):
 
-    a2enmod ssl rewrite
+    sudo a2enmod ssl rewrite
     sudo openssl genrsa -out /etc/apache2/ssl/server.key 4096
     sudo chmod 600 /etc/apache2/ssl/server.key
     #Use whitetrash as the common name
@@ -45,7 +45,7 @@ Squid Config
 
 An example config with comments has been installed in /etc/squid/squid.conf, you probably don't need to change anything in here.
 If you have a large network, check the performance section below.
-This config is for Squid 2.7.STABLE3.  Your original squid.conf is backed up in the same directory.
+This config is for Squid 2.7.STABLE3.  Your original squid.conf is backed up in the same directory.  You may want to use vimdiff on the whitetrash and package conf file to pull in any options from newer versions of squid.
 
 The result
 ~~~~~~~~~~
