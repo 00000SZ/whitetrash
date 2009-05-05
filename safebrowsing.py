@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 
-# Test in safebrowsing_tests.py
+# Tests in safebrowsing_tests.py
 
-import cmemcache
 import socket
 import urllib2
+import urlparse
 import re
+from hashlib import md5
+
+import cmemcache
 
 # Constants for version 1 of the Safe Browsing API
 MALWARE = "malware"
@@ -19,12 +22,11 @@ class SafeBrowsingUpdate(object):
     """Grabs the phishing or malware blacklists from
        the Google safebrowsing API"""
 
-    new_hashes = []
-    old_hashes = []
-
     def __init__(self, type, version):
         self.type = type
         self.version = version
+        self.new_hashes = []
+        self.old_hashes = []
 
     def get_version_string(self):
         if self.type == MALWARE:
@@ -143,26 +145,149 @@ class BlacklistCache(object):
     def _set_malware_version(self, value): return self.cache.set("safebrowsing-malware-version", value) 
     malware_version = property(_get_malware_version, _set_malware_version, doc="The malware blacklist version")
 
-    def _get_phishing_version(self): return self.cache.get("safebrowsing-black-version")
-    def _set_phishing_version(self, value): return self.cache.set("safebrowsing-black-version", value) 
+    def _get_phishing_version(self): return self.cache.get("safebrowsing-phishing-version")
+    def _set_phishing_version(self, value): return self.cache.set("safebrowsing-phishing-version", value) 
     phishing_version = property(_get_phishing_version, _set_phishing_version, doc="The phishing blacklist version")
 
-#    def check_url(self, url):
-#        # use urlparse here instead
-#        url = url.lower()
-#        url_regex = re.compile("")
-#        url_match = url_regex.match(url)
-#        if url_match:
-#            url, prefix, suffix = url_match.groups()
-#            for domain in _generate_url_prefixes(prefix):
-#                for path in _generate_url_suffixes(suffix):
-#                    temp_url = domain.join([path])
-#
-#    def _generate_url_prefixes(self, prefix):
-#        return prefix
-#
-#    def _generate_url_suffixes(suffix):
-#        return suffix
+    def check_url(self, url):
+        try:
+            hasher = URLHasher(url)
+        except URLHasherError, e:
+            raise BlacklistCacheError(str(e))
+        hashes = hasher.get_hashes()
+        for hash in hashes:
+            lookup = self.cache.get(hash)
+            if self._validate_cache_value(lookup):
+                return self._cache_value_type(lookup)
+
+        return None
+
+    def _validate_cache_value(self, value):
+        if not value:
+            return None
+
+        type_alias = value[0]
+        print "alias:", type_alias
+        version = int(value[1:])
+        print "version:", version
+        print "m_version:", self.malware_version
+        print "p_version:", self.phishing_version
+        if type_alias == "m":
+            return version >= self.malware_version
+        if type_alias == "p":
+            return version >= self.phishing_version
+
+    def _cache_value_type(self, value):
+        if value.startswith("m"):
+            return MALWARE
+        if value.startswith("p"):
+            return PHISHING
+
+
+class BlacklistCacheError(Exception):
+    pass
+
+
+class URLHasher(object):
+
+    def __init__(self, url):
+        self.url = self.canonicalize_url(url)
+
+    def canonicalize_url(self, url):
+
+        url = url.lower()
+        urlparts = urlparse.urlparse(url)
+
+        new_url = urlparse.urlunparse((urlparts.scheme,
+                                       self._canonicalize_hostname(urlparts.netloc),
+                                       self._canonicalize_path(urlparts.path),
+                                       urlparts.params, urlparts.query, urlparts.fragment))
+        return new_url
+
+    def _canonicalize_hostname(self, hostname):
+        # Canonicalizes a hostname by:
+        # - removing all leading and trailing dots
+        # - replace consecutive dots with a single dot
+
+        # replace consecutive dots with a single dot
+        new_hostname = re.sub("\.+", ".", hostname)
+
+        # remove leading or trailing dots
+        if new_hostname.startswith("."):
+            new_hostname = new_hostname[1:]
+        if new_hostname.endswith("."):
+            new_hostname = new_hostname[:-1]
+
+        return new_hostname
+
+    def _canonicalize_path(self, path):
+        # Canonicalizes a url path by:
+        #  - unencoding any urlencoded values
+        #  - removing "/.." and the preceding directory
+        #  - removing all occurences of "/."
+        #  - making sure there is a path i.e. replace "" with "/"
+
+        # unescape the url
+        new_path = urllib2.unquote(path)
+
+        # Remove any directory traversal
+        if new_path.startswith("/.."):
+            raise URLHasherError("Invalid URL: path starts with relative path indicator '/..'")
+        while re.search("/\.\.", new_path):
+            if new_path.startswith("/.."):
+                raise URLHasherError("Invalid URL: path contains too many of relative path indicator '/..'")
+            new_path = re.sub("[^/]+/\.\.[/]?", "", new_path)
+        new_path = new_path.replace("/./", "/")
+
+        # making sure there is a path
+        if new_path == "":
+            return "/"
+
+        return new_path
+
+    def get_hashes(self):
+        for hostname in self._generate_url_prefixes():
+            for path in self._generate_url_suffixes():
+                temp_url = ''.join([hostname, path])
+                yield md5(temp_url).hexdigest()
+
+    def _generate_url_prefixes(self):
+        urlparts = urlparse.urlparse(self.url)
+        hostname = urlparts.netloc
+        yield hostname
+        parts = hostname.split(".")
+        if len(parts) > 5:
+            parts = parts[-5:]
+
+        for i in xrange(len(parts)*-1, -1):
+            yield ".".join(parts[i:])
+
+    def _generate_url_suffixes(self):
+        urlparts = urlparse.urlparse(self.url)
+        path = urlparts.path
+        #params = urlparts.params
+        query = urlparts.query
+        fragment = urlparts.fragment
+
+        if fragment:
+            if query:
+                yield ''.join([path, "?", query, "#", fragment])
+            else:
+                yield ''.join([path, "#", fragment])
+        if query:
+            yield ''.join([path, "?", query])
+        yield path
+
+        path = re.sub("[^/]*$", "", path)
+        components = path.split("/")
+        for i in xrange(2, len(components)):
+            yield"/".join(components[0:i]) + "/"
+        yield "/"
+
+
+class URLHasherError(Exception):
+    pass
+
 
 class SafeBrowsingManager():
     """Manages the retreival of updates from the safe browsing API"""
@@ -216,11 +341,7 @@ def main():
 
 def update_safebrowsing_blacklist(config):
     cache = BlacklistCache(config)
-    d = dict(apikey = config["safebrowsing_api_key"],
-             malware_version = cache.malware_version,
-             phishing_version = cache.phishing_version,
-             retry = cache.last_request_status)
-    mgr = SafeBrowsingManager(**d)
+    mgr = SafeBrowsingManager(config["safebrowsing_api_key"])
     try:
         mgr.get_updates()
     except SafeBrowsingAvailabilityException, e:
