@@ -5,6 +5,8 @@ import os
 import glob
 import datetime
 
+#TODO: create log files in /var/log for django and redirector
+
 try:
     from distutils.core import setup
     from distutils.file_util import copy_file,move_file

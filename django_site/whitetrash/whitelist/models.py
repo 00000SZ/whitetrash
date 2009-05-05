@@ -21,6 +21,7 @@ class Whitelist(models.Model):
         for (num,proto_string) in cls.PROTOCOL_CHOICES:
     	    if proto_string == this_string:
     		    return num
+        settings.LOG.debug("No such protocol: %s" % this_string)
     	raise ValueError("No such protocol")
 
     get_protocol_choice = classmethod(get_protocol_choice)
@@ -75,6 +76,7 @@ class WhiteListForm(ModelForm):
             re.match("^([a-z0-9-]{1,50}\.){1,6}[a-z]{2,6}$",data).group()
             return data
         except AttributeError:
+            settings.LOG.debug("Bad domain: %s" % data)
             raise ValidationError("Bad domain name.")
 
     class Meta:
@@ -92,6 +94,7 @@ class WhiteListForm(ModelForm):
             data = re.sub(r"^(https?)%3A",r"\1:",self.cleaned_data['url'])
             return data
         except Exception,e:
+            settings.LOG.debug("Bad url: %s" % self.cleaned_data['url'])
             raise ValidationError("Bad url.")
 
 class WhiteListCheckDomainForm(WhiteListForm):

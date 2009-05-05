@@ -1,8 +1,6 @@
 from django.conf import settings
 from django.contrib.auth.models import User
 
-import logging
-
 class LDAPBackend(object):
     """
     Authenticate a user against LDAP.
@@ -10,7 +8,7 @@ class LDAPBackend(object):
 
     Requires the following things to be in settings.py:
     LDAP_DEBUG -- boolean
-        Uses logging module for debugging messages.
+        Uses settings.LOG module for debugging messages.
     LDAP_SERVER_URI -- string, ldap uri.
         default: 'ldap://localhost'
     LDAP_SEARCHDN -- string of the LDAP dn to use for searching
@@ -104,7 +102,7 @@ class LDAPBackend(object):
         if not username and password is not None:
             if self.settings['LDAP_DEBUG']:
                 assert False
-                logging.info('LDAPBackend.authenticate failed: username or password empty: %s %s' % (
+                settings.LOG.info('LDAPBackend.authenticate failed: username or password empty: %s %s' % (
                     username, password))
             return None
 
@@ -117,7 +115,7 @@ class LDAPBackend(object):
         bind_string = self._pre_bind(l, username)
         if not bind_string:
             if self.settings['LDAP_DEBUG']:
-                logging.info('LDAPBackend.authenticate failed: _pre_bind return no bind_string (%s, %s)' % (
+                settings.LOG.info('LDAPBackend.authenticate failed: _pre_bind return no bind_string (%s, %s)' % (
                     l, username))
             return None
 
@@ -129,7 +127,7 @@ class LDAPBackend(object):
                 self.ldap.UNWILLING_TO_PERFORM), exc:
             # Failed user/pass (or missing password)
             if self.settings['LDAP_DEBUG']:
-                logging.info('LDAPBackend.authenticate failed: %s' % exc)
+                settings.LOG.info('LDAPBackend.authenticate failed: %s' % exc)
             l.unbind_s()
             return None
 
@@ -146,9 +144,9 @@ class LDAPBackend(object):
         l.unbind_s()
         if self.settings['LDAP_DEBUG']:
             if user is None:
-                logging.info('LDAPBackend.authenticate failed: user is None')
+                settings.LOG.info('LDAPBackend.authenticate failed: user is None')
             else:
-                logging.info('LDAPBackend.authenticate ok: %s %s' % (user, user.__dict__))
+                settings.LOG.info('LDAPBackend.authenticate ok: %s %s' % (user, user.__dict__))
         return user
 
     # Functions provided to override to customize to your LDAP configuration.
@@ -166,8 +164,8 @@ class LDAPBackend(object):
                             self.settings['LDAP_PREBINDPW'])
                 except self.ldap.LDAPError, exc:
                     if self.settings['LDAP_DEBUG']:
-                        logging.info('LDAPBackend _pre_bind: LDAPError : %s' % exc)
-                        logging.info("LDAP_PREBINDDN: "+self.settings['LDAP_PREBINDDN']+" PW "+self.settings['LDAP_PREBINDPW'])                     
+                        settings.LOG.info('LDAPBackend _pre_bind: LDAPError : %s' % exc)
+                        settings.LOG.info("LDAP_PREBINDDN: "+self.settings['LDAP_PREBINDDN']+" PW "+self.settings['LDAP_PREBINDPW'])                     
                     return None
 
             # Now do the actual search
@@ -177,7 +175,7 @@ class LDAPBackend(object):
 
             if len(result) != 1:
                 if self.settings['LDAP_DEBUG']:
-                    logging.info('LDAPBackend _pre_bind: not exactly one result: %s (%s %s %s)' % (
+                    settings.LOG.info('LDAPBackend _pre_bind: not exactly one result: %s (%s %s %s)' % (
                         result, self.settings['LDAP_SEARCHDN'], self.settings['LDAP_SCOPE'], filter))
                 return None
             return result[0][0]

@@ -1,9 +1,15 @@
 # Django settings for whitetrash project.
 from configobj import ConfigObj
+import logging
+import logging.config
+
 config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
 
 def conf(config_item):
     return config[config_item].upper() == "TRUE"
+
+logging.config.fileConfig("/etc/whitetrash.conf")
+LOG = logging.getLogger("whitetrashDjango")
 
 CAPTCHA_HTTP = conf("CAPTCHA_HTTP") 
 CAPTCHA_SSL = conf("CAPTCHA_SSL")

@@ -13,7 +13,7 @@ MaxRequestsPerChild 1
 <Location "/">
 SetHandler mod_python
 PythonHandler django.core.handlers.modpython
-PythonPath "['/home/greg/whitetrash/django_site/'] + sys.path"
+PythonPath "['/home/greg/whitetrash/django_site'] + sys.path"
 SetEnv DJANGO_SETTINGS_MODULE whitetrash.settings
 PythonDebug On
 

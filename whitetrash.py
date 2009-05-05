@@ -22,7 +22,8 @@
 #
 
 import sys,os
-import syslog
+import logging
+import logging.config
 import urllib
 import re
 import MySQLdb
@@ -39,6 +40,9 @@ class WTSquidRedirector:
 
     def __init__(self,config):
         self.config=config
+        logging.config.fileConfig("/etc/whitetrash.conf")
+        self.log = logging.getLogger("whitetrashRedir")
+
         self.PROTOCOL_CHOICES={'HTTP':1,'SSL':2}
         self.http_fail_url="http://%s/whitelist/addentry?" % config["whitetrash_domain"]
         self.error_url="http://%s/whitelist/error" % config["whitetrash_domain"]
@@ -49,7 +53,6 @@ class WTSquidRedirector:
         self.ssl_fail_url="sslwhitetrash:80"
         self.fail_string=config["domain_fail_string"]
         self.www=re.compile("^www[0-9]?\.")
-        syslog.openlog('whitetrash.py',0,syslog.LOG_USER)
         #Strip out everything except the domain
         self.domain_regex=re.compile("([a-z0-9-]+\.)+[a-z]+")
         self.domain_sanitise=re.compile(config["domain_regex"])
@@ -177,7 +180,7 @@ class WTSquidRedirector:
             return result
 
         except Exception,e:
-            syslog.syslog("Error checking whitelist with %s,%s,%s.  Error:%s" % (domain,protocol,url,e)) 
+            self.log.error("Error checking whitelist with %s,%s,%s.  Error:%s" % (domain,protocol,url,e)) 
             return (False,self.get_error_url("Error checking domain in whitelist"))
 
 
@@ -198,7 +201,7 @@ class WTSquidRedirector:
             self.original_url=spliturl[0]
 
             if spliturl[3]=="CONNECT":
-                #syslog.syslog("Protocol=SSL")
+                self.log.debug("Protocol=SSL")
                 self.protocol=self.PROTOCOL_CHOICES["SSL"]
                 domain = self.domain_sanitise.match(spliturl[0].split(":")[0]).group()
 
@@ -216,36 +219,36 @@ class WTSquidRedirector:
                 if not spliturl[3].isalpha():
                     raise ValueError("Bad HTTP request method is not alphabetic")
 
-                #syslog.syslog("Protocol=HTTP")
+                self.log.debug("Protocol=HTTP")
                 self.protocol=self.PROTOCOL_CHOICES["HTTP"]
                 self.fail_url=self.http_fail_url
 
                 #The full url as passed by squid
                 #urlencode it to make it safe to hand around in forms
                 self.newurl_safe=urllib.quote(spliturl[0])
-                #syslog.syslog("sanitised_url: %s" % self.newurl_safe)
+                self.log.debug("sanitised_url: %s" % self.newurl_safe)
 
                 #Get just the client IP
                 self.clientaddr=spliturl[1].split("/")[0]
                 #use inet_aton to validate the IP
                 inet_aton(self.clientaddr)
-                #syslog.syslog("client address: %s" % self.clientaddr)
+                self.log.debug("client address: %s" % self.clientaddr)
 
                 #strip out the domain.
-                #syslog.syslog("unsafe: %s" % url_domain_only_unsafe)
                 if spliturl[0].lower().startswith("http://"):
                     url_domain_only_unsafe=self.domain_regex.match(spliturl[0].lower().replace("http://","",1)).group()
+                    self.log.debug("unsafe: %s" % url_domain_only_unsafe)
                 else:
                     raise ValueError("Bad domain doesn't start with http")
         
                 #sanitise it
                 self.url_domain_only=self.domain_sanitise.match(url_domain_only_unsafe).group()
-                #syslog.syslog("domainonly: %s" % self.url_domain_only)
+                self.log.debug("domainonly: %s" % self.url_domain_only)
                 self.fail_url+="url=%s&domain=%s" % (self.newurl_safe,self.url_domain_only)
                 return True
 
         except Exception,e:
-            syslog.syslog("Error parsing string '%s' from squid.  Error:%s" % (squidurl,e)) 
+            self.log.error("Error parsing string '%s' from squid.  Error:%s" % (squidurl,e)) 
             self.fail_url=self.get_error_url("Bad request logged.  See your sysadmin for assistance.")
             return False
 
@@ -255,13 +258,13 @@ class WTSquidRedirector:
         while 1:
 
             squidurl=sys.stdin.readline()
-            #syslog.syslog("String received from squid: %s" % squidurl)
+            self.log.debug("String received from squid: %s" % squidurl)
             if self.parseSquidInput(squidurl):
 
                 try:
                     (res,url)=self.check_whitelist_db(self.url_domain_only,self.protocol,self.newurl_safe,
                                             self.original_url,self.clientaddr)
-                    syslog.syslog("Dom: %s, proto:%s, Result: %s, Output url: %s" % 
+                    self.log.debug("Dom: %s, proto:%s, Result: %s, Output url: %s" % 
                             (self.url_domain_only,self.protocol,res,url))
                     sys.stdout.write(url)
 
@@ -276,7 +279,7 @@ class WTSquidRedirector:
 
                     except:
                         #Something weird/bad has happened, tell the user.
-                        syslog.syslog("Error when checking domain in whitelist. Exception: %s" %e)
+                        self.log.error("Error when checking domain in whitelist. Exception: %s" %e)
                         sys.stdout.write(self.get_error_url())
             else:
                 sys.stdout.write(self.fail_url)
@@ -315,14 +318,14 @@ class WTSquidRedirectorCached(WTSquidRedirector):
         cache_value_wild=self.cache.get(key_wild)
 
         if cache_value and not wild:
-            syslog.syslog("Using cache value %s: %s" % (key,cache_value))
+            self.log.debug("Using cache value %s: %s" % (key,cache_value))
             return cache_value
         elif cache_value_wild:
             return cache_value_wild
         else:
             result=WTSquidRedirector.get_whitelist_id(self,proto,domain,domain_wild,wild)
             if result:
-                #syslog.syslog("Got result from db %s: %s" % (key,str(result[0])))
+                self.log.debug("Got result from db %s: %s" % (key,str(result[0])))
                 if wild:
                     self.cache.set(key_wild,result)
                 else:
