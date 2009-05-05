@@ -38,7 +38,16 @@ Create ssl cert and enable apache ssl module (this is for self-signed, better if
 
 Restart apache and squid.
 
-If you would like to enable the CAPTCHA (http://en.wikipedia.org/wiki/Captcha) test for whitelist additions, you will need to install PyCAPTCHA: http://cheeseshop.python.org/pypi/PyCAPTCHA/0.4 and the python-imaging package (PIL).
+If you would like to enable the CAPTCHA (http://en.wikipedia.org/wiki/Captcha) test for whitelist additions, you will need to install PyCAPTCHA: http://cheeseshop.python.org/pypi/PyCAPTCHA/0.4  using easy_install (python-setuptools) and the python-imaging package.
+
+LDAP
+~~~~
+
+To enable LDAP authentication:
+
+    - install the python-ldap package
+    - set LDAP_AUTH = "True" in whitetrash.conf
+    - change the LDAP entries in django_site/whitetrash/settings.py 
 
 Squid Config
 ~~~~~~~~~~~~
