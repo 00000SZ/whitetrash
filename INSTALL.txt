@@ -27,6 +27,11 @@ Run the setup script and supply your DB root password:
 
     sudo python setup.py install --mysql-root-passwd="myrootpassword"
 
+Change the log file ownership to your proxy and apache users, examples below are for ubuntu:
+
+    sudo chown proxy:proxy /var/log/whitetrash.squidredir.log
+    sudo chown www-data:root /var/log/whitetrash.django.log
+
 Create ssl cert and enable apache ssl module (this is for self-signed, better if you buy one):
 
     sudo a2enmod ssl rewrite

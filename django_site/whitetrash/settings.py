@@ -129,13 +129,34 @@ if conf("LDAP_AUTH"):
     import ldap
     AUTHENTICATION_BACKENDS = (
     'whitetrash.ldapauth.LDAPBackend',
-    # 'django.contrib.auth.backends.ModelBackend',
+    'django.contrib.auth.backends.ModelBackend',
     )
     #LDAP_DEBUG=True
-    LDAP_SERVER_URI='ldaps://fqdn.com:636'
-    LDAP_SEARCHDN='dc=myorg,dc=lan'
-    LDAP_FULL_NAME='uid'
-    LDAP_BINDDN = 'ou=people,dc=myorg,dc=lan'
-    LDAP_BIND_ATTRIBUTE = 'uid'
-    LDAP_OPTIONS = {ldap.OPT_X_TLS_CACERTFILE: "/etc/ssl/ldapcacert.pem"}
+
+    # Open LDAP settings (assuming ldaps).
+#    LDAP_STARTTLS = False 
+#    LDAP_OPTIONS = {ldap.OPT_X_TLS_CACERTFILE: "/etc/ssl/ldapcacert.pem"}
+#    LDAP_SERVER_URI='ldaps://fqdn.com:636'
+#    LDAP_SEARCHDN='dc=myorg,dc=lan'
+#    LDAP_FULL_NAME='uid'
+#    LDAP_BINDDN = 'ou=people,dc=myorg,dc=lan'
+#    LDAP_BIND_ATTRIBUTE = 'uid'
+
+    # Windows AD LDAP settings
+    LDAP_STARTTLS = True
+    LDAP_OPTIONS = { ldap.OPT_X_TLS_CACERTFILE: '/etc/ssl/ldapcacert.pem' }
+    LDAP_SERVER_URI='ldap://fqdn.com'
+    LDAP_SEARCHDN='OU=people,DC=myorg,DC=lan'
+    LDAP_SEARCH_FILTER = 'sAMAccountName=%s'
+    LDAP_PREBINDDN = 'whitetrashuser@myorg.lan'
+    LDAP_PREBINDPW = 'somepasswd'
+    LDAP_BIND_ATTRIBUTE = 'cn'
+    LDAP_FIRST_NAME = 'givenName'
+    LDAP_LAST_NAME = 'sn'
+    LDAP_GID = 'memberOf'
+    LDAP_SU_GIDS = ['CN=WhitetrashAdmins,CN=Users,DC=DC=myorg,DC=lan']
+    LDAP_ACTIVE_FIELD = 'memberOf'
+    LDAP_ACTIVE = ['CN=WhitetrashAccess,CN=Users,DC=myorg,DC=lan']
+
+
 

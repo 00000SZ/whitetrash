@@ -9,7 +9,7 @@ import datetime
 
 try:
     from distutils.core import setup
-    from distutils.file_util import copy_file,move_file
+    from distutils.file_util import copy_file,move_file,write_file
     from distutils.dir_util import copy_tree,mkpath
     from distutils.util import execute
     from distutils.command.install import install 
@@ -48,6 +48,7 @@ class WhitetrashInstallData(install):
         execute(self.copyApacheConfigs,())
         execute(self.copyWebStaticFiles,())
         execute(self.copySquidConfigs,())
+        execute(self.createLogFiles,())
         execute(self.createDBandUsers,())
 
     def installDjango(self):
@@ -111,7 +112,7 @@ class WhitetrashInstallData(install):
     
             #Replace the placeholder with our actual code location
             apache_wt_conf=open("example_configs/apache2/whitetrash","r").read()
-            open("example_configs/apache2/whitetrash","w").write(apache_wt_conf.replace("/home/greg/whitetrash/django_site/",os.path.abspath("django_site")))
+            open("example_configs/apache2/whitetrash","w").write(apache_wt_conf.replace("/home/greg/whitetrash/django_site",os.path.abspath("django_site")))
 
             copy_file("example_configs/apache2/whitetrash", os.path.join(self.apache_configdir,"sites-available/whitetrash"))
             httpconf=os.path.join(self.apache_configdir,"httpd.conf")
@@ -149,6 +150,15 @@ class WhitetrashInstallData(install):
         else:
             print "Squid not installed, no /etc/squid/squid.conf."
             sys.exit(1)
+
+    def createLogFiles(self):
+        """Touch the logfiles in /var/log.
+
+        The user will have to chown them as described in INSTALL.txt"""
+        mkpath("/var/log")
+        write_file("/var/log/whitetrash.django.log","")
+        write_file("/var/log/whitetrash.squidredir.log","")
+        print("Log files whitetrash.django.log whitetrash.squidredir.log created in /var/log chown as described in INSTALL.txt")
 
 def setup_args():
     setup_args={

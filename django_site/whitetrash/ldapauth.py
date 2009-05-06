@@ -87,6 +87,7 @@ class LDAPBackend(object):
               'LDAP_EMAIL': None, 
               'LDAP_DEFAULT_EMAIL_SUFFIX': None, 
               'LDAP_OPTIONS': None, 
+              'LDAP_STARTTLS': False, 
               'LDAP_DEBUG': True, 
       } 
 
@@ -111,6 +112,9 @@ class LDAPBackend(object):
                 self.ldap.set_option(k, self.settings['LDAP_OPTIONS'][k])
 
         l = self.ldap.initialize(self.settings['LDAP_SERVER_URI'])
+        if self.settings['LDAP_STARTTLS']:
+            settings.LOG.debug('Issuing START_TLS, CACERTFILE is %s' % self.ldap.get_option(self.ldap.OPT_X_TLS_CACERTFILE))
+            l.start_tls_s()
 
         bind_string = self._pre_bind(l, username)
         if not bind_string:
@@ -118,6 +122,8 @@ class LDAPBackend(object):
                 settings.LOG.info('LDAPBackend.authenticate failed: _pre_bind return no bind_string (%s, %s)' % (
                     l, username))
             return None
+
+        settings.LOG.debug('LDAP bind_string: %s' % bind_string)
 
         try:
             # Try to bind as the provided user. We leave the bind until
@@ -239,6 +245,7 @@ class LDAPBackend(object):
         lastn = self.settings['LDAP_LAST_NAME'] or None
         emailf = self.settings['LDAP_EMAIL'] or None
 
+
         if firstn:
             if firstn in attrs:
                 user.first_name = attrs[firstn][0]
@@ -266,6 +273,7 @@ class LDAPBackend(object):
         elif self.settings['LDAP_DEFAULT_EMAIL_SUFFIX']:
             user.email = username + self.settings['LDAP_DEFAULT_EMAIL_SUFFIX']  
 
+        settings.LOG.debug("%s %s, email: %s" % (user.first_name,user.last_name,user.email) )
 
         # Check if we are mapping an ldap id to check if the user is staff or super
         # Other wise the user is created but not give access
@@ -276,36 +284,46 @@ class LDAPBackend(object):
             user.is_staff = False
             check_staff_flag = True
             gids = set(attrs[self.settings['LDAP_GID']])
+            settings.LOG.debug("LDAP group IDs for %s: %s" % (username,gids) )
 
             # Check to see if we are mapping any super users
-            if 'LDAP_SU_GIDS' in self.settings:
+            if ('LDAP_SU_GIDS' in self.settings and self.settings['LDAP_SU_GIDS']):
+                # LDAP_SU_GUIDS is defined and has a value
                 su_gids = set(self.settings['LDAP_SU_GIDS'])
+                settings.LOG.debug("LDAP super user group IDs: %s" % (su_gids) )
                 # If any of the su_gids exist in the gid_data then the user is super
                 if (len(gids-su_gids) < len(gids)):
+                    settings.LOG.debug("LDAP user %s is super user" % (username) )
                     user.is_superuser = True
                     user.is_staff = True
                     # No need to check if a staff user
                     check_staff_flag = False
 
             # Check for staff user?
-            if 'LDAP_STAFF_GIDS' in self.settings and check_staff_flag == True:
+            if ('LDAP_STAFF_GIDS' in self.settings and self.settings['LDAP_STAFF_GIDS']) and check_staff_flag == True:
                 # We are checking to see if the user is staff
+                settings.LOG.debug(self.settings)
                 staff_gids = set(self.settings['LDAP_STAFF_GIDS'])
                 if (len(gids-staff_gids) < len(gids)):
+                    settings.LOG.debug("LDAP user %s is staff user" % (username) )
                     user.is_staff = True
 
         # Check if we need to see if a user is active
         if ('LDAP_ACTIVE_FIELD' in self.settings
             and  self.settings['LDAP_ACTIVE_FIELD']):
             user.is_active = False
-            if (self.settings.LDAP_ACTIVE_FIELD in attrs
+            if (self.settings['LDAP_ACTIVE_FIELD'] in attrs
                 and 'LDAP_ACTIVE' in self.settings):
                 active_data = set(attrs[self.settings['LDAP_ACTIVE_FIELD']])
-                active_flags = set(self.settings.LDAP_ACTIVE)
+                active_flags = set(self.settings['LDAP_ACTIVE'])
+                settings.LOG.debug("LDAP user gids:%s, required access gid:%s" % (active_data,active_flags) )
                 # if any of the active flags exist in the active data then
                 # the user is active
                 if (len(active_data-active_flags) < len(active_data)):
+                    settings.LOG.debug("LDAP user %s is active" % (username) )
                     user.is_active = True
+                else:
+                    settings.LOG.debug("LDAP user %s is NOT active" % (username) )
         else:
             # LDAP_ACTIVE_FIELD not defined, all users are active
             user.is_active = True
