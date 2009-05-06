@@ -35,9 +35,15 @@ def index(request):
     We can't just start doing SSL directly without the proxy in the loop
     since the certificate domain won't match that
     requested by the user.  Can't just return HTTP either since the client asked for
-    SSL, unless I send a redirect.  To get
+    SSL, *unless* I send a redirect.  To get
     squid to go out with a connect instead of just client hello we require sslwhitetrash
     to be a cache peer.
+
+    As of about Firefox 3.0.9, the redirect loophole above has been closed off.  Firefox treats a 302 as 
+    Proxy server refused connection (damn) and will not even display
+    html returned with error codes (4xx), instead opting to display its own generic error pages.  This is more inline
+    with the spirit of the RFC http://www.ietf.org/rfc/rfc2817.txt and is a security improvement.  I believe the only option
+    now available is SSL man-in-the-middle.
 
     """
     if request.method == 'CONNECT':
