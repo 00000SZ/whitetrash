@@ -10,6 +10,7 @@ from hashlib import md5
 
 import cmemcache
 
+
 # Constants for version 1 of the Safe Browsing API
 MALWARE = "malware"
 PHISHING = "black"
@@ -18,6 +19,7 @@ HEADER_REGEX = "\[goog-(malware|black)-hash 1.([0-9]*).*\]"
 HASH_REGEX = "(\+|-)([a-f0-9]*)"
 TIMEOUT = 30 * 60      # 30 minutes
  
+
 class SafeBrowsingUpdate(object):
     """Grabs the phishing or malware blacklists from
        the Google safebrowsing API"""
@@ -49,7 +51,7 @@ class SafeBrowsingUpdate(object):
         url = SB_URL_TEMPLATE % (apikey, self.get_version_string())
 
         # Set the timeout for the get request
-        # python 2.6 adds timeout at an parameter for urllib2.urlopen()
+        # python 2.6 adds timeout as a parameter for urllib2.urlopen()
         socket.setdefaulttimeout(10) # 10 seconds
 
         # Grab the blacklist
@@ -78,7 +80,7 @@ class SafeBrowsingUpdate(object):
                 elif m.group(1) == "-":
                     self.old_hashes.append(m.group(2))
 
-        self.version = version
+        self.version = int(version)
 
     def parse_header(self, header):
         """Pull the version number and blacklist type from the header"""
@@ -115,7 +117,49 @@ class SafeBrowsingUpdate(object):
             if m.group(1) == "black":
                 return open("../gsb_phishing.html")
             elif m.group(1) == "malware":
-                return open("../gsb_malware.html")
+                return open("../gsb_malware2.html")
+
+
+class SafeBrowsingManager():
+    """Manages the retreival of updates from the safe browsing API"""
+
+    def __init__(self, apikey):
+        self._apikey = apikey
+        self.malware  = SafeBrowsingUpdate(MALWARE, -1)
+        self.phishing = SafeBrowsingUpdate(PHISHING, -1)
+
+    def do_updates(self, malware_version = None, phishing_version = None):
+        if malware_version:
+            self.malware = SafeBrowsingUpdate(MALWARE, malware_version)
+        if phishing_version:
+            self.phishing = SafeBrowsingUpdate(PHISHING, phishing_version)
+        self.malware.update_list(self._apikey)
+        self.phishing.update_list(self._apikey)
+
+    def get_lists(self):
+        for h in self.malware.old_hashes:
+            yield dict(type=MALWARE,
+                       hash=h,
+                       add=False,
+                       remove=True)
+        for h in self.malware.new_hashes:
+            yield dict(type=MALWARE,
+                       hash=h,
+                       add=True,
+                       remove=False)
+        for h in self.phishing.old_hashes:
+            yield dict(type=PHISHING,
+                       hash=h,
+                       add=False,
+                       remove=True)
+        for h in self.phishing.new_hashes:
+            yield dict(type=PHISHING,
+                       hash=h,
+                       add=True,
+                       remove=False)
+
+    def __len__(self):
+        return len(self.malware) + len(self.phishing)
 
 
 class BlacklistCache(object):
@@ -130,12 +174,12 @@ class BlacklistCache(object):
         for i in list:
             if i["type"] == MALWARE:
                 if i["add"]:
-                    self.cache.set(i["hash"], "m".join([str(m_version)]), TIMEOUT)
+                    self.cache.set(i["hash"], "".join(["m", str(m_version)]), TIMEOUT)
                 if i["remove"]:
                     self.cache.delete(i["hash"])
             if i["type"] == PHISHING:
                 if i["add"]:
-                    self.cache.set(i["hash"], "p".join([str(p_version)]), TIMEOUT)
+                    self.cache.set(i["hash"], "".join(["p", str(p_version)]), TIMEOUT)
                 if i["remove"]:
                     self.cache.delete(i["hash"])
         self.malware_version = m_version
@@ -154,27 +198,23 @@ class BlacklistCache(object):
             hasher = URLHasher(url)
         except URLHasherError, e:
             raise BlacklistCacheError(str(e))
-        hashes = hasher.get_hashes()
+        hashes = hasher.generate_hashes()
         for hash in hashes:
             lookup = self.cache.get(hash)
-            if self._validate_cache_value(lookup):
-                return self._cache_value_type(lookup)
+            if lookup:
+                if self._validate_cache_value(lookup):
+                    return self._cache_value_type(lookup)
+                else:
+                    # delete entries from old blacklist versions
+                    self.cache.delete(key)
 
         return None
 
     def _validate_cache_value(self, value):
-        if not value:
-            return None
-
-        type_alias = value[0]
-        print "alias:", type_alias
         version = int(value[1:])
-        print "version:", version
-        print "m_version:", self.malware_version
-        print "p_version:", self.phishing_version
-        if type_alias == "m":
+        if value.startswith("m"):
             return version >= self.malware_version
-        if type_alias == "p":
+        if value.startswith("p"):
             return version >= self.phishing_version
 
     def _cache_value_type(self, value):
@@ -226,9 +266,13 @@ class URLHasher(object):
         #  - removing "/.." and the preceding directory
         #  - removing all occurences of "/."
         #  - making sure there is a path i.e. replace "" with "/"
+        #  - replacing runs on consecutive slashes with a single slash
 
         # unescape the url
         new_path = urllib2.unquote(path)
+
+        # replace multiple slahses (e.g. "////") with "/"
+        new_path = re.sub("/+", "/", new_path)
 
         # Remove any directory traversal
         if new_path.startswith("/.."):
@@ -245,11 +289,14 @@ class URLHasher(object):
 
         return new_path
 
-    def get_hashes(self):
-        for hostname in self._generate_url_prefixes():
+    def generate_hashes(self):
+        for url in self.generate_url_combinations():
+            yield md5(url).hexdigest()
+
+    def generate_url_combinations(self):
+         for hostname in self._generate_url_prefixes():
             for path in self._generate_url_suffixes():
-                temp_url = ''.join([hostname, path])
-                yield md5(temp_url).hexdigest()
+                yield ''.join([hostname, path])
 
     def _generate_url_prefixes(self):
         urlparts = urlparse.urlparse(self.url)
@@ -276,59 +323,18 @@ class URLHasher(object):
                 yield ''.join([path, "#", fragment])
         if query:
             yield ''.join([path, "?", query])
-        yield path
+        if not path.endswith("/"):
+            yield path
 
         path = re.sub("[^/]*$", "", path)
         components = path.split("/")
-        for i in xrange(2, len(components)):
-            yield"/".join(components[0:i]) + "/"
+        for i in xrange(len(components)-1, 1, -1):
+            yield "/".join(components[0:i]) + "/"
         yield "/"
 
 
 class URLHasherError(Exception):
     pass
-
-
-class SafeBrowsingManager():
-    """Manages the retreival of updates from the safe browsing API"""
-
-    def __init__(self, apikey):
-        self._apikey = apikey
-        self.malware  = SafeBrowsingUpdate(MALWARE, -1)
-        self.phishing = SafeBrowsingUpdate(PHISHING, -1)
-
-    def do_updates(self, malware_version = None, phishing_version = None):
-        if malware_version:
-            self.malware = SafeBrowsingUpdate(MALWARE, malware_version)
-        if phishing_version:
-            self.phishing = SafeBrowsingUpdate(PHISHING, phishing_version)
-        self.malware.update_list(self._apikey)
-        self.phishing.update_list(self._apikey)
-
-    def get_lists(self):
-        for h in self.malware.old_hashes:
-            yield dict(type=MALWARE,
-                       hash=h,
-                       add=False,
-                       remove=True)
-        for h in self.malware.new_hashes:
-            yield dict(type=MALWARE,
-                       hash=h,
-                       add=True,
-                       remove=False)
-        for h in self.phishing.old_hashes:
-            yield dict(type=PHISHING,
-                       hash=h,
-                       add=False,
-                       remove=True)
-        for h in self.phishing.new_hashes:
-            yield dict(type=PHISHING,
-                       hash=h,
-                       add=True,
-                       remove=False)
-
-    def __len__(self):
-        return len(self.malware) + len(self.phishing)
 
 
 def main():
@@ -352,6 +358,7 @@ def update_safebrowsing_blacklist(config):
         cache.update(mgr.list)
     except BlacklistUpdateException, e:
         print e
+
 
 if __name__ == '__main__':
     main()
