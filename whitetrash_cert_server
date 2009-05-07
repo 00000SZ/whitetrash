@@ -1,0 +1,128 @@
+#!/usr/bin/env python
+
+# Author: gregsfdev@users.sourceforge.net
+# License: GPL
+#
+# This file is part of Whitetrash.
+# 
+#     Whitetrash is free software; you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation; either version 2 of the License, or
+#     (at your option) any later version.
+# 
+#     Whitetrash is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+# 
+#     You should have received a copy of the GNU General Public License
+#     along with Whitetrash; if not, write to the Free Software
+#     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+# 
+
+import BaseHTTPServer, SimpleHTTPServer, SocketServer
+import os,sys,time,cgi
+import socket
+import re,urllib
+import datetime
+import threading
+from OpenSSL import SSL
+from string import join
+from configobj import ConfigObj
+from random import randint
+import logging
+import logging.config
+
+config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
+logging.config.fileConfig("/etc/whitetrash.conf")
+wtlog = logging.getLogger("whitetrashCertServer")
+domainre = re.compile(config["domain_regex"])
+stripre = re.compile("(.*).ssl%s$" % config["whitetrash_domain"])
+
+def clean_domain(domain):
+    try:
+        return domainre.match(domain).group()
+    except AttributeError:
+        wtlog.debug("Bad domain: %s" % domain)
+        return ""
+
+class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+
+    def setup(self):
+        SimpleHTTPServer.SimpleHTTPRequestHandler.setup(self)
+        self.domain = ""
+
+    def do_GET(self):
+        self.send_response(302)
+        self.send_header("Location","https://%s/whitelist/addentry?url=https%%253A//%s&domain=%s&protocol=2" 
+                            % (config["whitetrash_domain"],self.domain,self.domain))
+        self.end_headers()
+
+    def do_CONNECT(self):
+        wtlog.debug("Got connect request: %s" % self.request)
+        wtlog.debug("Path: %s" % self.path)
+        #strip off the sslwhitetrash bit from the end of the domain
+        self.domain = clean_domain(stripre.sub(r"\1",self.path.split(":")[0]))
+        self.send_response(200, 'OK')
+        self.end_headers()
+
+        #Switch our socket to SSL
+        ctx = SSL.Context(SSL.SSLv23_METHOD)
+        #server.pem's location (containing the server private key and
+        #the server certificate).
+        ctx.use_privatekey_file ("/etc/ssl/testkey.pem")
+        ctx.use_certificate_file("/etc/ssl/testcert.pem")
+        ssl_socket = SSL.Connection(ctx, self.wfile)
+        self.rfile = socket._fileobject(ssl_socket, "rb", self.rbufsize)
+        self.wfile = socket._fileobject(ssl_socket, "wb", self.wbufsize)
+        ssl_socket.set_accept_state()
+        self.handle()
+
+class WhitetrashServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
+    pass
+
+def run_http(server_class=WhitetrashServer,
+        handler_class=HTTPRequestHandler):
+    server_address = (config["cert_server_listen_addr"], int(config["cert_server_listen_port"]))
+    httpd = server_class(server_address, handler_class)
+    PIDFILE = config["pidfile"]
+    DAEMON = False 
+
+    if (DAEMON):
+        # Unix double-fork magic
+        try:
+            pid = os.fork()
+            if pid > 0:
+                # exit first parent
+                sys.exit(0)
+        except OSError, e:
+            print >>sys.stderr, "fork #1 failed: %d (%s)" % (e.errno, e.strerror)
+            sys.exit(1)
+
+        # decouple from parent environment
+        os.chdir("/")   # don't prevent unmounting
+        os.setsid()
+        os.umask(0)
+
+        # do second fork
+        try:
+            pid = os.fork()
+            if pid > 0:
+                # exit from second parent, print eventual PID before
+                open(PIDFILE,'w').write("%d"%pid)
+                sys.exit(0)
+        except OSError, e:
+            print >>sys.stderr, "fork #2 failed: %d (%s)" % (e.errno, e.strerror)
+            sys.exit(1)
+    
+    
+        # redirect outputs to a log file
+        #sys.stdout = sys.stderr = Log(open(LOGFILE, 'a+'))
+    wtlog.info("***** Whitetrash Server Started - %s *****" % (str(time.asctime())))
+
+    httpd.serve_forever()
+
+run_http()
+
+
+

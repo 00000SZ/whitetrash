@@ -73,7 +73,7 @@ class WhiteListForm(ModelForm):
     def clean_domain(self):
         data = self.cleaned_data['domain']
         try:
-            re.match("^([a-z0-9-]{1,50}\.){1,6}[a-z]{2,6}$",data).group()
+            settings.DOMAIN_REGEX.match(data).group()
             return data
         except AttributeError:
             settings.LOG.debug("Bad domain: %s" % data)

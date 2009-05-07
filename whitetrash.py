@@ -50,7 +50,7 @@ class WTSquidRedirector:
 
         self.whitetrash_admin_path="http://%s" % config["whitetrash_domain"]
         self.nonhtml_suffix_re=re.compile(config["nonhtml_suffix_re"])
-        self.ssl_fail_url="sslwhitetrash:80"
+        self.ssl_fail_url="sslwhitetrash:3456"
         self.fail_string=config["domain_fail_string"]
         self.www=re.compile("^www[0-9]?\.")
         #Strip out everything except the domain
@@ -212,7 +212,7 @@ class WTSquidRedirector:
 
                 self.url_domain_only = domain
                 self.newurl_safe = "https://%s" % domain
-                self.fail_url = self.ssl_fail_url
+                self.fail_url = "%s.%s" % (domain,self.ssl_fail_url)
                 return True
 
             else:

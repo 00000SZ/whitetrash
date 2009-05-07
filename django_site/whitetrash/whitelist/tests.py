@@ -9,7 +9,7 @@ class WhitetrashTestGeneral(TestCase):
 
     def testIndexRedirect(self):
         response = self.client.get('/')
-        self.assertRedirects(response, "http://whitetrash/whitelist/view/list/",
+        self.assertRedirects(response, "http://%s/whitelist/view/list/" % settings.DOMAIN,
                 status_code=301, target_status_code=200)
     
     def testFormNoLogin(self):

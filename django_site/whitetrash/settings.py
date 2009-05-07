@@ -2,6 +2,7 @@
 from configobj import ConfigObj
 import logging
 import logging.config
+from re import compile
 
 config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
 
@@ -13,7 +14,9 @@ LOG = logging.getLogger("whitetrashDjango")
 
 CAPTCHA_HTTP = conf("CAPTCHA_HTTP") 
 CAPTCHA_SSL = conf("CAPTCHA_SSL")
-CAPTCHA_WINDOW_SEC = int(conf("CAPTCHA_WINDOW_SEC"))
+CAPTCHA_WINDOW_SEC = int(config["CAPTCHA_WINDOW_SEC"])
+
+DOMAIN_REGEX=compile(config["domain_regex"])
 
 #Fix weird need to specify absolute paths
 import os.path
@@ -27,6 +30,7 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_SECURE = conf("ssl_server_enabled")
 
 LOGIN_REDIRECT_URL = "/whitelist/addentry/?url=&domain="
+DOMAIN = config["whitetrash_domain"]
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG

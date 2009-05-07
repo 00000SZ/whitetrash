@@ -11,7 +11,7 @@ from django.template.defaultfilters import force_escape
 from django.forms import ValidationError
 from django.conf import settings
 from django.forms.util import ErrorList
-import sha
+from hashlib import sha1
 import datetime
 import re
 
@@ -20,39 +20,9 @@ try:
 except ImportError:
     print "PyCAPTCHA not installed.  Use: easy_install http://pypi.python.org/packages/2.4/P/PyCAPTCHA/PyCAPTCHA-0.4-py2.4.egg"
 
-
 def index(request):
-    """Handle a request for the domain with a blank path.
-
-    We need to handle CONNECT (SSL) in a special manner as below:
-
-    Browser --CONNECT-->        Squid -------check---------->   url_rewriter
-                                Squid <---sslwhitetrash:80--   url_rewriter 
-
-                                Squid ------CONNECT--------->   sslwhitetrash
-    Browser <-HTTP redirect---  Squid <---HTTP redirect------   sslwhitetrash
-    
-    We can't just start doing SSL directly without the proxy in the loop
-    since the certificate domain won't match that
-    requested by the user.  Can't just return HTTP either since the client asked for
-    SSL, *unless* I send a redirect.  To get
-    squid to go out with a connect instead of just client hello we require sslwhitetrash
-    to be a cache peer.
-
-    As of about Firefox 3.0.9, the redirect loophole above has been closed off.  Firefox treats a 302 as 
-    Proxy server refused connection (damn) and will not even display
-    html returned with error codes (4xx), instead opting to display its own generic error pages.  This is more inline
-    with the spirit of the RFC http://www.ietf.org/rfc/rfc2817.txt and is a security improvement.  I believe the only option
-    now available is SSL man-in-the-middle.
-
-    """
-    if request.method == 'CONNECT':
-        t = loader.get_template('whitelist/whitelist_getform.html')
-        resp=HttpResponseRedirect("https://whitetrash/whitelist/addentry/?url=&domain=&protocol=%s" % Whitelist.get_protocol_choice('SSL'))
-        resp["Proxy-Connection"]="close"
-        return resp
-    else:
-        return HttpResponsePermanentRedirect("http://whitetrash/whitelist/view/list/")
+    """Handle a request for the domain with a blank path."""
+    return HttpResponsePermanentRedirect("http://%s/whitelist/view/list/" % settings.DOMAIN)
 
 @login_required
 def show_captcha(request):
@@ -68,7 +38,7 @@ def show_captcha(request):
     g = PseudoGimpy()
     i = g.render()
     i.save(response, "png")
-    safe_solutions = [sha.sha(s).hexdigest() for s in g.solutions]
+    safe_solutions = [sha1(s).hexdigest() for s in g.solutions]
     try:
         if len(request.session['captcha_solns']) > 100:
             for (sol,createtime) in request.session['captcha_solns']:
@@ -76,6 +46,8 @@ def show_captcha(request):
                     datetime.timedelta(seconds=settings.CAPTCHA_WINDOW_SEC)):
                     request.session['captcha_solns'].remove((sol,createtime))
 
+        settings.LOG.debug("Adding solution:%s to session, number of solutions stored: %s" % 
+                                (safe_solutions,len(request.session['captcha_solns'])))
         request.session['captcha_solns'].append((safe_solutions,datetime.datetime.now()))
         #Need explicit save here because we don't add a new element and
         #SESSION_SAVE_EVERY_REQUEST is false
@@ -109,9 +81,10 @@ def addentry(request):
                 captcha_required = True
                 captcha_passed = False 
 
+                settings.LOG.debug("CAPTCHA response: %s" % form.cleaned_data['captcha_response'])
                 for (sol,createtime) in request.session['captcha_solns']:
                     for thissol in sol:
-                        if sha.sha(form.cleaned_data['captcha_response']).hexdigest() == thissol:
+                        if sha1(form.cleaned_data['captcha_response']).hexdigest() == thissol:
 
                             if ((datetime.datetime.now()-createtime) < 
                                 datetime.timedelta(seconds=settings.CAPTCHA_WINDOW_SEC)):
@@ -119,12 +92,15 @@ def addentry(request):
                                 request.session.save()
                                 captcha_passed = True
                             else:
+                                settings.LOG.debug("CAPTCHA timediff: %s, window: %s " % 
+                                            (datetime.datetime.now()-createtime,settings.CAPTCHA_WINDOW_SEC))
                                 form._errors["captcha_response"] = ErrorList(["Captcha time window expired."])
                                 return render_to_response('whitelist/whitelist_getform.html', {
                                     'form': form, 'captcha':True},
                                     context_instance=RequestContext(request)) 
                 
                 if not captcha_passed:
+                    settings.LOG.debug("CAPTCHA response '%s' incorrect" % form.cleaned_data['captcha_response'])
                     form._errors["captcha_response"] = ErrorList(["Captcha test failed.  Please try again."])
                     return render_to_response('whitelist/whitelist_getform.html', {
                         'form': form, 'captcha':True},
@@ -232,7 +208,7 @@ def delete_entries(request):
             return render_to_response('whitelist/whitelist_error.html', 
                             { 'error_text':"Bad domain IDs submitted for delete"})
 
-    return HttpResponsePermanentRedirect("http://whitetrash/whitelist/delete/")
+    return HttpResponsePermanentRedirect("http://%s/whitelist/delete/" % settings.DOMAIN)
 
 def check_domain(request):
     """Ajax request to check if a domain is in the whitelist.
