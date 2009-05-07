@@ -105,8 +105,32 @@ class BlacklistCacheTests(unittest.TestCase):
         result = self.cache.check_url("http://obfuscated.malware.testing.google.test/testing/malware/obfuscated.html?obfu=1")
         self.assertEqual(result, MALWARE, "Malware blacklist lookup failed. Lookup: %s" % result)
 
+#    def testSimpleAdd1(self):
+#        """Test that the cache sucessfully updates one entry"""
+#        self.mgr.add_malware_update("test")
+#        self.mgr.revoke_malware_update("test")
+#        self.cache.update(self.mgr.get_lists(), self.mgr.malware.version, self.mgr.phishing.version)
+#        self.assertEqual(result, MALWARE, "Malware blacklist lookup failed. Lookup: %s" % result)
+
     def tearDown(self):
         self.raw_cache.flush_all()
+
+#class ManagerProxy(SafeBrowsingManager):
+#    def __init__(self):
+#        super(ManagerProxy, self).__init__()
+#
+#    def set_malware_add(self, raw_entry):
+#        self.malware.new_hashes.append(md5(raw_entry))
+#
+#    def add_phishing_entry(self, raw_entry):
+#        self.phishing.new_hashes.append(md5(raw_entry))
+#
+#    def del_malware_entry(self, raw_entry):
+#        self.malware.old_hashes.append(md5(raw_entry))
+#
+#    def del_phishing_entry(self, raw_entry):
+#        self.phishing.old_hashes.append(md5(raw_entry))
+
 
 
 class SafeBrowsingManagerTests(unittest.TestCase):
@@ -175,6 +199,161 @@ class SafeBrowsingManagerTests(unittest.TestCase):
         self.assertTrue(self.mgr.malware.version >= m_version, "Malware list did not update version")
         self.assertTrue(self.mgr.phishing.version >= p_version, "Phishing list did not update version")
         self.assertTrue(len(self.mgr) > 0, "Update failed")
+
+class SafeBrowsingUpdateTests(unittest.TestCase):
+
+    def setUp(self):
+        pass
+#    def setUp(self):
+#        self.sbu = SafeBrowsingUpdate(MALWARE, -1)
+#
+#    def testSimpleAdd1(self):
+#        url = "www.example.com"
+#        malware_list = create_patched_updater(self.sbu)
+#        hash = malware_list.append_add(url)
+#
+#        self.sbu.update_list("")
+#        self.assertTrue(hash in self.sbu.new_hashes, "Simple one line update failed")
+#
+#    def testSimpleAdd2(self):
+#        url1 = "www.example1.com"
+#        url2 = "www.example2.com"
+#        malware_list = create_patched_updater(self.sbu)
+#        hash1 = malware_list.append_add(url1)
+#        hash2 = malware_list.append_add(url2)
+#
+#        self.sbu.update_list("")
+#        self.assertTrue(hash1 in self.sbu.new_hashes, "Simple two line update failed")
+#        self.assertTrue(hash2 in self.sbu.new_hashes, "Simple two line update failed")
+#
+#    def testSimpleRemove1(self):
+#        url = "www.example.com"
+#        malware_list = create_patched_updater(self.sbu)
+#        hash = malware_list.append_remove(url)
+#
+#        self.sbu.update_list("")
+#        self.assertTrue(hash in self.sbu.old_hashes, "Simple one line update failed")
+#
+#    def testSimpleRemove2(self):
+#        url1 = "www.example1.com"
+#        url2 = "www.example2.com"
+#        malware_list = create_patched_updater(self.sbu)
+#        hash1 = malware_list.append_remove(url1)
+#        hash2 = malware_list.append_remove(url2)
+#
+#        self.sbu.update_list("")
+#        self.assertTrue(hash1 in self.sbu.old_hashes, "Simple two line update failed")
+#        self.assertTrue(hash2 in self.sbu.old_hashes, "Simple two line update failed")
+#
+#    def testUpdateOfSameVersion1(self):
+#        url1 = "www.example1.com"
+#        url2 = "www.example2.com"
+#        malware_list = create_patched_updater(self.sbu)[0]
+#        hash1 = malware_list.append_add(url1)
+#        hash2 = malware_list.append_add(url2)
+#
+#        self.sbu.update_list("")
+#        self.assertTrue(hash1 in self.sbu.new_hashes, "Simple two line update failed")
+#        self.assertTrue(hash2 in self.sbu.new_hashes, "Simple two line update failed")
+#
+#        malware_list = create_patched_updater(update=True)[0]
+#        hash1 = malware_list.append_remove(url1)
+#
+#        self.sbu.update_list("")
+#        self.assertTrue(hash1 not in self.sbu.new_hashes, "Simple two line update failed")
+#        self.assertTrue(hash2 in self.sbu.new_hashes, "Simple two line update failed")
+#
+#
+#def create_patched_updater(type=None, version=None, update=False):
+#    if type:
+#        if version:
+#            sbu = SafeBrowsingUpdate(type, version)
+#        sbu = SafeBrowsingUpdate(type, 1)
+#    mock_update = FauxRawUpdate(sbu.type, is_update=update)
+#    def mock(self):
+#        return mock_update
+#    sbu.retrieve_update = mock
+#    return mock_update
+
+    def testSimpleAdd2(self):
+        url1 = "www.example1.com"
+        url2 = "www.example2.com"
+
+        update_file = MockUpdateFile(MALWARE)
+        update = MockedSafeBrowsingUpdate(update_file, MALWARE, -1)
+
+        hash1 = update_file.append_add(url1)
+        hash2 = update_file.append_add(url2)
+        update.update_list()
+
+        self.assertTrue(hash1 in update.new_hashes, "Simple two line update failed")
+        self.assertTrue(hash2 in update.new_hashes, "Simple two line update failed")
+
+        
+
+
+
+
+
+class MockedSafeBrowsingUpdate(SafeBrowsingUpdate):
+
+    def __init__(self, update, *args):
+        super(MockedSafeBrowsingUpdate, self).__init__(self, *args)
+        self.file = update
+
+    def retrieve_update(self):
+        return self.file
+
+    def update_list(self):
+        super(MockedSafeBrowsingUpdate, self).update_list("")
+
+class MockUpdateFile(object):
+
+    def __init__(self, type, version=1, is_update=False):
+        self.contents = None
+        self.pos = 0
+        self.type = type
+        self.version = version
+        if is_update:
+            self.updatestr = " update"
+        else:
+            self.updatestr = ""
+
+#    def clear_contents(self):
+#        self.update = []
+#        self.pos = 0
+#        self.set_header()
+
+    def set_header(self):
+        header = "[goog-" + self.type + "-hash 1." + str(self.version) + self.updatestr + "]"
+        if self.contents is not None:
+            self.contents[0] = header
+        else:
+            self.contents = [header]
+
+    def get_version(self): return self._version
+    def set_version(self, version):
+        self._version = version
+        self.set_header()
+    version = property(get_version, set_version)
+
+    def append_add(self, url):
+        hash = md5(url).hexdigest()
+        self.contents.append("".join(["+",hash]))
+        return hash
+
+    def append_remove(self, url):
+        hash = md5(url).hexdigest()
+        self.contents.append("".join(["-",hash]))
+        return hash
+
+    def readline(self):
+        self.pos += 1
+        return self.contents[self.pos-1]
+
+    def __iter__(self):
+        return iter(self.contents[self.pos:])
+
 
 class URLHasherTests(unittest.TestCase):
 
@@ -413,6 +592,7 @@ class URLHasherTests(unittest.TestCase):
 def allTests():
     return unittest.TestSuite((unittest.makeSuite(BlacklistCacheTests),
                                unittest.makeSuite(SafeBrowsingManagerTests),
+                               #unittest.makeSuite(SafeBrowsingUpdateTests),
                                unittest.makeSuite(URLHasherTests),
                                ))
 

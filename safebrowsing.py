@@ -16,7 +16,7 @@ MALWARE = "malware"
 PHISHING = "black"
 SB_URL_TEMPLATE = "http://sb.google.com/safebrowsing/update?client=api&apikey=%s&version=%s"
 HEADER_REGEX = "\[goog-(malware|black)-hash 1.([0-9]*).*\]"
-HASH_REGEX = "(\+|-)([a-f0-9]*)"
+HASH_REGEX = "(\+|\-)([a-f0-9]*)"
 TIMEOUT = 30 * 60      # 30 minutes
  
 
@@ -25,10 +25,18 @@ class SafeBrowsingUpdate(object):
        the Google safebrowsing API"""
 
     def __init__(self, type, version):
-        self.type = type
-        self.version = version
+        self._type = type
+        self._version = version
         self.new_hashes = []
         self.old_hashes = []
+
+    @property
+    def version(self):
+        return self._version
+
+    @property
+    def type(self):
+        return self._type
 
     def get_version_string(self):
         if self.type == MALWARE:
@@ -80,7 +88,7 @@ class SafeBrowsingUpdate(object):
                 elif m.group(1) == "-":
                     self.old_hashes.append(m.group(2))
 
-        self.version = int(version)
+        self._version = int(version)
 
     def parse_header(self, header):
         """Pull the version number and blacklist type from the header"""
