@@ -27,123 +27,13 @@ from hashlib import md5
 import cmemcache
 
 from safebrowsing import *
-
-class BlacklistCacheTests(unittest.TestCase):
-
-    def setUp(self):
-        config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
-        self.cache = BlacklistCache(config)
-        self.raw_cache = cmemcache.Client(config["memcache_servers"].split(","))
-        self.mgr = SafeBrowsingManager(config["safebrowsing_api_key"])
-        self.mgr.do_updates()
-
-    def testMalwareVersion1(self):
-        """Test that the malware blacklist version can be set"""
-        self.cache.malware_version = 1
-        self.assertEqual(self.cache.malware_version, 1, "Cache did not save version")
-
-    def testMalwareVersion2(self):
-        """Test that the malware blacklist version is automatically set to -1"""
-        self.assertEqual(self.cache.malware_version, -1, "Cache did not initialize version to -1")
-
-    def testPhishingVersion1(self):
-        """Test that the phishing blacklist version can be set"""
-        self.cache.phishing_version = 1
-        self.assertEqual(self.cache.phishing_version, 1, "Cache did not save version")
-
-    def testPhishingVersion2(self):
-        """Test that the phishing blacklist version is automatically set to -1"""
-        self.assertEqual(self.cache.phishing_version, -1, "Cache did not initialize version to -1")
-
-    def testMalwareRawEntry1(self):
-        """Test that the malware blacklist is correctly loaded into the cache"""
-        self.cache.update(self.mgr.get_lists(), self.mgr.malware.version, self.mgr.phishing.version)
-        for d in self.mgr.get_lists():
-            if d["type"] == MALWARE:
-                self.assertTrue(self.raw_cache.get(d["hash"]), "Malware entry %s failed to update in cache" % d["hash"])
-
-    def testPhishingRawEntry1(self):
-        """Test that the phishing blacklist is correctly loaded into the cache"""
-        self.cache.update(self.mgr.get_lists(), self.mgr.phishing.version, self.mgr.phishing.version)
-        for d in self.mgr.get_lists():
-            if d["type"] == PHISHING:
-                self.assertTrue(self.raw_cache.get(d["hash"]), "Phishing entry %s failed to update in cache" % d["hash"])
-
-    def testMalwareEntry1(self):
-        """Test the malware blacklist gives a positive result for a known bad url (without URLHasher)"""
-        self.cache.update(self.mgr.get_lists(), self.mgr.malware.version, self.mgr.phishing.version)
-        result = self.raw_cache.get(md5("malware.testing.google.test/testing/malware/").hexdigest())
-        self.assertTrue(result.startswith("m"), "Malware blacklist lookup failed. Lookup: %s" % result)
-
-    def testMalwareEntry2(self):
-        """Test that the malware blacklist gives a positive result for a known bad url (with URLHasher)"""
-        self.cache.update(self.mgr.get_lists(), self.mgr.malware.version, self.mgr.phishing.version)
-        result = self.cache.check_url("http://malware.testing.google.test/testing/malware/")
-        self.assertEqual(result, MALWARE, "Malware blacklist lookup failed. Lookup: %s" % result)
- 
-    def testMalwareEntry3(self):
-        """Test that the malware blacklist gives a positive result for a known bad url (with URLHasher)"""
-        self.cache.update(self.mgr.get_lists(), self.mgr.malware.version, self.mgr.phishing.version)
-        result = self.cache.check_url("http://obfuscated.malware.testing.google.test/testing/malware/")
-        self.assertEqual(result, MALWARE, "Malware blacklist lookup failed. Lookup: %s" % result)
-
-    def testMalwareEntry4(self):
-        """Test that the malware blacklist gives a positive result for a known bad url (with URLHasher)"""
-        self.cache.update(self.mgr.get_lists(), self.mgr.malware.version, self.mgr.phishing.version)
-        result = self.cache.check_url("http://malware.testing.google.test/testing/malware/obfuscated.html")
-        self.assertEqual(result, MALWARE, "Malware blacklist lookup failed. Lookup: %s" % result)
-
-    def testMalwareEntry5(self):
-        """Test that the malware blacklist gives a positive result for a known bad url (with URLHasher)"""
-        self.cache.update(self.mgr.get_lists(), self.mgr.malware.version, self.mgr.phishing.version)
-        result = self.cache.check_url("http://malware.testing.google.test/testing/malware/obfuscated.html?obfu=1")
-        self.assertEqual(result, MALWARE, "Malware blacklist lookup failed. Lookup: %s" % result)
-
-    def testMalwareEntry6(self):
-        """Test that the malware blacklist gives a positive result for a known bad url (with URLHasher)"""
-        self.cache.update(self.mgr.get_lists(), self.mgr.malware.version, self.mgr.phishing.version)
-        result = self.cache.check_url("http://obfuscated.malware.testing.google.test/testing/malware/obfuscated.html?obfu=1")
-        self.assertEqual(result, MALWARE, "Malware blacklist lookup failed. Lookup: %s" % result)
-
-#    def testSimpleAdd1(self):
-#        """Test that the cache sucessfully updates one entry"""
-#        self.mgr.add_malware_update("test")
-#        self.mgr.revoke_malware_update("test")
-#        self.cache.update(self.mgr.get_lists(), self.mgr.malware.version, self.mgr.phishing.version)
-#        self.assertEqual(result, MALWARE, "Malware blacklist lookup failed. Lookup: %s" % result)
-
-    def tearDown(self):
-        self.raw_cache.flush_all()
-
-#class ManagerProxy(SafeBrowsingManager):
-#    def __init__(self):
-#        super(ManagerProxy, self).__init__()
-#
-#    def set_malware_add(self, raw_entry):
-#        self.malware.new_hashes.append(md5(raw_entry))
-#
-#    def add_phishing_entry(self, raw_entry):
-#        self.phishing.new_hashes.append(md5(raw_entry))
-#
-#    def del_malware_entry(self, raw_entry):
-#        self.malware.old_hashes.append(md5(raw_entry))
-#
-#    def del_phishing_entry(self, raw_entry):
-#        self.phishing.old_hashes.append(md5(raw_entry))
-
-
+#from blacklistcache import *
 
 class SafeBrowsingManagerTests(unittest.TestCase):
 
     def setUp(self):
         config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
-        self.cache = BlacklistCache(config)
         self.mgr = SafeBrowsingManager(config["safebrowsing_api_key"])
-
-    def testInit1(self):
-        """Test that both the blacklist manager and blacklist cache are initialising list versions to the same value"""
-        self.assertEqual(self.mgr.malware.version, self.cache.malware_version, "Malware Update/Manager version mismatch")
-        self.assertEqual(self.mgr.phishing.version, self.cache.phishing_version, "Phishing Update/Manager version mismatch")
 
     def testInit2(self):
         """Test that both the blacklist manager is initialising list versions to -1"""
@@ -202,127 +92,116 @@ class SafeBrowsingManagerTests(unittest.TestCase):
 
 class SafeBrowsingUpdateTests(unittest.TestCase):
 
-    def setUp(self):
-        pass
-#    def setUp(self):
-#        self.sbu = SafeBrowsingUpdate(MALWARE, -1)
-#
-#    def testSimpleAdd1(self):
-#        url = "www.example.com"
-#        malware_list = create_patched_updater(self.sbu)
-#        hash = malware_list.append_add(url)
-#
-#        self.sbu.update_list("")
-#        self.assertTrue(hash in self.sbu.new_hashes, "Simple one line update failed")
-#
-#    def testSimpleAdd2(self):
-#        url1 = "www.example1.com"
-#        url2 = "www.example2.com"
-#        malware_list = create_patched_updater(self.sbu)
-#        hash1 = malware_list.append_add(url1)
-#        hash2 = malware_list.append_add(url2)
-#
-#        self.sbu.update_list("")
-#        self.assertTrue(hash1 in self.sbu.new_hashes, "Simple two line update failed")
-#        self.assertTrue(hash2 in self.sbu.new_hashes, "Simple two line update failed")
-#
-#    def testSimpleRemove1(self):
-#        url = "www.example.com"
-#        malware_list = create_patched_updater(self.sbu)
-#        hash = malware_list.append_remove(url)
-#
-#        self.sbu.update_list("")
-#        self.assertTrue(hash in self.sbu.old_hashes, "Simple one line update failed")
-#
-#    def testSimpleRemove2(self):
-#        url1 = "www.example1.com"
-#        url2 = "www.example2.com"
-#        malware_list = create_patched_updater(self.sbu)
-#        hash1 = malware_list.append_remove(url1)
-#        hash2 = malware_list.append_remove(url2)
-#
-#        self.sbu.update_list("")
-#        self.assertTrue(hash1 in self.sbu.old_hashes, "Simple two line update failed")
-#        self.assertTrue(hash2 in self.sbu.old_hashes, "Simple two line update failed")
-#
-#    def testUpdateOfSameVersion1(self):
-#        url1 = "www.example1.com"
-#        url2 = "www.example2.com"
-#        malware_list = create_patched_updater(self.sbu)[0]
-#        hash1 = malware_list.append_add(url1)
-#        hash2 = malware_list.append_add(url2)
-#
-#        self.sbu.update_list("")
-#        self.assertTrue(hash1 in self.sbu.new_hashes, "Simple two line update failed")
-#        self.assertTrue(hash2 in self.sbu.new_hashes, "Simple two line update failed")
-#
-#        malware_list = create_patched_updater(update=True)[0]
-#        hash1 = malware_list.append_remove(url1)
-#
-#        self.sbu.update_list("")
-#        self.assertTrue(hash1 not in self.sbu.new_hashes, "Simple two line update failed")
-#        self.assertTrue(hash2 in self.sbu.new_hashes, "Simple two line update failed")
-#
-#
-#def create_patched_updater(type=None, version=None, update=False):
-#    if type:
-#        if version:
-#            sbu = SafeBrowsingUpdate(type, version)
-#        sbu = SafeBrowsingUpdate(type, 1)
-#    mock_update = FauxRawUpdate(sbu.type, is_update=update)
-#    def mock(self):
-#        return mock_update
-#    sbu.retrieve_update = mock
-#    return mock_update
+    def testSimpleAddUpdate(self):
+        url = "www.example.com"
+        update = MockSafeBrowsingUpdate(MALWARE, -1)
+        hash = update.file.append_add(url)
 
-    def testSimpleAdd2(self):
-        url1 = "www.example1.com"
-        url2 = "www.example2.com"
-
-        update_file = MockUpdateFile(MALWARE)
-        update = MockedSafeBrowsingUpdate(update_file, MALWARE, -1)
-
-        hash1 = update_file.append_add(url1)
-        hash2 = update_file.append_add(url2)
         update.update_list()
+        self.assertTrue(hash in update.new_hashes, "+%s was not parsed correctly" % hash)
+        self.assertEqual(update.file.version, update.version, "Update and file should be at version 1")
 
-        self.assertTrue(hash1 in update.new_hashes, "Simple two line update failed")
-        self.assertTrue(hash2 in update.new_hashes, "Simple two line update failed")
+    def testSimpleRemoveUpdate(self):
+        url = "www.example.com"
+        update = MockSafeBrowsingUpdate(MALWARE, -1)
+        hash = update.file.append_remove(url)
 
-        
+        update.update_list()
+        self.assertTrue(hash in update.old_hashes, "-%s was not parsed correctly" % hash)
+        self.assertEqual(update.file.version, update.version, "Update and file should be at version 1")
+
+    def testSimpleAddRemoveUpdate(self):
+        add_url = "add.example.com"
+        remove_url = "remove.example.com"
+        update = MockSafeBrowsingUpdate(MALWARE, -1)
+        add_hash = update.file.append_add(add_url)
+        remove_hash = update.file.append_remove(remove_url)
+
+        update.update_list()
+        self.assertTrue(add_hash in update.new_hashes, "+%s was not parsed correctly" % add_hash)
+        self.assertTrue(remove_hash in update.old_hashes, "-%s was not parsed correctly" % remove_hash)
+        self.assertEqual(update.file.version, update.version, "Update and file should be at version 1")
+ 
+    def testComplexUpdate1(self):
+        url1 = "www1.example.com"
+        url2 = "www2.example.com"
+        url3 = "www3.example.com"
+
+        update = MockSafeBrowsingUpdate(MALWARE, -1)
+        hash1 = update.file.append_add(url1)
+        hash2 = update.file.append_add(url2)
+
+        update.update_list()
+        self.assertTrue(hash1 in update.new_hashes, "+%s was not parsed correctly" % hash1)
+        self.assertTrue(hash1 not in update.old_hashes, "+%s was not parsed correctly" % hash1)
+        self.assertTrue(hash2 in update.new_hashes, "+%s was not parsed correctly" % hash2)
+        self.assertTrue(hash2 not in update.old_hashes, "+%s was not parsed correctly" % hash2)
+        self.assertEqual(update.file.version, update.version, "Update and file should be at version 1")
+
+        update.file = MockUpdateFile(MALWARE, is_update=True)
+        hash3 = update.file.append_remove(url3)
+
+        update.update_list()
+        self.assertTrue(hash1 not in update.new_hashes, "new_hashes was not preoperly cleared as %s still appears" % hash1)
+        self.assertTrue(hash1 not in update.old_hashes, "old_hashes was not preoperly cleared as %s still appears" % hash1)
+        self.assertTrue(hash2 not in update.new_hashes, "new_hashes was not preoperly cleared as %s still appears" % hash2)
+        self.assertTrue(hash2 not in update.old_hashes, "old_hashes was not preoperly cleared as %s still appears" % hash2)
+        self.assertTrue(hash3 not in update.new_hashes, "-%s was not parsed correctly" % hash3)
+        self.assertTrue(hash3 in update.old_hashes, "-%s was not parsed correctly" % hash3)
+        self.assertEqual(update.file.version, update.version, "Update and file should be at version 1")
+
+    def testComplexUpdate2(self):
+        url1 = "www1.example.com"
+        url2 = "www2.example.com"
+        url3 = "www3.example.com"
+
+        update = MockSafeBrowsingUpdate(MALWARE, -1)
+        hash1 = update.file.append_add(url1)
+        hash2 = update.file.append_add(url2)
+
+        update.update_list()
+        self.assertTrue(hash1 in update.new_hashes, "+%s was not parsed correctly" % hash1)
+        self.assertTrue(hash1 not in update.old_hashes, "+%s was not parsed correctly" % hash1)
+        self.assertTrue(hash2 in update.new_hashes, "+%s was not parsed correctly" % hash2)
+        self.assertTrue(hash2 not in update.old_hashes, "+%s was not parsed correctly" % hash2)
+        self.assertEqual(update.file.version, update.version, "Update and file should be at version 1")
+
+        update.file = MockUpdateFile(MALWARE, version=3)
+        hash3 = update.file.append_add(url3)
+
+        update.update_list()
+        self.assertTrue(hash1 not in update.new_hashes, "new_hashes was not preoperly cleared as %s still appears" % hash1)
+        self.assertTrue(hash1 not in update.old_hashes, "old_hashes was not preoperly cleared as %s still appears" % hash1)
+        self.assertTrue(hash2 not in update.new_hashes, "new_hashes was not preoperly cleared as %s still appears" % hash2)
+        self.assertTrue(hash2 not in update.old_hashes, "old_hashes was not preoperly cleared as %s still appears" % hash2)
+        self.assertTrue(hash3 in update.new_hashes, "+%s was not parsed correctly" % hash3)
+        self.assertTrue(hash3 not in update.old_hashes, "+%s was not parsed correctly" % hash3)
+        self.assertEqual(update.file.version, update.version, "Update and file should be at version 3")
 
 
+class MockSafeBrowsingUpdate(SafeBrowsingUpdate):
 
+    def __init__(self, type, version):
+        super(MockSafeBrowsingUpdate, self).__init__(type, version)
+        self.file = MockUpdateFile(type)
 
-
-class MockedSafeBrowsingUpdate(SafeBrowsingUpdate):
-
-    def __init__(self, update, *args):
-        super(MockedSafeBrowsingUpdate, self).__init__(self, *args)
-        self.file = update
-
-    def retrieve_update(self):
+    def retrieve_update(self, _):
         return self.file
 
-    def update_list(self):
-        super(MockedSafeBrowsingUpdate, self).update_list("")
+    def update_list(self, apikey=None):
+        super(MockSafeBrowsingUpdate, self).update_list(apikey)
 
 class MockUpdateFile(object):
 
     def __init__(self, type, version=1, is_update=False):
         self.contents = None
         self.pos = 0
-        self.type = type
-        self.version = version
         if is_update:
             self.updatestr = " update"
         else:
             self.updatestr = ""
-
-#    def clear_contents(self):
-#        self.update = []
-#        self.pos = 0
-#        self.set_header()
+        self.type = type
+        self.version = version
 
     def set_header(self):
         header = "[goog-" + self.type + "-hash 1." + str(self.version) + self.updatestr + "]"
@@ -365,122 +244,122 @@ class URLHasherTests(unittest.TestCase):
     # http://code.google.com/apis/safebrowsing/developers_guide.html#Canonicalization
 
     def testPathCanonicalization1(self):
-        url = "http://www.google.com/dir/../page.html"
-        expected_url = "http://www.google.com/page.html"
+        url = "http://www.example.com/dir/../page.html"
+        expected_url = "http://www.example.com/page.html"
         hasher = URLHasher(url)
         self.assertEqual(hasher.url, expected_url, "Canonicalization of relativate path failed: %s" % hasher.url)
 
     def testPathCanonicalization2(self):
-        url = "http://www.google.com/./page.html"
-        expected_url = "http://www.google.com/page.html"
+        url = "http://www.example.com/./page.html"
+        expected_url = "http://www.example.com/page.html"
         hasher = URLHasher(url)
         self.assertEqual(hasher.url, expected_url, "Canonicalization of relative path failed: %s" % hasher.url)
 
     def testPathCanonicalization3(self):
-        url = "http://www.google.com/dir/.././page.html"
-        expected_url = "http://www.google.com/page.html"
+        url = "http://www.example.com/dir/.././page.html"
+        expected_url = "http://www.example.com/page.html"
         hasher = URLHasher(url)
         self.assertEqual(hasher.url, expected_url, "Canonicalization of relative path failed: %s" % hasher.url)
 
     def testPathCanonicalization4(self):
-        url = "http://www.google.com/dir1/dir2/../../page.html"
-        expected_url = "http://www.google.com/page.html"
+        url = "http://www.example.com/dir1/dir2/../../page.html"
+        expected_url = "http://www.example.com/page.html"
         hasher = URLHasher(url)
         self.assertEqual(hasher.url, expected_url, "Canonicalization of relative paths failed: %s" % hasher.url)
 
     def testPathCanonicalization5(self):
-        url = "http://www.google.com/dir/.."
-        expected_url = "http://www.google.com/"
+        url = "http://www.example.com/dir/.."
+        expected_url = "http://www.example.com/"
         hasher = URLHasher(url)
         self.assertEqual(hasher.url, expected_url, "Canonicalization of relative path failed: %s" % hasher.url)
 
     def testPathCanonicalization6(self):
-        url = "http://www.google.com/%7Edir/page.html"
-        expected_url = "http://www.google.com/~dir/page.html"
+        url = "http://www.example.com/%7Edir/page.html"
+        expected_url = "http://www.example.com/~dir/page.html"
         hasher = URLHasher(url)
         self.assertEqual(hasher.url, expected_url, "Canonicalization of escaped path failed: %s" % hasher.url)
 
     def testPathCanonicalization7(self):
-        url = "http://www.google.com"
-        expected_url = "http://www.google.com/"
+        url = "http://www.example.com"
+        expected_url = "http://www.example.com/"
         hasher = URLHasher(url)
         self.assertEqual(hasher.url, expected_url, "Canonicalization of short path failed: %s" % hasher.url)
 
     def testPathCanonicalization8(self):
-        url = "http://www.google.com//"
-        expected_url = "http://www.google.com/"
+        url = "http://www.example.com//"
+        expected_url = "http://www.example.com/"
         hasher = URLHasher(url)
         self.assertEqual(hasher.url, expected_url, "Canonicalization of short path failed: %s" % hasher.url)
  
     def testPathCanonicalization9(self):
-        url = "http://www.google.com/path//"
-        expected_url = "http://www.google.com/path/"
+        url = "http://www.example.com/path//"
+        expected_url = "http://www.example.com/path/"
         hasher = URLHasher(url)
         self.assertEqual(hasher.url, expected_url, "Canonicalization of short path failed: %s" % hasher.url)
 
     def testPathCanonicalization10(self):
-        url = "http://www.google.com/path//dir/"
-        expected_url = "http://www.google.com/path/dir/"
+        url = "http://www.example.com/path//dir/"
+        expected_url = "http://www.example.com/path/dir/"
         hasher = URLHasher(url)
         self.assertEqual(hasher.url, expected_url, "Canonicalization of short path failed: %s" % hasher.url)
 
     def testPathCanonicalization11(self):
-        url = "http://www.google.com/path//../"
-        expected_url = "http://www.google.com/"
+        url = "http://www.example.com/path//../"
+        expected_url = "http://www.example.com/"
         hasher = URLHasher(url)
         self.assertEqual(hasher.url, expected_url, "Canonicalization of short path failed: %s" % hasher.url)
 
     def testPathCanonicalization12(self):
-        url = "http://www.google.com////"
-        expected_url = "http://www.google.com/"
+        url = "http://www.example.com////"
+        expected_url = "http://www.example.com/"
         hasher = URLHasher(url)
         self.assertEqual(hasher.url, expected_url, "Canonicalization of short path failed: %s" % hasher.url)
 
     def testPathCanonicalization13(self):
-        url = "http://www.google.com////path///..//"
-        expected_url = "http://www.google.com/"
+        url = "http://www.example.com////path///..//"
+        expected_url = "http://www.example.com/"
         hasher = URLHasher(url)
         self.assertEqual(hasher.url, expected_url, "Canonicalization of short path failed: %s" % hasher.url)
  
     def testPathCanonicalizationFailure1(self):
-        url = "http://www.google.com/../page.html"
+        url = "http://www.example.com/../page.html"
         self.assertRaises(URLHasherError, URLHasher, url)
 
     def testPathCanonicalizationFailure2(self):
-        url = "http://www.google.com/dir/../../page.html"
+        url = "http://www.example.com/dir/../../page.html"
         self.assertRaises(URLHasherError, URLHasher, url)
 
     def testPathCanonicalizationFailure3(self):
-        url = "http://www.google.com/..//page.html"
+        url = "http://www.example.com/..//page.html"
         self.assertRaises(URLHasherError, URLHasher, url)
 
     def testHostnameCanonicalization1(self):
-        url ="http://www.google..com/"
-        expected_url = "http://www.google.com/"
+        url ="http://www.example..com/"
+        expected_url = "http://www.example.com/"
         hasher = URLHasher(url)
         self.assertEqual(hasher.url, expected_url, "Canonicalization of hostname failed")
 
-    def testHostnameCanonicalization1(self):
-        url ="http://www..google.com/"
-        expected_url = "http://www.google.com/"
+    def testHostnameCanonicalization2(self):
+        url ="http://www..example.com/"
+        expected_url = "http://www.example.com/"
         hasher = URLHasher(url)
         self.assertEqual(hasher.url, expected_url, "Canonicalization of hostname failed")
 
-    def testHostnameCanonicalization1(self):
-        url ="http://www.google.com./"
-        expected_url = "http://www.google.com/"
+    def testHostnameCanonicalization3(self):
+        url ="http://www.example.com./"
+        expected_url = "http://www.example.com/"
         hasher = URLHasher(url)
         self.assertEqual(hasher.url, expected_url, "Canonicalization of hostname failed")
 
-    def testHostnameCanonicalization1(self):
-        url ="http://.www.google.com/"
-        expected_url = "http://www.google.com/"
+    def testHostnameCanonicalization4(self):
+        url ="http://.www.example.com/"
+        expected_url = "http://www.example.com/"
         hasher = URLHasher(url)
         self.assertEqual(hasher.url, expected_url, "Canonicalization of hostname failed")
 
     def testURLCanonicalization(self):
-        url = "HTTP://WWW.GOOGLE.COM/"
-        expected_url = "http://www.google.com/"
+        url = "HTTP://WWW.example.COM/"
+        expected_url = "http://www.example.com/"
         hasher = URLHasher(url)
         self.assertEqual(hasher.url, expected_url, "Canonicalization of url failed")
 
@@ -590,9 +469,8 @@ class URLHasherTests(unittest.TestCase):
  
 
 def allTests():
-    return unittest.TestSuite((unittest.makeSuite(BlacklistCacheTests),
-                               unittest.makeSuite(SafeBrowsingManagerTests),
-                               #unittest.makeSuite(SafeBrowsingUpdateTests),
+    return unittest.TestSuite((unittest.makeSuite(SafeBrowsingManagerTests),
+                               unittest.makeSuite(SafeBrowsingUpdateTests),
                                unittest.makeSuite(URLHasherTests),
                                ))
 
@@ -613,7 +491,7 @@ def display_warning():
     print
 
 if __name__ in ('main', '__main__'):
-    display_warning()
+    #display_warning()
    
     unittest.main(defaultTest="allTests")
 
