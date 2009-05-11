@@ -1,0 +1,5 @@
+Nice features for future versions:
+ - Use message authentication on updates (http://code.google.com/apis/safebrowsing/developers_guide.html#MessageAuthentication)
+ - Use asyncore to provide a non-blocking implementation of SafeBrowsingManager.do_updates()
+ - Allow fetching of updates through a proxy server
+ - Comments, comments, comments

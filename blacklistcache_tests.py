@@ -27,7 +27,6 @@ from hashlib import md5
 import cmemcache
 
 from safebrowsing import *
-from safebrowsing.test import *
 from blacklistcache import *
 
 class BlacklistCacheTests(unittest.TestCase):
@@ -107,26 +106,26 @@ class BlacklistCacheTests(unittest.TestCase):
         result = self.cache.check_url("http://obfuscated.malware.testing.google.test/testing/malware/obfuscated.html?obfu=1")
         self.assertEqual(result, MALWARE, "Malware blacklist lookup failed. Lookup: %s" % result)
 
-    def testMalwareEntryAndRemoval1(self):
-        """Test that an update with a redacted url is correctly reflected in the cache"""
-        url = "www.example.com"
-        self.mgr.malware = MockSafeBrowsingUpdate(MALWARE, -1)
-        self.mgr.malware.file.append_add(url)
-        self.mgr.do_updates()
-
-        self.cache.update(self.mgr.get_lists(), self.mgr.malware.version, self.mgr.phishing.version)
-        result = self.cache.check_url(url)
-        self.assertEqual(result, MALWARE, "Malware blacklist lookup failed. Lookup: %s" % result)
-        self.assertEqual(self.mgr.malware.file.version, self.cache.malware_version, "Malware blacklist version update failed.")
-        
-        self.mgr.malware.file = MockUpdateFile(MALWARE, is_update=True)
-        self.mgr.malware.file.append_remove(url)
-        self.mgr.do_updates()
-        
-        self.cache.update(self.mgr.get_lists(), self.mgr.malware.version, self.mgr.phishing.version)
-        result = self.cache.check_url(url)
-        self.assertEqual(result, None, "Malware blacklist lookup failed. Lookup: %s" % result)
-        self.assertEqual(self.mgr.malware.file.version, self.cache.malware_version, "Malware blacklist version update failed.")
+#    def testMalwareEntryAndRemoval1(self):
+#        """Test that an update with a redacted url is correctly reflected in the cache"""
+#        url = "www.example.com"
+#        self.mgr.malware = MockSafeBrowsingUpdate(MALWARE, -1)
+#        self.mgr.malware.file.append_add(url)
+#        self.mgr.do_updates()
+#
+#        self.cache.update(self.mgr.get_lists(), self.mgr.malware.version, self.mgr.phishing.version)
+#        result = self.cache.check_url(url)
+#        self.assertEqual(result, MALWARE, "Malware blacklist lookup failed. Lookup: %s" % result)
+#        self.assertEqual(self.mgr.malware.file.version, self.cache.malware_version, "Malware blacklist version update failed.")
+#        
+#        self.mgr.malware.file = MockUpdateFile(MALWARE, is_update=True)
+#        self.mgr.malware.file.append_remove(url)
+#        self.mgr.do_updates()
+#        
+#        self.cache.update(self.mgr.get_lists(), self.mgr.malware.version, self.mgr.phishing.version)
+#        result = self.cache.check_url(url)
+#        self.assertEqual(result, None, "Malware blacklist lookup failed. Lookup: %s" % result)
+#        self.assertEqual(self.mgr.malware.file.version, self.cache.malware_version, "Malware blacklist version update failed.")
 
     def tearDown(self):
         self.raw_cache.flush_all()
@@ -152,7 +151,7 @@ def display_warning():
     print
 
 if __name__ in ('main', '__main__'):
-    #display_warning()
+    display_warning()
    
     unittest.main(defaultTest="allTests")
 

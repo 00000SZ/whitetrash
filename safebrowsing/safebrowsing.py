@@ -6,6 +6,7 @@ import socket
 import urllib2
 import urlparse
 import re
+import time
 from hashlib import md5
 
 import cmemcache
@@ -64,14 +65,13 @@ class SafeBrowsingUpdate(object):
 
         # Grab the blacklist
         try:
-            #return urllib2.urlopen(url)
-            return self._local_fopen(url) # for testing only
+            return urllib2.urlopen(url)
+            #return self._local_fopen(url) # for testing only
         except urllib2.URLError, e:
             if hasattr(e, "reason"):
-                print "Reason", e.reason
+                raise SafeBrowsingUpdateError(e.reason)
             elif hasattr(e, "code"):
-                print e
-            return
+                raise SafeBrowsingUpdateError(str(e))
 
     def parse_update(self, file):
         """Parses the retreived file"""
@@ -128,21 +128,54 @@ class SafeBrowsingUpdate(object):
                 return open("gsb_malware2.html")
 
 
+class SafeBrowsingUpdateError(Exception):
+    pass
+
+
 class SafeBrowsingManager():
     """Manages the retreival of updates from the safe browsing API"""
+
+    MAX_WAIT = 360
+
+    """A dictionary with the of number of consecutive errors as keys and
+       time to wait before next update (in minutes) as values. >5 consecutive
+       errors have to wait 360 minutes"""
+    backoff = {0 : 25,
+               1 : 1,
+               2 : 1,
+               3 : 60,
+               4 : 180,
+               5 : MAX_WAIT}
 
     def __init__(self, apikey):
         self._apikey = apikey
         self.malware  = SafeBrowsingUpdate(MALWARE, -1)
         self.phishing = SafeBrowsingUpdate(PHISHING, -1)
 
-    def do_updates(self, malware_version = None, phishing_version = None):
+    def do_updates(self, malware_version=None, phishing_version=None):
         if malware_version:
             self.malware = SafeBrowsingUpdate(MALWARE, malware_version)
         if phishing_version:
             self.phishing = SafeBrowsingUpdate(PHISHING, phishing_version)
-        self.malware.update_list(self._apikey)
-        self.phishing.update_list(self._apikey)
+        try:
+            self.malware.update_list(self._apikey)
+            self.phishing.update_list(self._apikey)
+        except SafeBrowsingUpdateError, e:
+            raise SafeBrowsingUpdateError("Update failed")
+
+    def do_updates_blocking(self, malware_version=None, phishing_version=None):
+        errors = 0
+        while True:
+            try:
+                self.do_updates(malware_version, phishing_version)
+            except SafeBrowsingUpdateError, e:
+                errors += 1
+                # sleep according to the number of errors we've seen
+                # default is to sleep for 360 minutes (for 5 or more errors)
+                time.sleep(self.backoff.get(errors, MAX_WAIT) * 60)
+            finally:
+                break
+
 
     def get_lists(self):
         for h in self.malware.old_hashes:
