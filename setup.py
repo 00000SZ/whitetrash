@@ -4,8 +4,11 @@ import sys
 import os
 import glob
 import datetime
+import string
+import random 
+from OpenSSL import crypto
+import whitetrash_cert_server as wtcs
 
-#TODO: create log files in /var/log for django and redirector
 
 try:
     from distutils.core import setup
@@ -48,8 +51,16 @@ class WhitetrashInstallData(install):
         execute(self.copyApacheConfigs,())
         execute(self.copyWebStaticFiles,())
         execute(self.copySquidConfigs,())
+        execute(self.createWTUser,())
+        execute(self.createCertAuthority,())
+        execute(self.createWTApacheCert,())
         execute(self.createLogFiles,())
         execute(self.createDBandUsers,())
+
+    def createWTUser(self):
+        ret=os.system("""adduser --shell /bin/false --no-create-home --disabled-password --disabled-login --gecos "" whitetrash""")
+        if ret !=0:
+            print "Could not add whitetrash user - already exists?"
 
     def installDjango(self):
         #Need to change our 'working dir' to make sure the django install works properly
@@ -118,7 +129,7 @@ class WhitetrashInstallData(install):
             httpconf=os.path.join(self.apache_configdir,"httpd.conf")
 
             if os.path.exists(httpconf):
-    	        print "Backing up existing %s" % httpconf
+                print "Backing up existing %s" % httpconf
                 move_file(os.path.join(self.apache_configdir,"httpd.conf"),
                                     "/etc/apache2/httpd.conf.wt.bak.%s" % datetime.datetime.now().isoformat())
 
@@ -126,7 +137,7 @@ class WhitetrashInstallData(install):
             copy_file(os.path.join(self.apache_configdir,"sites-available/whitetrash"), os.path.join(self.apache_configdir,"sites-enabled/whitetrash"),link="sym")
 
             mkpath(os.path.join(self.apache_configdir,"ssl")) 
-
+            
         else:
 
             print """Apache2 not installed, couldn't find %s""" % os.path.join(self.apache_configdir,"sites-available")
@@ -158,7 +169,112 @@ class WhitetrashInstallData(install):
         mkpath("/var/log")
         write_file("/var/log/whitetrash.django.log","")
         write_file("/var/log/whitetrash.squidredir.log","")
-        print("Log files whitetrash.django.log whitetrash.squidredir.log created in /var/log chown as described in INSTALL.txt")
+        write_file("/var/log/whitetrash.certserver.log","")
+        os.system("chown whitetrash:whitetrash /var/log/whitetrash.certserver.log")
+        print("Log files whitetrash.django.log whitetrash.squidredir.log whitetrash.certserver.log created in /var/log chown as described in INSTALL.txt")
+
+    def genPasswd(self,length=8, chars=string.letters + string.digits):
+        return ''.join([random.choice(chars) for i in range(length)])
+   
+    def createCertAuthority(self):
+        """Create a certificate authority for dynamic creation of SSL certs"""
+
+        try:
+            from configobj import ConfigObj
+            config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
+        except Exception,e:
+            print """Error parsing /etc/whitetrash.conf (%s)""" % e
+
+        #Create dir where dynamic certs will be installed
+        mkpath(os.path.join(config["cacert_dir"],"private")) 
+        if not os.path.exists(config["dynamic_certs_dir"]):
+            print("Creating dynamic certs dir: %s" % config["dynamic_certs_dir"])
+            mkpath(config["dynamic_certs_dir"]) 
+            os.system("chown whitetrash:whitetrash %s" % config["dynamic_certs_dir"])
+
+        #Create the keyfile that all dynamic certs will use
+        if not os.path.exists(config["dynamic_certs_keyfile"]): 
+            print("Creating dynamic certs keyfile: %s" % config["dynamic_certs_keyfile"])
+            certkey = wtcs.createKeyPair(crypto.TYPE_RSA,1024)
+            outkey = crypto.dump_privatekey(crypto.FILETYPE_PEM,certkey)
+            open(config["dynamic_certs_keyfile"],'w').write(outkey)
+            os.system("chown whitetrash:whitetrash %s" % config["dynamic_certs_keyfile"])
+            os.system("chmod 400 %s" % config["dynamic_certs_keyfile"])
+
+        #Create the cakey and store encrypted with random password
+        if not os.path.exists(wtcs.cakeyfile):
+            print("Creating CA keyfile: %s" % wtcs.cakeyfile)
+            capass = self.genPasswd(length=64)
+            self.cakey = wtcs.createKeyPair(crypto.TYPE_RSA,1024)
+            privkey = crypto.dump_privatekey(crypto.FILETYPE_PEM,self.cakey,"DES3",capass)
+            open(wtcs.cakeyfile,'w').write(privkey)
+            print("Writing CA keyfile passwd to: %s" % config["ca_pass"])
+            open(config["ca_pass"],'w').write(capass)
+
+            os.system("chown whitetrash:whitetrash %s %s" % (wtcs.cakeyfile,config["ca_pass"]))
+            os.system("chmod 400 %s %s" % (wtcs.cakeyfile,config["ca_pass"]))
+        else:
+            print("Loading CA keyfile: %s" % wtcs.cakeyfile)
+            self.cakey = crypto.load_privatekey(crypto.FILETYPE_PEM,
+                                    open(wtcs.cakeyfile,'r').read(),
+                                    open(config["ca_pass"],'r').readline().strip())
+
+        #Create the cacert
+        if not os.path.exists(wtcs.cacertfile):  
+            print("Creating CA cert: %s" % wtcs.cacertfile)
+            req = wtcs.createCertRequest(self.cakey,C=config["country"],
+                                    ST=config["state"],L=config["city"],
+                                    O=config["org_unit"],CN=config["whitetrash_domain"])
+            issue_time = int(config["certificate_time_offset_s"])
+            self.cacert = wtcs.createCertificate(req, (req,self.cakey), 
+                            random.randint(0,wtcs.upper_rand), 
+                            (-issue_time, 60*60*24*365*wtcs.cert_years)) 
+            open(wtcs.cacertfile,'w').write(crypto.dump_certificate(crypto.FILETYPE_PEM, self.cacert))
+
+        else:
+            print("Loading CA cert: %s" % wtcs.cacertfile)
+            self.cacert = crypto.load_certificate(crypto.FILETYPE_PEM,
+                                    open(wtcs.cacertfile,'r').read())
+
+
+        #Create apache link to cacert to make it easy to download
+        if not os.path.exists(os.path.join(self.web_root,"whitetrash/cacert.pem")):
+            print("Creating CA download link for apache")
+            os.symlink(wtcs.cacertfile, os.path.join(self.web_root,"whitetrash/cacert.pem"))
+
+
+    def createWTApacheCert(self):
+        apachekeyfile = "/etc/apache2/ssl/server.key"
+        apachecertfile = "/etc/apache2/ssl/server.crt"
+
+        try:
+            from configobj import ConfigObj
+            config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
+        except Exception,e:
+            print """Error parsing /etc/whitetrash.conf (%s)""" % e
+
+
+        if not os.path.exists(apachekeyfile):
+            print("Creating apache ssl key file: %s" % apachekeyfile)
+            apachekey = wtcs.createKeyPair(crypto.TYPE_RSA,1024)
+            privkey = crypto.dump_privatekey(crypto.FILETYPE_PEM,apachekey)
+            open(apachekeyfile,'w').write(privkey)
+            os.system("chmod 444 %s" % apachekeyfile)
+        else:
+            print("Loading apache ssl key file: %s" % apachekeyfile)
+            apachekey = crypto.load_privatekey(crypto.FILETYPE_PEM,
+                                    open(apachekeyfile,'r').read())
+
+        if not os.path.exists(apachecertfile):
+            print("Creating apache ssl cert: %s" % apachecertfile)
+            req = wtcs.createCertRequest(apachekey,C=config["country"],
+                                    ST=config["state"],L=config["city"],
+                                    O=config["org_unit"],CN=config["whitetrash_domain"])
+            issue_time = int(config["certificate_time_offset_s"])
+            cert = wtcs.createCertificate(req, (self.cacert,self.cakey), 
+                            random.randint(0,wtcs.upper_rand), 
+                            (-issue_time, 60*60*24*365*wtcs.cert_years)) 
+            open(apachecertfile,'w').write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
 
 def setup_args():
     setup_args={
@@ -177,7 +293,7 @@ def setup_args():
         'license': 'GPL',
         'platforms': 'Linux',
         'py_modules': ['configobj'],
-        'scripts' : ['whitetrash_cleanup.py',
+        'scripts' : ['whitetrash_cert_server.py',
                      'whitetrash.py'],
         'classifiers' : [
             'License :: OSI-Approved Open Source :: GNU General Public License (GPL)',
@@ -190,7 +306,8 @@ def setup_args():
             'Database Environment :: Database API :: SQL-based',
             'Environment :: Console',
             'Natural Language :: English',],
-        'data_files' : [('/etc', ['whitetrash.conf'])],
+        'data_files' : [('/etc', ['whitetrash.conf']),
+                        ('/etc/init.d', ['whitetrash_cert'])],
         'requires': ["django (>=1.0)","MySQLdb"],
         'cmdclass': {'install': WhitetrashInstallData}
     }

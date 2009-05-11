@@ -32,16 +32,18 @@ Change the log file ownership to your proxy and apache users, examples below are
     sudo chown proxy:proxy /var/log/whitetrash.squidredir.log
     sudo chown www-data:root /var/log/whitetrash.django.log
 
-Create ssl cert and enable apache ssl module (this is for self-signed, better if you buy one):
+Enable apache ssl and modrewrite modules:
 
     sudo a2enmod ssl rewrite
-    sudo openssl genrsa -out /etc/apache2/ssl/server.key 4096
-    sudo chmod 600 /etc/apache2/ssl/server.key
-    #Use whitetrash as the common name
-    sudo openssl req -new -key /etc/apache2/ssl/server.key -out server.csr
-    sudo openssl x509 -req -days 365 -in server.csr -signkey /etc/apache2/ssl/server.key -out /etc/apache2/ssl/server.crt
 
-Restart apache and squid.
+Restart apache and squid, start whitetrash_cert:
+    /etc/init.d/apache2 restart
+    /etc/init.d/squid restart
+    /etc/init.d/whitetrash_cert start
+
+Make sure the whitetrash_cert server gets started in the default runlevels by (on ubuntu):
+
+    sudo update-rc.d whitetrash_cert defaults
 
 If you would like to enable the CAPTCHA (http://en.wikipedia.org/wiki/Captcha) test for whitelist additions, you will need to install PyCAPTCHA: http://cheeseshop.python.org/pypi/PyCAPTCHA/0.4  using easy_install (python-setuptools) and the python-imaging package.
 
@@ -66,9 +68,10 @@ The result
 
 netstat -plant should show you the following listeners:
 
-- mysqld             127.0.0.1:3306
-- squid              0.0.0.0:3128
-- apache             0.0.0.0:80, 0.0.0.0:443
+- python (whitetrash_cert)  127.0.0.1:3456
+- mysqld                    127.0.0.1:3306
+- squid                     0.0.0.0:3128
+- apache                    0.0.0.0:80, 0.0.0.0:443
 
 DNS
 ~~~
@@ -81,10 +84,7 @@ Make sure the following domains resolve to the whitetrash IP:
 
 You can do this with /etc/hosts if you don't have DNS:
 
-    127.0.1.2   whitetrash
-    127.0.1.3   sslwhitetrash
-    127.0.1.4   blockedwhitetrash
-
+    127.0.0.1   localhost whitetrash sslwhitetrash blockedwhitetrash
 
 ===========
 Performance

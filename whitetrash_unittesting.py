@@ -24,14 +24,43 @@ import unittest
 from configobj import ConfigObj
 from whitetrash import WTSquidRedirector
 from whitetrash import WTSquidRedirectorCached
+from whitetrash_cert_server import get_domain,get_cert
 from exceptions import TypeError
 import httplib
 import MySQLdb
+import os
+
+class WhitetrashTest(unittest.TestCase):
+
+    def setUp(self):
+        self.config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
+
+class CertServerTest(WhitetrashTest):
+
+    def setUp(self):
+        super(CertServerTest, self).setUp() 
+        testdomains = ["testing.whitetrash.sf.net","sf.net"]
+        for dom in testdomains:
+            cert = os.path.join(self.config["dynamic_certs_dir"],"%s.pem" % dom)
+            if os.path.exists(cert):
+                os.unlink(cert)
+
+    def testGetDomain(self):
+        self.assertEqual(("*.","com.au"),get_domain("blah.com.au"))        
+        self.assertEqual(("*.","blah.blah.com.au"),get_domain("blah.blah.blah.com.au"))        
+        self.assertEqual(("","blah.com"),get_domain("blah.com"))        
+
+    def testGetCert(self):
+        assert(os.path.exists(self.config["dynamic_certs_dir"]))
+        get_cert("blah.testing.whitetrash.sf.net")
+        assert(os.path.exists(os.path.join(self.config["dynamic_certs_dir"],"testing.whitetrash.sf.net.pem")))
+        get_cert("sf.net")
+        assert(os.path.exists(os.path.join(self.config["dynamic_certs_dir"],"sf.net.pem")))
 
 class RedirectorTest(unittest.TestCase):
 
     def setUp(self):
-        self.config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
+        super(RedirectorTest, self).setUp() 
         self.cleancur=self.getDBCleanupCursor(self.config)
 
     def getDBCleanupCursor(self,config):
@@ -52,7 +81,6 @@ class SquidRedirectorUnitTests(RedirectorTest):
         self.cleancur.execute("delete from whitelist_whitelist where username='wt_unittesting'")
         self.wt_redir.cursor.execute("insert into whitelist_whitelist set domain='alreadywhitelisted.whitetrash.sf.net',date_added=NOW(),username='wt_unittesting',protocol=%s,url='http://sdlkj',comment='whitetrash testing',enabled=1,hitcount=20,last_accessed=NOW(),client_ip='192.168.1.1'", (self.wt_redir.PROTOCOL_CHOICES["HTTP"]))
 
-        
     def testURLParsing(self):
 
         squid_inputs=[
@@ -81,6 +109,7 @@ class SquidRedirectorUnitTests(RedirectorTest):
             self.assertEqual(self.wt_redir.fail_url,squid_inputs_results_url[i],
                                     "Got %s, Expected %s for %s" %(self.wt_redir.fail_url,
                                     squid_inputs_results_url[i],squid_inputs[i]))
+
     def testGetWhitelistID(self):
         #Get the ID for an entry we know is whitelisted
         thisid=self.wt_redir.get_whitelist_id(self.wt_redir.PROTOCOL_CHOICES["HTTP"],
@@ -227,6 +256,7 @@ class CachedSquidRedirectorUnitTests(SquidRedirectorUnitTests):
 def allTests():
     return unittest.TestSuite((unittest.makeSuite(CachedSquidRedirectorUnitTests),
                                 unittest.makeSuite(SquidRedirectorUnitTests),
+                                unittest.makeSuite(CertServerTest),
                                 ))
 
 if __name__ in ('main', '__main__'):
