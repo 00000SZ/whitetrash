@@ -222,13 +222,15 @@ class WhitetrashInstallData(install):
         #Create the cacert
         if not os.path.exists(wtcs.cacertfile):  
             print("Creating CA cert: %s" % wtcs.cacertfile)
+            # The CA *cannot* have the same subject string as a cert, because
+            # SSL will think it is self signed.  I use Whitetrash CA here.
             req = wtcs.createCertRequest(self.cakey,C=config["country"],
                                     ST=config["state"],L=config["city"],
-                                    O=config["org_unit"],CN=config["whitetrash_domain"])
+                                    O=config["org_unit"],CN="Whitetrash CA")
             issue_time = int(config["certificate_time_offset_s"])
             self.cacert = wtcs.createCertificate(req, (req,self.cakey), 
                             random.randint(0,wtcs.upper_rand), 
-                            (-issue_time, 60*60*24*365*wtcs.cert_years)) 
+                            (-issue_time, 60*60*24*365*wtcs.cert_years),CA=True) 
             open(wtcs.cacertfile,'w').write(crypto.dump_certificate(crypto.FILETYPE_PEM, self.cacert))
 
         else:
@@ -259,7 +261,7 @@ class WhitetrashInstallData(install):
             apachekey = wtcs.createKeyPair(crypto.TYPE_RSA,1024)
             privkey = crypto.dump_privatekey(crypto.FILETYPE_PEM,apachekey)
             open(apachekeyfile,'w').write(privkey)
-            os.system("chmod 444 %s" % apachekeyfile)
+            os.system("chmod 400 %s" % apachekeyfile)
         else:
             print("Loading apache ssl key file: %s" % apachekeyfile)
             apachekey = crypto.load_privatekey(crypto.FILETYPE_PEM,

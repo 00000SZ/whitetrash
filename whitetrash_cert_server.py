@@ -98,7 +98,7 @@ def createCertRequest(pkey, digest="sha1", **name):
     req.sign(pkey, digest)
     return req
 
-def createCertificate(req, (issuerCert, issuerKey), serial, (notBefore, notAfter), digest="md5"):
+def createCertificate(req, (issuerCert, issuerKey), serial, (notBefore, notAfter), digest="sha1",CA=False):
     """
     Generate a certificate given a certificate request.
 
@@ -114,6 +114,11 @@ def createCertificate(req, (issuerCert, issuerKey), serial, (notBefore, notAfter
     Returns:   The signed certificate in an X509 object
     """
     cert = crypto.X509()
+    if CA:
+        caext = [crypto.X509Extension("nsCertType", 0, "server"),
+                crypto.X509Extension("basicConstraints", 1, "CA:TRUE")]
+        cert.add_extensions(caext)
+
     cert.set_serial_number(serial)
     cert.gmtime_adj_notBefore(notBefore)
     cert.gmtime_adj_notAfter(notAfter)
