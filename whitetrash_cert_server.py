@@ -34,6 +34,7 @@ import logging
 import logging.config
 from OpenSSL import crypto
 import random
+from distutils.dir_util import mkpath
 
 config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
 logging.config.fileConfig("/etc/whitetrash.conf")
@@ -47,6 +48,16 @@ cacertfile = os.path.join(config["cacert_dir"],"cacert.pem")
 cakeyfile = os.path.join(config["cacert_dir"],"private/cakey.pem")
 certkey = ""
 
+if os.path.exists(config["dynamic_certs_keyfile"]):
+    certkey = crypto.load_privatekey(crypto.FILETYPE_PEM,
+                                open(config["dynamic_certs_keyfile"],'r').read())
+if os.path.exists(cacertfile):
+    cacert = crypto.load_certificate(crypto.FILETYPE_PEM,open(cacertfile,'r').read())
+
+if os.path.exists(cakeyfile):
+    cakey = crypto.load_privatekey(crypto.FILETYPE_PEM,
+                                    open(cakeyfile,'r').read(),
+                                    open(config["ca_pass"],'r').readline().strip())
 
 def clean_domain(domain):
     try:
@@ -130,6 +141,7 @@ def createCertificate(req, (issuerCert, issuerKey), serial, (notBefore, notAfter
 
 def create_cert(certfile,prefix,domain):
     """Create a certificate file, just shell out for now."""
+    wtlog.debug("Creating cert for: %s%s" % (prefix,domain) )
     req = createCertRequest(certkey,C=config["country"],
                             ST=config["state"],L=config["city"],
                             O=config["org_unit"],CN="%s%s" % (prefix,domain))
@@ -149,13 +161,24 @@ def get_domain(domain):
         return ("*.",re.sub("^[a-z0-9-]+\.","",dom_temp,1))
     else:
         return ("",domain)
-    
+
+def get_certfilepath(domain):
+    labels = domain.split(".")
+    labels.reverse()
+    dirpath = ""
+    for dir in labels[:-1]:
+    	dirpath = os.path.join(dirpath,dir)
+    	mkpath(os.path.join(config["dynamic_certs_dir"],dirpath))
+    wtlog.debug("Returning path %s" % os.path.join(config["dynamic_certs_dir"],dirpath,"%s.pem" % domain))
+    return os.path.join(config["dynamic_certs_dir"],dirpath,"%s.pem" % domain)
         
 def get_cert(domain):
     (pref,dom) = get_domain(domain)
-    certfile=os.path.join(config["dynamic_certs_dir"],"%s.pem" % dom)
+    certfile=get_certfilepath(dom)
     if not cert_exists(certfile):
         create_cert(certfile,pref,dom)
+    else:
+        wtlog.debug("Using existing cert at: %s" % certfile)
     return certfile 
 
 class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
@@ -236,13 +259,7 @@ def run_http(server_class=WhitetrashServer,
 
 if __name__ in ('main', '__main__'):
 
-    cacert = crypto.load_certificate(crypto.FILETYPE_PEM,open(cacertfile,'r').read())
-    cakey = crypto.load_privatekey(crypto.FILETYPE_PEM,
-                                    open(cakeyfile,'r').read(),
-                                    open(config["ca_pass"],'r').readline().strip())
 
-    certkey = crypto.load_privatekey(crypto.FILETYPE_PEM,
-                            open(config["dynamic_certs_keyfile"],'r').read())
     
     run_http()
 

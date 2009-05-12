@@ -24,7 +24,7 @@ import unittest
 from configobj import ConfigObj
 from whitetrash import WTSquidRedirector
 from whitetrash import WTSquidRedirectorCached
-from whitetrash_cert_server import get_domain,get_cert
+from whitetrash_cert_server import get_domain,get_cert,get_certfilepath
 from exceptions import TypeError
 import httplib
 import MySQLdb
@@ -39,9 +39,9 @@ class CertServerTest(WhitetrashTest):
 
     def setUp(self):
         super(CertServerTest, self).setUp() 
-        testdomains = ["testing.whitetrash.sf.net","sf.net"]
+        testdomains = ["testing.whitetrash.sf.net","whitetrash.sf.net"]
         for dom in testdomains:
-            cert = os.path.join(self.config["dynamic_certs_dir"],"%s.pem" % dom)
+            cert = get_certfilepath(dom)
             if os.path.exists(cert):
                 os.unlink(cert)
 
@@ -51,11 +51,19 @@ class CertServerTest(WhitetrashTest):
         self.assertEqual(("","blah.com"),get_domain("blah.com"))        
 
     def testGetCert(self):
+        """Check certs get created.  THe first label of the domains supplied will be stripped and wildcarded"""
+
         assert(os.path.exists(self.config["dynamic_certs_dir"]))
         get_cert("blah.testing.whitetrash.sf.net")
-        assert(os.path.exists(os.path.join(self.config["dynamic_certs_dir"],"testing.whitetrash.sf.net.pem")))
-        get_cert("sf.net")
-        assert(os.path.exists(os.path.join(self.config["dynamic_certs_dir"],"sf.net.pem")))
+        assert(os.path.exists(os.path.join(self.config["dynamic_certs_dir"],"net/sf/whitetrash/testing.whitetrash.sf.net.pem")))
+        get_cert("whitetrash.sf.net")
+        assert(os.path.exists(os.path.join(self.config["dynamic_certs_dir"],"net/sf.net.pem")))
+
+    def testGetCertFilePath(self):
+        """Get file path, get_certfilepath assumes first label has already been stripped."""
+
+        self.assertEqual(get_certfilepath("whitetrash.sf.net"),os.path.join(self.config["dynamic_certs_dir"],"net/sf/whitetrash.sf.net.pem"))
+        self.assertEqual(get_certfilepath("com.au"),os.path.join(self.config["dynamic_certs_dir"],"au/com.au.pem"))
 
 class RedirectorTest(unittest.TestCase):
 
