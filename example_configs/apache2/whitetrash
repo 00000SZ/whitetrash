@@ -29,7 +29,7 @@ RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
     SetHandler None
 </Location>
 
-<LocationMatch "\.(jpg|gif|png|css)$">
+<LocationMatch "\.(jpg|gif|png|css|pem)$">
     SetHandler None
 </LocationMatch>
 

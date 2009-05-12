@@ -1,0 +1,17 @@
+{% extends "whitelist/base.html" %}
+
+{% block title %}Logged out of whitetrash{% endblock %}
+{% block meta %}<meta http-equiv="refresh" CONTENT="2;URL=http://whitetrash/" />{% endblock %}
+
+{% block content %}
+
+    <div id="viewlist">
+        {% include "whitelist/sidebar.html" %}
+    </div>
+
+    <div id="centreContent">
+        <h2>Logged out of whitetrash.</h2>
+    </div>
+
+{% endblock %}
+
