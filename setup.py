@@ -168,10 +168,9 @@ class WhitetrashInstallData(install):
         The user will have to chown them as described in INSTALL.txt"""
         mkpath("/var/log")
         write_file("/var/log/whitetrash.django.log","")
-        write_file("/var/log/whitetrash.squidredir.log","")
         write_file("/var/log/whitetrash.certserver.log","")
         os.system("chown whitetrash:whitetrash /var/log/whitetrash.certserver.log")
-        print("Log files whitetrash.django.log whitetrash.squidredir.log whitetrash.certserver.log created in /var/log chown as described in INSTALL.txt")
+        print("Log files whitetrash.django.log whitetrash.certserver.log created in /var/log chown as described in INSTALL.txt")
 
     def genPasswd(self,length=8, chars=string.letters + string.digits):
         return ''.join([random.choice(chars) for i in range(length)])

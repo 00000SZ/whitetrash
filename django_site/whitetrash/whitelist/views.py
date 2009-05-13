@@ -65,6 +65,7 @@ def addentry(request):
     """
 
     if request.method == 'POST':
+        settings.LOG.debug("POST request: %s" % request)
         form = WhiteListForm(request.POST)
 
         if form.is_valid(): 

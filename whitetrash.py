@@ -121,7 +121,7 @@ class WTSquidRedirector:
     def get_error_url(self,errortext):
         return "%s?error=%s\n" % (self.error_url,urllib.quote(errortext))
 
-    def check_whitelist_db(self,domain,protocol,url,orig_url,clientaddr):
+    def check_whitelist_db(self,domain,protocol,method,url,orig_url,clientaddr):
         """Check the db for domain with protocol.
 
         @param domain:      Domain to be checked
@@ -175,6 +175,10 @@ class WTSquidRedirector:
                         #This is something other than html so just give some really small dummy content.
                         result = (False,self.dummy_content_url+"\n")
                     else:
+                        if method != "GET" and protocol == self.PROTOCOL_CHOICES["HTTP"]:
+                        	#If this isn't a get ie. usually a POST, posting or anything else to our wt server doesn't make sense
+                        	#send a 302 moved temporarily back to the client so they request the web form.
+                        	self.fail_url = "302:%s" % self.fail_url
                         result = (False,self.fail_url+"\n")
 
             return result
@@ -189,6 +193,9 @@ class WTSquidRedirector:
 
         Store result in self.fail_url.  On error, return false and self.error_url.
 
+        Spec is as follows:
+        URL <SP> client_ip "/" fqdn <SP> user <SP> method <SP> urlgroup [<SP> kvpairs] <NL>
+
         Example HTTP:
         http://www.slkdfjlksjd.com/ 127.0.1.2/sslwhitetrash - GET - myip=127.0.1.2 myport=3128
 
@@ -199,8 +206,9 @@ class WTSquidRedirector:
         try:
             spliturl=squidurl.strip().split(" ")
             self.original_url=spliturl[0]
+            self.method = spliturl[3]
 
-            if spliturl[3]=="CONNECT":
+            if self.method=="CONNECT":
                 self.log.debug("Protocol=SSL")
                 self.protocol=self.PROTOCOL_CHOICES["SSL"]
                 domain = self.domain_sanitise.match(spliturl[0].split(":")[0]).group()
@@ -216,7 +224,7 @@ class WTSquidRedirector:
                 return True
 
             else:
-                if not spliturl[3].isalpha():
+                if not self.method.isalpha():
                     raise ValueError("Bad HTTP request method is not alphabetic")
 
                 self.log.debug("Protocol=HTTP")
@@ -262,7 +270,8 @@ class WTSquidRedirector:
             if self.parseSquidInput(squidurl):
 
                 try:
-                    (res,url)=self.check_whitelist_db(self.url_domain_only,self.protocol,self.newurl_safe,
+                    (res,url)=self.check_whitelist_db(self.url_domain_only,
+                                            self.protocol,self.method,self.newurl_safe,
                                             self.original_url,self.clientaddr)
                     self.log.debug("Dom: %s, proto:%s, Result: %s, Output url: %s" % 
                             (self.url_domain_only,self.protocol,res,url))
@@ -273,7 +282,7 @@ class WTSquidRedirector:
                     try:
                         self.cursor=db_connect()
                         (res,url)=self.check_whitelist_db(self.url_domain_only,
-                                                        self.protocol,self.newurl_safe,
+                                                        self.protocol,self.method,self.newurl_safe,
                                                         self.original_url,self.clientaddr)
                         sys.stdout.write(url)
 

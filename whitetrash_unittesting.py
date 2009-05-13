@@ -185,6 +185,22 @@ class SquidRedirectorUnitTests(RedirectorTest):
                                                 "testwild.whitetrash.sf.net",wild=False):
             self.fail("Did not return whitelist id")
 
+    def testWhitelistCheckingRedirectPOST(self):
+        """When receiving a POST for a non-whitelisted domain, redirector should respond
+        with a 302: indicating client should go request the form with a GET"""
+
+        self.wt_redir.fail_url=self.wt_redir.http_fail_url
+        form="302:%s\n" % self.wt_redir.http_fail_url
+        url="http%3A//www.whitetrash.sf.net/FAQ"
+        orig_url="http://testwhitetrash.sf.net"
+        ip="192.168.1.1"
+        method="POST"
+        proto=self.wt_redir.PROTOCOL_CHOICES["HTTP"]
+        self.wt_redir.auto_add_all=False
+
+        dom="testwhitetrash.sf.net"
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(False,form))
+
 
     def testWhitelistChecking(self):
         self.wt_redir.fail_url=self.wt_redir.http_fail_url
@@ -192,49 +208,50 @@ class SquidRedirectorUnitTests(RedirectorTest):
         url="http%3A//www.whitetrash.sf.net/FAQ"
         orig_url="http://testwhitetrash.sf.net"
         ip="192.168.1.1"
+        method="GET"
         proto=self.wt_redir.PROTOCOL_CHOICES["HTTP"]
         self.wt_redir.auto_add_all=False
 
         dom="testwhitetrash.sf.net"
-        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url,ip),(False,form),
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(False,form),
                         "No testwhitetrash.sf.net domains should be in the whitelist")
 
         self.wt_redir.auto_add_all=True
         #Auto add is enabled so should always return true
-        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url,ip),(True,"\n"))
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(True,"\n"))
         dom="www.thing.anothertestwhitetrash.sf.net"
-        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url,ip),(True,"\n"))
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(True,"\n"))
 
         dom="images.thing.anothertestwhitetrash.sf.net"
         self.wt_redir.auto_add_all=False
         #We added www.thing.anothertestwhitetrash.sf.net so this should be wildcarded
-        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url,ip),(True,"\n"))
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(True,"\n"))
 
         dom="testwhitetrash.sf.net"
-        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url,ip),(True,"\n"),
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(True,"\n"),
                         "We added this so it should be true")
 
         dom="this.another.testwhitetrash.sf.net"
         orig_url="http://testwhitetrash.sf.net/blah.js"
-        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url,ip),(False,self.wt_redir.dummy_content_url+"\n"),
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(False,self.wt_redir.dummy_content_url+"\n"),
                         "The orig_url ends in known non-html content so give back dummy url")
 
         proto=self.wt_redir.PROTOCOL_CHOICES["SSL"]
         self.wt_redir.fail_url=self.wt_redir.ssl_fail_url
         form=self.wt_redir.ssl_fail_url+"\n"
-        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url,ip),(False,form),
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(False,form),
                         "This domain not whitelisted for SSL so we should get the form")
 
         self.wt_redir.auto_add_all=True
         dom="ssltestwhitetrash.sf.net"
-        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url,ip),(True,"\n"),
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(True,"\n"),
                         "Auto add ssl domain")
 
         dom="testwhitetrash.sf.net"
         self.wt_redir.auto_add_all=False
         #generate an error by destroying the protocol choices dictionary 
         self.wt_redir.PROTOCOL_CHOICES={}
-        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,url,orig_url,ip),(False,"http://whitetrash/whitelist/error?error=Error%20checking%20domain%20in%20whitelist\n"))
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(False,"http://whitetrash/whitelist/error?error=Error%20checking%20domain%20in%20whitelist\n"))
        
     def tearDown(self):
         self.cleancur.execute("delete from whitelist_whitelist where username='wt_unittesting'")

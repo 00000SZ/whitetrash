@@ -12,6 +12,9 @@ You may want to disable apache caching for testing by putting the following in /
 
     MaxRequestsPerChild 1
 
+To run an individual test:
+    python manage.py test whitelist.WhitetrashTestGetForm
+
 Redirector
 ~~~~~~~~~~
 
