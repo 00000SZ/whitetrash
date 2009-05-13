@@ -82,7 +82,6 @@ class RedirectorTest(WhitetrashTest):
         return dbh.cursor()
 
 class SquidRedirectorUnitTests(RedirectorTest):
-#TODO test behaviour when posting to a domain not in the whitelist.
 
     def setUp(self):
         super(SquidRedirectorUnitTests, self).setUp() 

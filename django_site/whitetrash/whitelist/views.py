@@ -14,6 +14,7 @@ from django.forms.util import ErrorList
 from hashlib import sha1
 import datetime
 import re
+from urllib import unquote
 
 try:
     from Captcha.Visual.Tests import PseudoGimpy
@@ -232,10 +233,13 @@ def check_domain(request):
                 return HttpResponse("0")
 
     return HttpResponse("Error %s" % request.GET)
- 
+
 def error(request):
+    """Print an error.  Only accepts alphanumerics and spaces"""
     error=request.GET["error"]
+    error_unsafe = unquote(error)
+    sanitise=re.compile("[^ a-zA-Z0-9]")
     return render_to_response('whitelist/whitelist_error.html', 
-                            { 'error_text':error})
+                            { 'error_text':sanitise.sub("",error_unsafe)})
 
 
