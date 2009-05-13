@@ -195,7 +195,7 @@ class WhitetrashInstallData(install):
         #Create the keyfile that all dynamic certs will use
         if not os.path.exists(config["dynamic_certs_keyfile"]): 
             print("Creating dynamic certs keyfile: %s" % config["dynamic_certs_keyfile"])
-            certkey = wtcs.createKeyPair(crypto.TYPE_RSA,1024)
+            certkey = wtcs.createKeyPair(crypto.TYPE_RSA,4096)
             outkey = crypto.dump_privatekey(crypto.FILETYPE_PEM,certkey)
             open(config["dynamic_certs_keyfile"],'w').write(outkey)
             os.system("chown whitetrash:whitetrash %s" % config["dynamic_certs_keyfile"])
@@ -205,7 +205,7 @@ class WhitetrashInstallData(install):
         if not os.path.exists(wtcs.cakeyfile):
             print("Creating CA keyfile: %s" % wtcs.cakeyfile)
             capass = self.genPasswd(length=64)
-            self.cakey = wtcs.createKeyPair(crypto.TYPE_RSA,1024)
+            self.cakey = wtcs.createKeyPair(crypto.TYPE_RSA,4096)
             privkey = crypto.dump_privatekey(crypto.FILETYPE_PEM,self.cakey,"DES3",capass)
             open(wtcs.cakeyfile,'w').write(privkey)
             print("Writing CA keyfile passwd to: %s" % config["ca_pass"])
@@ -258,7 +258,7 @@ class WhitetrashInstallData(install):
 
         if not os.path.exists(apachekeyfile):
             print("Creating apache ssl key file: %s" % apachekeyfile)
-            apachekey = wtcs.createKeyPair(crypto.TYPE_RSA,1024)
+            apachekey = wtcs.createKeyPair(crypto.TYPE_RSA,4096)
             privkey = crypto.dump_privatekey(crypto.FILETYPE_PEM,apachekey)
             open(apachekeyfile,'w').write(privkey)
             os.system("chmod 400 %s" % apachekeyfile)

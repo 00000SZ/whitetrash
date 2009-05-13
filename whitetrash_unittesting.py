@@ -65,7 +65,7 @@ class CertServerTest(WhitetrashTest):
         self.assertEqual(get_certfilepath("whitetrash.sf.net"),os.path.join(self.config["dynamic_certs_dir"],"net/sf/whitetrash.sf.net.pem"))
         self.assertEqual(get_certfilepath("com.au"),os.path.join(self.config["dynamic_certs_dir"],"au/com.au.pem"))
 
-class RedirectorTest(unittest.TestCase):
+class RedirectorTest(WhitetrashTest):
 
     def setUp(self):
         super(RedirectorTest, self).setUp() 
@@ -82,6 +82,7 @@ class RedirectorTest(unittest.TestCase):
         return dbh.cursor()
 
 class SquidRedirectorUnitTests(RedirectorTest):
+#TODO test behaviour when posting to a domain not in the whitelist.
 
     def setUp(self):
         super(SquidRedirectorUnitTests, self).setUp() 
@@ -102,7 +103,7 @@ class SquidRedirectorUnitTests(RedirectorTest):
                         ]
         squid_inputs_results=[True,True,False,False,False,False,False]
         squid_inputs_results_url=["http://whitetrash/whitelist/addentry?url=http%3A//whitetrash.sf.net/&domain=whitetrash.sf.net",
-            "sslwhitetrash:80",
+            "whitetrash.sf.net.sslwhitetrash:3456",
             "http://whitetrash/whitelist/error?error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
             "http://whitetrash/whitelist/error?error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
             "http://whitetrash/whitelist/error?error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
@@ -262,10 +263,18 @@ class CachedSquidRedirectorUnitTests(SquidRedirectorUnitTests):
             self.fail("Second get failed where first succeeded.  Problem with memcache.")
 
 def allTests():
-    return unittest.TestSuite((unittest.makeSuite(CachedSquidRedirectorUnitTests),
-                                unittest.makeSuite(SquidRedirectorUnitTests),
-                                unittest.makeSuite(CertServerTest),
-                                ))
+    config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
+    #Only run the memcache tests if memcache is enabled.
+    if config["use_memcached"].upper()=="TRUE":
+        return unittest.TestSuite((unittest.makeSuite(CachedSquidRedirectorUnitTests),
+                                    unittest.makeSuite(SquidRedirectorUnitTests),
+                                    unittest.makeSuite(CertServerTest),
+                                    ))
+    else:
+        return unittest.TestSuite((unittest.makeSuite(SquidRedirectorUnitTests),
+                                    unittest.makeSuite(CertServerTest),
+                                    ))
+
 
 if __name__ in ('main', '__main__'):
     unittest.main(defaultTest="allTests")
