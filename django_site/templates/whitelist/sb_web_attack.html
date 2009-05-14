@@ -1,0 +1,29 @@
+{% extends "whitelist/base.html" %}
+
+{% block title %}Reported Attack Site!{% endblock %}
+
+{% block content %}
+{% load whitetrash_filters %}
+        
+    <div id="centreContent">
+        <div id="sbErrorText">
+            <h1>Reported Attack Site!</h1>
+            <p>
+                <hr>
+                {% if hasdom %}
+                This web site at {{params.domain|domain|escape}} has been reported as an attack site and has been blocked by whitetrash.
+                {% else %}
+                This web site has been reported as an attack site and has been blocked by whitetrash.
+                {% endif %}
+                <hr>
+                Attack sites try to install programs that steal private information, use your computer to attack others, or damage your system.
+                Some attack sites intentionally distribute harmful software, but many are compromised without the knowledge or permission of their owners.
+                <hr>
+                This event has been logged, but you should also report it to your IT security representative.
+                Click <a href="http://www.stopbadware.org/home/clearinghouse">here for more information on why this site was blocked</a> 
+            </p>
+        </div>
+    </div>
+
+{% endblock %}
+

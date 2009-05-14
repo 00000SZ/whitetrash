@@ -234,12 +234,3 @@ def check_domain(request):
 
     return HttpResponse("Error %s" % request.GET)
 
-def error(request):
-    """Print an error.  Only accepts alphanumerics and spaces"""
-    error=request.GET["error"]
-    error_unsafe = unquote(error)
-    sanitise=re.compile("[^ a-zA-Z0-9]")
-    return render_to_response('whitelist/whitelist_error.html', 
-                            { 'error_text':sanitise.sub("",error_unsafe)})
-
-

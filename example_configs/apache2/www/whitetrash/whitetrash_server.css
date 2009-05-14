@@ -19,6 +19,12 @@ a:hover, a:active {
     color:#fff;
     }
 
+hr {
+    color: #fff;
+    background-color: #fff;
+    height: 0.1em;
+}
+
 #whitelistTable {
     position:relative;
     top:-9em;
@@ -98,6 +104,13 @@ a:hover, a:active {
 #errorText {
     color:#f93009;
 }
+
+#sbErrorText {
+    color:#fff;
+	background:#681707; 
+    padding:2em 2em;
+}
+
 
 #bnessInput {
     position:relative;

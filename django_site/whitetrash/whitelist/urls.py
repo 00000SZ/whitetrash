@@ -29,6 +29,24 @@ urlpatterns = patterns('django.views.generic.list_detail',
     (r'^view/disabledlist/$', 'object_list', not_enabled_whitelist),
 )
 
+urlpatterns += patterns('django.views.generic.simple',
+    (r'^attackdomain/$',                'direct_to_template', {'template': 'whitelist/sb_web_attack.html',
+                            'extra_context': dict(hasdom=False)}),
+    (r'^attackdomain\=(?P<domain>.+)$', 'direct_to_template', {'template': 'whitelist/sb_web_attack.html',
+                            'extra_context': dict(hasdom=True)}),
+
+    (r'^forgerydomain/$',                'direct_to_template', {'template': 'whitelist/sb_web_forgery.html',
+                            'extra_context': dict(hasdom=False)}),
+    (r'^forgerydomain\=(?P<domain>.+)$', 'direct_to_template', {'template': 'whitelist/sb_web_forgery.html', 
+                            'extra_context': dict(hasdom=True)}),
+
+    (r'^error/$',                'direct_to_template', {'template': 'whitelist/whitelist_error.html',
+                            'extra_context': dict(hastext=False)}),
+    (r'^error\=(?P<errortext>.+)$', 'direct_to_template', {'template': 'whitelist/whitelist_error.html', 
+                            'extra_context': dict(hastext=True)}),
+
+)
+
 urlpatterns += patterns('whitetrash.whitelist.views',
     (r'^$', 'index'),
     (r'^addentry/','addentry'),
@@ -36,6 +54,5 @@ urlpatterns += patterns('whitetrash.whitelist.views',
     (r'^captcha/','show_captcha'),
     (r'^deletelist/$', 'limited_object_list', delete_domains),
     (r'^delete/', 'delete_entries'),
-    (r'^error/','error'),
 )
     

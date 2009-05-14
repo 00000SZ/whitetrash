@@ -20,6 +20,14 @@ def domain(value):
 
 @stringfilter
 @register.filter
+def errortext(value):
+    try:
+        return re.match("[ a-zA-Z0-9.]+",value).group()
+    except:
+        return ""
+
+@stringfilter
+@register.filter
 def ip(value):
     try:
         inet_aton(value)

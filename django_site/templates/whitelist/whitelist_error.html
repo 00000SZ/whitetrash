@@ -3,6 +3,7 @@
 {% block title %}Whitetrash: Error{% endblock %}
 
 {% block content %}
+{% load whitetrash_filters %}
         
     <div id="viewlist">
         {% include "whitelist/sidebar.html" %}
@@ -12,7 +13,11 @@
         <div id="errorText">
             <h1>Whitetrash Error</h1>
             <p>
-                {{error_text|escape}}
+                {% if hastext %}
+                {{params.errortext|errortext|escape}}
+                {% else %}
+                An error has been logged, see your sysadmin for assistance.
+                {% endif %}
             </p>
         </div>
     </div>

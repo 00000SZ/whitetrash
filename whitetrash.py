@@ -45,7 +45,7 @@ class WTSquidRedirector:
 
         self.PROTOCOL_CHOICES={'HTTP':1,'SSL':2}
         self.http_fail_url="http://%s/whitelist/addentry?" % config["whitetrash_domain"]
-        self.error_url="http://%s/whitelist/error" % config["whitetrash_domain"]
+        self.error_url="http://%s/whitelist/error=" % config["whitetrash_domain"]
         self.dummy_content_url="http://blocked%s/empty" % config["whitetrash_domain"]
 
         self.whitetrash_admin_path="http://%s" % config["whitetrash_domain"]
@@ -119,7 +119,7 @@ class WTSquidRedirector:
         self.cursor.execute("update whitelist_whitelist set last_accessed=NOW(),hitcount=hitcount+1 where whitelist_id=%s", whitelist_id)
 
     def get_error_url(self,errortext):
-        return "%s?error=%s\n" % (self.error_url,urllib.quote(errortext))
+        return "%s%s\n" % (self.error_url,urllib.quote(errortext))
 
     def check_whitelist_db(self,domain,protocol,method,url,orig_url,clientaddr):
         """Check the db for domain with protocol.

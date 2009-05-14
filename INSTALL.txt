@@ -119,6 +119,9 @@ To install memcached:
 
     Ignore the patch for libmemcache, you don't need it with the packaged version.
 
+    cd cmemcache-0.95
+    sudo python setup.py install
+
     Customise /etc/memcached
 
 System

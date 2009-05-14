@@ -1,0 +1,29 @@
+{% extends "whitelist/base.html" %}
+
+{% block title %}Reported Web Forgery!{% endblock %}
+
+{% block content %}
+{% load whitetrash_filters %}
+        
+    <div id="centreContent">
+        <div id="sbErrorText">
+            <h1>Reported Web Forgery!</h1>
+            <p>
+                <hr>
+                {% if hasdom %}
+                This web site at {{params.domain|domain|escape}} has been reported as a web forgery and has been blocked by whitetrash.
+                {% else %}
+                This web site has been reported as a web forgery and has been blocked by whitetrash.
+                {% endif %}
+                <hr>
+                Web forgeries are designed to trick you into revealing personal or financial information by imitating sources you may trust.
+                Entering any information on this web page may result in identity theft or other fraud.
+                <hr>
+                This event has been logged, but you should also report it to your IT security representative.
+                Click <a href="http://en-us.www.mozilla.com/en-US/firefox/phishing-protection/">here for more information on why this site was blocked</a> 
+            </p>
+        </div>
+    </div>
+
+{% endblock %}
+

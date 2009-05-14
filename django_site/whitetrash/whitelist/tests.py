@@ -28,6 +28,35 @@ class WhitetrashTestGeneral(TestCase):
         self.assertRedirects(response, "https://testserver/accounts/login/",
                 status_code=301, target_status_code=301)
 
+    def testErrorDisplay(self):
+        response = self.client.get("/whitelist/error/")
+        self.assertContains(response, 'An error has been logged', status_code=200)
+        response = self.client.get("/whitelist/error=something%20url%20encoded")
+        self.assertContains(response, 'something url encoded', status_code=200)
+        response = self.client.get("/whitelist/error=someth<xss>ing%20url%20encoded")
+        self.assertNotContains(response, '<xss>', status_code=200)
+        response = self.client.get("/whitelist/error=someth%3Cxssing%20url%20encoded")
+        self.assertNotContains(response, '<xss', status_code=200)
+
+class WhitetrashTestSafeBrowsing(TestCase):
+    fixtures = ["testing.json"]
+
+    def testAttack(self):
+        response = self.client.get("/whitelist/attackdomain/")
+        self.assertContains(response, 'This web site has been reported', status_code=200)
+        response = self.client.get("/whitelist/attackdomain=slkdfj.com")
+        self.assertContains(response, 'This web site at slkdfj.com has been reported', status_code=200)
+        response = self.client.get("/whitelist/attackdomain=slkdfj%3Cxss%3Ecom")
+        self.assertNotContains(response, '<xss>', status_code=200)
+
+    def testForgery(self):
+        response = self.client.get("/whitelist/forgerydomain/")
+        self.assertContains(response, 'This web site has been reported', status_code=200)
+        response = self.client.get("/whitelist/forgerydomain=slkdfj.com")
+        self.assertContains(response, 'This web site at slkdfj.com has been reported', status_code=200)
+        response = self.client.get("/whitelist/forgerydomain=slkdfj%3Cxss%3Ecom")
+        self.assertNotContains(response, '<xss>', status_code=200)
+
 class WhitetrashTestGetForm(TestCase):
     fixtures = ["testing.json"]
 
