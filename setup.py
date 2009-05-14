@@ -54,13 +54,21 @@ class WhitetrashInstallData(install):
         execute(self.createWTUser,())
         execute(self.createCertAuthority,())
         execute(self.createWTApacheCert,())
-        execute(self.createLogFiles,())
         execute(self.createDBandUsers,())
+
+    def _createLogFiles(self):
+        """Touch the logfiles in /var/log owned by the whitetrash user."""
+        mkpath("/var/log")
+        write_file("/var/log/whitetrash.certserver.log","")
+        os.system("chown whitetrash:whitetrash /var/log/whitetrash.certserver.log")
+        print("Log file whitetrash.certserver.log created in /var/log")
 
     def createWTUser(self):
         ret=os.system("""adduser --shell /bin/false --no-create-home --disabled-password --disabled-login --gecos "" whitetrash""")
-        if ret !=0:
+        if ret ==0:
             print "Could not add whitetrash user - already exists?"
+        else:
+            self._createLogFiles()
 
     def installDjango(self):
         #Need to change our 'working dir' to make sure the django install works properly
@@ -162,15 +170,6 @@ class WhitetrashInstallData(install):
             print "Squid not installed, no /etc/squid/squid.conf."
             sys.exit(1)
 
-    def createLogFiles(self):
-        """Touch the logfiles in /var/log.
-
-        The user will have to chown them as described in INSTALL.txt"""
-        mkpath("/var/log")
-        write_file("/var/log/whitetrash.django.log","")
-        write_file("/var/log/whitetrash.certserver.log","")
-        os.system("chown whitetrash:whitetrash /var/log/whitetrash.certserver.log")
-        print("Log files whitetrash.django.log whitetrash.certserver.log created in /var/log chown as described in INSTALL.txt")
 
     def genPasswd(self,length=8, chars=string.letters + string.digits):
         return ''.join([random.choice(chars) for i in range(length)])

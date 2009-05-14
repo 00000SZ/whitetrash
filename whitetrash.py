@@ -184,7 +184,7 @@ class WTSquidRedirector:
             return result
 
         except Exception,e:
-            self.log.error("Error checking whitelist with %s,%s,%s.  Error:%s" % (domain,protocol,method,url,e)) 
+            self.log.error("Error checking whitelist with %s,%s,%s,%s.  Error:%s" % (domain,protocol,method,url,e)) 
             return (False,self.get_error_url("Error checking domain in whitelist"))
 
 

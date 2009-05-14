@@ -103,11 +103,11 @@ class SquidRedirectorUnitTests(RedirectorTest):
         squid_inputs_results=[True,True,False,False,False,False,False]
         squid_inputs_results_url=["http://whitetrash/whitelist/addentry?url=http%3A//whitetrash.sf.net/&domain=whitetrash.sf.net",
             "whitetrash.sf.net.sslwhitetrash:3456",
-            "http://whitetrash/whitelist/error?error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
-            "http://whitetrash/whitelist/error?error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
-            "http://whitetrash/whitelist/error?error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
-            "http://whitetrash/whitelist/error?error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
-            "http://whitetrash/whitelist/error?error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
+            "http://whitetrash/whitelist/error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
+            "http://whitetrash/whitelist/error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
+            "http://whitetrash/whitelist/error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
+            "http://whitetrash/whitelist/error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
+            "http://whitetrash/whitelist/error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
             ]
 
         for i in range(len(squid_inputs)):
@@ -250,7 +250,7 @@ class SquidRedirectorUnitTests(RedirectorTest):
         self.wt_redir.auto_add_all=False
         #generate an error by destroying the protocol choices dictionary 
         self.wt_redir.PROTOCOL_CHOICES={}
-        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(False,"http://whitetrash/whitelist/error?error=Error%20checking%20domain%20in%20whitelist\n"))
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(False,"http://whitetrash/whitelist/error=Error%20checking%20domain%20in%20whitelist\n"))
        
     def tearDown(self):
         self.cleancur.execute("delete from whitelist_whitelist where username='wt_unittesting'")
@@ -282,11 +282,13 @@ def allTests():
     config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
     #Only run the memcache tests if memcache is enabled.
     if config["use_memcached"].upper()=="TRUE":
+    	print("Running: CachedSquidRedirectorUnitTests, SquidRedirectorUnitTests, CertServerTest")
         return unittest.TestSuite((unittest.makeSuite(CachedSquidRedirectorUnitTests),
                                     unittest.makeSuite(SquidRedirectorUnitTests),
                                     unittest.makeSuite(CertServerTest),
                                     ))
     else:
+    	print("Running: SquidRedirectorUnitTests, CertServerTest")
         return unittest.TestSuite((unittest.makeSuite(SquidRedirectorUnitTests),
                                     unittest.makeSuite(CertServerTest),
                                     ))

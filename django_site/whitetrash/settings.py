@@ -12,6 +12,8 @@ def conf(config_item):
 logging.config.fileConfig("/etc/whitetrash.conf")
 LOG = logging.getLogger("whitetrashDjango")
 
+LOGIN_REQUIRED = conf("LOGIN_REQUIRED")
+
 CAPTCHA_HTTP = conf("CAPTCHA_HTTP") 
 CAPTCHA_SSL = conf("CAPTCHA_SSL")
 CAPTCHA_WINDOW_SEC = int(config["CAPTCHA_WINDOW_SEC"])

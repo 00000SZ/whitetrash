@@ -25,7 +25,13 @@ def index(request):
     """Handle a request for the domain with a blank path."""
     return HttpResponsePermanentRedirect("http://%s/whitelist/view/list/" % settings.DOMAIN)
 
-@login_required
+def check_login_required(func):
+    if settings.LOGIN_REQUIRED:
+    	return login_required(func)
+    else:
+        return func
+
+@check_login_required
 def show_captcha(request):
     """Return a captcha image.
     Can't think of a good way to tie IDs of generated images to the form input field
@@ -57,7 +63,7 @@ def show_captcha(request):
         request.session['captcha_solns'] = [(safe_solutions,datetime.datetime.now())]
     return response
 
-@login_required
+@check_login_required
 def addentry(request):
     """Add an entry to the whitelist.
 
@@ -171,7 +177,7 @@ def addentry(request):
         'form': form, 'captcha':settings.CAPTCHA_HTTP},
         context_instance=RequestContext(request)) 
 
-@login_required
+@check_login_required
 def limited_object_list(*args, **kwargs):
     """Require login for generic views, display only results owned by the user.
     This view is used to present our delete interface. args[0] is the request object.
@@ -181,7 +187,7 @@ def limited_object_list(*args, **kwargs):
 
     return object_list(*args, **kwargs)
 
-@login_required
+@check_login_required
 def delete_entries(request):
 
     if request.method == 'POST':
