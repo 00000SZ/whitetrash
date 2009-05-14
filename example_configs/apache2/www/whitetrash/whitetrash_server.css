@@ -107,8 +107,18 @@ hr {
 
 #sbErrorText {
     color:#fff;
+    font-size:1.2em;
 	background:#681707; 
     padding:2em 2em;
+}
+
+#sbErrorText a:link, a:visited {
+    color:#fff;
+    text-decoration:underline;
+}
+
+#sbErrorText h1{
+    font-size:1.5em;
 }
 
 
