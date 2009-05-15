@@ -25,9 +25,10 @@ class SafeBrowsingUpdate(object):
     """Grabs the phishing or malware blacklists from
        the Google safebrowsing API"""
 
-    def __init__(self, type, version):
+    def __init__(self, type, version, proxy):
         self._type = type
         self._version = version
+        self.proxy = proxy
         self.new_hashes = []
         self.old_hashes = []
 
@@ -65,6 +66,10 @@ class SafeBrowsingUpdate(object):
 
         # Grab the blacklist
         try:
+            if self.proxy:
+                    proxy_support = urllib2.ProxyHandler({"http" : self.proxy})
+                    opener = urllib2.build_opener(proxy_support)
+                    urllib2.install_opener(opener)
             return urllib2.urlopen(url)
             #return self._local_fopen(url) # for testing only
         except urllib2.URLError, e:
@@ -147,10 +152,10 @@ class SafeBrowsingManager():
                4 : 180,
                5 : MAX_WAIT}
 
-    def __init__(self, apikey):
+    def __init__(self, apikey, proxy=None):
         self._apikey = apikey
-        self.malware  = SafeBrowsingUpdate(MALWARE, -1)
-        self.phishing = SafeBrowsingUpdate(PHISHING, -1)
+        self.malware  = SafeBrowsingUpdate(MALWARE, -1, proxy)
+        self.phishing = SafeBrowsingUpdate(PHISHING, -1, proxy)
 
     def do_updates(self, malware_version=None, phishing_version=None):
         if malware_version:
