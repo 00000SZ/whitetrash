@@ -133,7 +133,7 @@ def update_safebrowsing_blacklist(config):
         return
 
     try:
-        cache.update(mgr.list)
+        cache.update(mgr.get_lists(),mgr.malware.version,mgr.phishing.version)
     except BlacklistCacheError, e:
         cache.log.error(e)
         print e
