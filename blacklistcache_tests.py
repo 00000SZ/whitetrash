@@ -21,6 +21,7 @@
 #
 
 import unittest
+import logging
 from configobj import ConfigObj
 from hashlib import md5
 
@@ -151,7 +152,7 @@ def display_warning():
     print
 
 if __name__ in ('main', '__main__'):
-    display_warning()
+    #display_warning()
    
     unittest.main(defaultTest="allTests")
 

@@ -19,6 +19,8 @@ import cmemcache
 from safebrowse import *
 import logging
 import logging.config
+#import logging.handlers
+#from logging.handlers import SysLogHandler, RotatingFileHandler 
 
 
 TIMEOUT = 30 * 60      # 30 minutes
