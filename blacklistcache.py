@@ -17,6 +17,7 @@ http://code.google.com/apis/safebrowsing/developers_guide.html
 
 import cmemcache
 from safebrowse import *
+import logging
 import logging.config
 
 
@@ -121,6 +122,7 @@ def update_safebrowsing_blacklist(config):
     apikey = config["safebrowsing_api_key"]
     try:
         proxy = config["safebrowsing_proxy"]
+        cache.log.debug("Using proxy: %s for updates" % proxy)
     except KeyError, e:
         proxy = None
 

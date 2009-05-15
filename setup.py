@@ -7,7 +7,6 @@ import datetime
 import string
 import random 
 from OpenSSL import crypto
-import whitetrash_cert_server as wtcs
 
 
 try:
@@ -185,6 +184,7 @@ class WhitetrashInstallData(install):
     def createCertAuthority(self):
         """Create a certificate authority for dynamic creation of SSL certs"""
 
+        import whitetrash_cert_server as wtcs
         try:
             from configobj import ConfigObj
             config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
@@ -252,6 +252,7 @@ class WhitetrashInstallData(install):
 
 
     def createWTApacheCert(self):
+        import whitetrash_cert_server as wtcs
         apachekeyfile = "/etc/apache2/ssl/server.key"
         apachecertfile = "/etc/apache2/ssl/server.crt"
 
