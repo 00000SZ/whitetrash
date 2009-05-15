@@ -44,11 +44,19 @@ class WTSquidRedirector:
         self.log = logging.getLogger("whitetrashRedir")
 
         self.PROTOCOL_CHOICES={'HTTP':1,'SSL':2}
-        self.http_fail_url="http://%s/whitelist/addentry?" % config["whitetrash_domain"]
-        self.error_url="http://%s/whitelist/error=" % config["whitetrash_domain"]
-        self.dummy_content_url="http://blocked%s/empty" % config["whitetrash_domain"]
+        if config["ssl_server_enabled"].upper()=="TRUE":
+            #If we are using ssl tell the client to go get the website with SSL
+            #If I don't do this, it will do a GET, then get a redirect from apache
+            #this cuts out the extra redirect from apache
+            wtproto = "302:https"
+        else:
+            wtproto = "http"
 
-        self.whitetrash_admin_path="http://%s" % config["whitetrash_domain"]
+        self.http_fail_url="%s://%s/whitelist/addentry?" % (wtproto,config["whitetrash_domain"])
+        self.error_url="%s://%s/whitelist/error=" % (wtproto,config["whitetrash_domain"])
+        self.dummy_content_url="%s://blocked%s/empty" % (wtproto,config["whitetrash_domain"])
+
+        self.whitetrash_admin_path="%s://%s" % (wtproto,config["whitetrash_domain"])
         self.nonhtml_suffix_re=re.compile(config["nonhtml_suffix_re"])
         self.ssl_fail_url="sslwhitetrash:3456"
         self.fail_string=config["domain_fail_string"]
@@ -113,7 +121,7 @@ class WTSquidRedirector:
 
         ret=self.cursor.execute("update whitelist_whitelist set username='auto',date_added=NOW(),last_accessed=NOW(),comment='Auto add, learning mode',enabled=1,hitcount=hitcount+1 where whitelist_id=%s", whitelist_id)
         if ret!=1:
-        	raise ValueError("Error enabling domain, it must be present in the table")
+            raise ValueError("Error enabling domain, it must be present in the table")
 
     def update_hitcount(self,whitelist_id):
         self.cursor.execute("update whitelist_whitelist set last_accessed=NOW(),hitcount=hitcount+1 where whitelist_id=%s", whitelist_id)
@@ -144,7 +152,7 @@ class WTSquidRedirector:
                 white_id=self.get_whitelist_id(protocol,domain,domain_wild,wild=False)
 
             if white_id:
-        	    (whitelist_id,enabled)=white_id
+                (whitelist_id,enabled)=white_id
             else:
                 whitelist_id=False
 
@@ -156,8 +164,8 @@ class WTSquidRedirector:
             else:
 
                 if self.auto_add_all:
-            	    if whitelist_id:
-            		    self.enable_domain(whitelist_id)
+                    if whitelist_id:
+                        self.enable_domain(whitelist_id)
                     else:
                         self.add_to_whitelist(domain,protocol,'auto',url,clientaddr)
 
@@ -169,16 +177,16 @@ class WTSquidRedirector:
                     else:
                         self.add_disabled_domain(domain,protocol,'notwhitelisted',url,clientaddr)
 
-                    if protocol == self.PROTOCOL_CHOICES["HTTP"] and	\
+                    if protocol == self.PROTOCOL_CHOICES["HTTP"] and \
                         self.nonhtml_suffix_re.match(orig_url):
                         #only makes sense to return the form if the browser is expecting html
                         #This is something other than html so just give some really small dummy content.
                         result = (False,self.dummy_content_url+"\n")
                     else:
                         if method != "GET" and protocol == self.PROTOCOL_CHOICES["HTTP"]:
-                        	#If this isn't a get ie. usually a POST, posting or anything else to our wt server doesn't make sense
-                        	#send a 302 moved temporarily back to the client so they request the web form.
-                        	self.fail_url = "302:%s" % self.fail_url
+                            #If this isn't a get ie. usually a POST, posting or anything else to our wt server doesn't make sense
+                            #send a 302 moved temporarily back to the client so they request the web form.
+                            self.fail_url = "302:%s" % self.fail_url
                         result = (False,self.fail_url+"\n")
 
             return result

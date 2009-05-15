@@ -3,7 +3,8 @@
 # Tests in safebrowsing_tests.py
 
 import cmemcache
-from safebrowsing import *
+from safebrowse import *
+import logging.config
 
 
 TIMEOUT = 30 * 60      # 30 minutes
@@ -17,8 +18,11 @@ class BlacklistCache(object):
         self.cache = cmemcache.Client(config["memcache_servers"].split(","))
         self.malware_version = -1
         self.phishing_version = -1
+        logging.config.fileConfig("/etc/whitetrash.conf")
+        self.log = logging.getLogger("whitetrashSafeBrowsing")
 
     def update(self, list, m_version, p_version):
+        self.log.debug("Updating memcache")
         for i in list:
             if i["type"] == MALWARE:
                 if i["add"]:
@@ -42,6 +46,7 @@ class BlacklistCache(object):
     phishing_version = property(_get_phishing_version, _set_phishing_version, doc="The phishing blacklist version")
 
     def check_url(self, url):
+        self.log.debug("Checking URL: %s" % url)
         try:
             hasher = URLHasher(url)
         except URLHasherError, e:
@@ -88,14 +93,16 @@ def update_safebrowsing_blacklist(config):
     cache = BlacklistCache(config)
     mgr = SafeBrowsingManager(config["safebrowsing_api_key"])
     try:
-        mgr.get_updates()
-    except SafeBrowsingAvailabilityException, e:
+        mgr.do_updates_blocking()
+    except SafeBrowsingUpdateError, e:
+        cache.log.error(e)
         print e
         return
 
     try:
         cache.update(mgr.list)
-    except BlacklistUpdateException, e:
+    except BlacklistCacheError, e:
+        cache.log.error(e)
         print e
 
 
