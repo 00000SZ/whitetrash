@@ -167,8 +167,8 @@ def get_certfilepath(domain):
     labels.reverse()
     dirpath = ""
     for dir in labels[:-1]:
-    	dirpath = os.path.join(dirpath,dir)
-    	mkpath(os.path.join(config["dynamic_certs_dir"],dirpath))
+        dirpath = os.path.join(dirpath,dir)
+        mkpath(os.path.join(config["dynamic_certs_dir"],dirpath))
     wtlog.debug("Returning path %s" % os.path.join(config["dynamic_certs_dir"],dirpath,"%s.pem" % domain))
     return os.path.join(config["dynamic_certs_dir"],dirpath,"%s.pem" % domain)
         
