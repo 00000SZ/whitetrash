@@ -257,9 +257,17 @@ def run_http(server_class=WhitetrashServer,
 
     httpd.serve_forever()
 
+class SafeBrowsingUpdater(threading.Thread):
+    def run(self):
+        while True:
+            blacklistcache.update_safebrowsing_blacklist(config)
+
+
 if __name__ in ('main', '__main__'):
 
-
+    if config["safebrowsing"].upper()=="TRUE":
+    	sbu = SafeBrowsingUpdater()
+    	sbu.start()
     
     run_http()
 

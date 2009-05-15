@@ -48,15 +48,15 @@ class WTSquidRedirector:
             #If we are using ssl tell the client to go get the website with SSL
             #If I don't do this, it will do a GET, then get a redirect from apache
             #this cuts out the extra redirect from apache
-            wtproto = "302:https"
+            self.wtproto = "302:https"
         else:
-            wtproto = "http"
+            self.wtproto = "http"
 
-        self.http_fail_url="%s://%s/whitelist/addentry?" % (wtproto,config["whitetrash_domain"])
-        self.error_url="%s://%s/whitelist/error=" % (wtproto,config["whitetrash_domain"])
-        self.dummy_content_url="%s://blocked%s/empty" % (wtproto,config["whitetrash_domain"])
+        self.http_fail_url="%s://%s/whitelist/addentry?" % (self.wtproto,config["whitetrash_domain"])
+        self.error_url="%s://%s/whitelist/error=" % (self.wtproto,config["whitetrash_domain"])
+        self.dummy_content_url="%s://blocked%s/empty" % (self.wtproto,config["whitetrash_domain"])
 
-        self.whitetrash_admin_path="%s://%s" % (wtproto,config["whitetrash_domain"])
+        self.whitetrash_admin_path="%s://%s" % (self.wtproto,config["whitetrash_domain"])
         self.nonhtml_suffix_re=re.compile(config["nonhtml_suffix_re"])
         self.ssl_fail_url="sslwhitetrash:3456"
         self.fail_string=config["domain_fail_string"]
@@ -65,6 +65,8 @@ class WTSquidRedirector:
         self.domain_regex=re.compile("([a-z0-9-]+\.)+[a-z]+")
         self.domain_sanitise=re.compile(config["domain_regex"])
         self.auto_add_all=config["auto_add_all_domains"].upper()=="TRUE"
+        self.safebrowsing = config["safebrowsing"].upper()=="TRUE"
+        self.blacklistcache = blacklistcache.BlacklistCache(config)
         
         self.cursor=self.db_connect()
 
@@ -142,6 +144,8 @@ class WTSquidRedirector:
         If domain is not present, write self.fail_url as redirector output
         """
         try:
+                    
+
             domain_wild=re.sub("^[a-z0-9-]+\.","",domain,1)
 
             if self.www.match(domain):
@@ -177,12 +181,27 @@ class WTSquidRedirector:
                     else:
                         self.add_disabled_domain(domain,protocol,'notwhitelisted',url,clientaddr)
 
+
                     if protocol == self.PROTOCOL_CHOICES["HTTP"] and \
                         self.nonhtml_suffix_re.match(orig_url):
                         #only makes sense to return the form if the browser is expecting html
                         #This is something other than html so just give some really small dummy content.
                         result = (False,self.dummy_content_url+"\n")
                     else:
+                        if self.safebrowsing:
+                        	##check here so whitelist is applied first - allow admins to bypass
+                        	# FIXME: change fail_url so below code still works.  Make this a function.
+                            sbresult = self.blacklistcache.check_url(orig_url)
+                            if sbresult:
+                                if sbresult == self.blacklistcache.PHISHING:
+                                    if protocol == self.PROTOCOL_CHOICES["SSL"]:
+                    		            url = "%s://%s/whitelist/forgerydomain=%s" % (self.wtproto,config["whitetrash_domain"],domain)
+                                    else:
+                    		            url = "%s://%s/whitelist/forgerydomain=%s" % (self.wtproto,config["whitetrash_domain"],domain)
+                                else:
+                    	            url = "%s://%s/whitelist/attackdomain=%s" % (self.wtproto,config["whitetrash_domain"],domain)
+                                return (False,url)
+
                         if method != "GET" and protocol == self.PROTOCOL_CHOICES["HTTP"]:
                             #If this isn't a get ie. usually a POST, posting or anything else to our wt server doesn't make sense
                             #send a 302 moved temporarily back to the client so they request the web form.
