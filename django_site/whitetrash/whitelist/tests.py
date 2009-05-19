@@ -57,6 +57,24 @@ class WhitetrashTestSafeBrowsing(TestCase):
         response = self.client.get("/whitelist/forgerydomain=slkdfj%3Cxss%3Ecom")
         self.assertNotContains(response, '<xss>', status_code=200)
 
+    def testAddBlacklistedDomain(self):
+        """Adding a known bad blacklisted domain should fail if safebrowsing is enabled."""
+
+        if settings.SAFEBROWSING:
+            self.client.login(username='testuser', password='passwd')
+            response = self.client.post("/whitelist/addentry/", {"url":"http://malware.testing.google.test/testing/malware/",
+                            "domain":"malware.testing.google.test",
+                            "protocol":Whitelist.get_protocol_choice("HTTP"),"comment":"testing"} )
+            self.assertContains(response, "Web Attack", status_code=200)
+            self.assertFalse(Whitelist.objects.filter(domain="malware.testing.google.test",protocol=Whitelist.get_protocol_choice("HTTP")))
+
+            #Same for SSL
+            response = self.client.post("/whitelist/addentry/", {"url":"https://malware.testing.google.test/testing/malware/",
+                            "domain":"malware.testing.google.test",
+                            "protocol":Whitelist.get_protocol_choice("SSL"),"comment":"testing"} )
+            self.assertContains(response, "Web Attack", status_code=200)
+            self.assertFalse(Whitelist.objects.filter(domain="malware.testing.google.test",protocol=Whitelist.get_protocol_choice("HTTP")))
+
 class WhitetrashTestGetForm(TestCase):
     fixtures = ["testing.json"]
 

@@ -29,6 +29,7 @@ from exceptions import TypeError
 import httplib
 import MySQLdb
 import os
+import blacklistcache
 
 class WhitetrashTest(unittest.TestCase):
 
@@ -101,13 +102,13 @@ class SquidRedirectorUnitTests(RedirectorTest):
                         "http://whitetrash.sf.aaaanet/ 10.10.9.60/- greg GET",
                         ]
         squid_inputs_results=[True,True,False,False,False,False,False]
-        squid_inputs_results_url=["http://whitetrash/whitelist/addentry?url=http%3A//whitetrash.sf.net/&domain=whitetrash.sf.net",
+        squid_inputs_results_url=["%s://whitetrash/whitelist/addentry?url=http%%3A//whitetrash.sf.net/&domain=whitetrash.sf.net" % self.wt_redir.wtproto,
             "whitetrash.sf.net.sslwhitetrash:3456",
-            "http://whitetrash/whitelist/error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
-            "http://whitetrash/whitelist/error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
-            "http://whitetrash/whitelist/error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
-            "http://whitetrash/whitelist/error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
-            "http://whitetrash/whitelist/error=Bad%20request%20logged.%20%20See%20your%20sysadmin%20for%20assistance.\n",
+            "%s://whitetrash/whitelist/error=Bad%%20request%%20logged.%%20%%20See%%20your%%20sysadmin%%20for%%20assistance.\n" % self.wt_redir.wtproto,
+            "%s://whitetrash/whitelist/error=Bad%%20request%%20logged.%%20%%20See%%20your%%20sysadmin%%20for%%20assistance.\n" % self.wt_redir.wtproto,
+            "%s://whitetrash/whitelist/error=Bad%%20request%%20logged.%%20%%20See%%20your%%20sysadmin%%20for%%20assistance.\n" % self.wt_redir.wtproto,
+            "%s://whitetrash/whitelist/error=Bad%%20request%%20logged.%%20%%20See%%20your%%20sysadmin%%20for%%20assistance.\n" % self.wt_redir.wtproto,
+            "%s://whitetrash/whitelist/error=Bad%%20request%%20logged.%%20%%20See%%20your%%20sysadmin%%20for%%20assistance.\n" % self.wt_redir.wtproto,
             ]
 
         for i in range(len(squid_inputs)):
@@ -200,7 +201,32 @@ class SquidRedirectorUnitTests(RedirectorTest):
         dom="testwhitetrash.sf.net"
         self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(False,form))
 
+    def testSafeBrowsing(self):
+        if self.config["safebrowsing"] == "TRUE":
+            url="http%3A//malware.testing.google.test/testing/malware/"
+            orig_url="http://malware.testing.google.test/testing/malware/"
+            ip="192.168.1.1"
+            method="GET"
+            proto=self.wt_redir.PROTOCOL_CHOICES["HTTP"]
+            self.wt_redir.auto_add_all=False
+            dom="malware.testing.google.test"
+            self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(False,"sldfjlksdj"))
 
+    def testSafeBrowsingURL(self):
+        url = self.wt_redir.get_sb_fail_url(blacklistcache.PHISHING,self.wt_redir.PROTOCOL_CHOICES["HTTP"],self.config,"phishing.domain.com")
+        self.assertEqual(url,"%s://%s/whitelist/forgerydomain=%s" % 
+                                    (self.wt_redir.wtproto,self.config["whitetrash_domain"],"phishing.domain.com"))
+        url = self.wt_redir.get_sb_fail_url(blacklistcache.PHISHING,self.wt_redir.PROTOCOL_CHOICES["SSL"],self.config,"phishing.domain.com")
+        self.assertEqual(url,"%s://%s/whitelist/forgerydomain=%s" % 
+                                    (self.wt_redir.wtproto,self.config["whitetrash_domain"],"phishing.domain.com"))
+        
+        url = self.wt_redir.get_sb_fail_url(blacklistcache.MALWARE,self.wt_redir.PROTOCOL_CHOICES["HTTP"],self.config,"malware.domain.com")
+        self.assertEqual(url,"%s://%s/whitelist/attackdomain=%s" % 
+                                    (self.wt_redir.wtproto,self.config["whitetrash_domain"],"malware.domain.com"))
+        url = self.wt_redir.get_sb_fail_url(blacklistcache.MALWARE,self.wt_redir.PROTOCOL_CHOICES["SSL"],self.config,"malware.domain.com")
+        self.assertEqual(url,"%s://%s/whitelist/attackdomain=%s" % 
+                                    (self.wt_redir.wtproto,self.config["whitetrash_domain"],"malware.domain.com"))
+        
     def testWhitelistChecking(self):
         self.wt_redir.fail_url=self.wt_redir.http_fail_url
         form=self.wt_redir.http_fail_url+"\n"
@@ -250,7 +276,7 @@ class SquidRedirectorUnitTests(RedirectorTest):
         self.wt_redir.auto_add_all=False
         #generate an error by destroying the protocol choices dictionary 
         self.wt_redir.PROTOCOL_CHOICES={}
-        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(False,"http://whitetrash/whitelist/error=Error%20checking%20domain%20in%20whitelist\n"))
+        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(False,"%s://whitetrash/whitelist/error=Error%%20checking%%20domain%%20in%%20whitelist\n" % self.wt_redir.wtproto))
        
     def tearDown(self):
         self.cleancur.execute("delete from whitelist_whitelist where username='wt_unittesting'")
@@ -282,13 +308,13 @@ def allTests():
     config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
     #Only run the memcache tests if memcache is enabled.
     if config["use_memcached"].upper()=="TRUE":
-    	print("Running: CachedSquidRedirectorUnitTests, SquidRedirectorUnitTests, CertServerTest")
+        print("Running: CachedSquidRedirectorUnitTests, SquidRedirectorUnitTests, CertServerTest")
         return unittest.TestSuite((unittest.makeSuite(CachedSquidRedirectorUnitTests),
                                     unittest.makeSuite(SquidRedirectorUnitTests),
                                     unittest.makeSuite(CertServerTest),
                                     ))
     else:
-    	print("Running: SquidRedirectorUnitTests, CertServerTest")
+        print("Running: SquidRedirectorUnitTests, CertServerTest")
         return unittest.TestSuite((unittest.makeSuite(SquidRedirectorUnitTests),
                                     unittest.makeSuite(CertServerTest),
                                     ))

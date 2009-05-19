@@ -4,10 +4,10 @@ import logging
 import logging.config
 from re import compile
 
-config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
+CONFIG = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
 
 def conf(config_item):
-    return config[config_item].upper() == "TRUE"
+    return CONFIG[config_item].upper() == "TRUE"
 
 logging.config.fileConfig("/etc/whitetrash.conf")
 LOG = logging.getLogger("whitetrashDjango")
@@ -16,9 +16,11 @@ LOGIN_REQUIRED = conf("LOGIN_REQUIRED")
 
 CAPTCHA_HTTP = conf("CAPTCHA_HTTP") 
 CAPTCHA_SSL = conf("CAPTCHA_SSL")
-CAPTCHA_WINDOW_SEC = int(config["CAPTCHA_WINDOW_SEC"])
+CAPTCHA_WINDOW_SEC = int(CONFIG["CAPTCHA_WINDOW_SEC"])
 
-DOMAIN_REGEX=compile(config["domain_regex"])
+SAFEBROWSING = conf("safebrowsing")
+
+DOMAIN_REGEX=compile(CONFIG["domain_regex"])
 
 #Fix weird need to specify absolute paths
 import os.path
@@ -30,9 +32,13 @@ def absp(path):
 SESSION_COOKIE_AGE = 28800
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_SECURE = conf("ssl_server_enabled")
+if SESSION_COOKIE_SECURE:
+    SERV_PREFIX = "https://"
+else:
+    SERV_PREFIX = "http://"
 
 LOGIN_REDIRECT_URL = "/whitelist/addentry/?url=&domain="
-DOMAIN = config["whitetrash_domain"]
+DOMAIN = CONFIG["whitetrash_domain"]
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
@@ -44,11 +50,11 @@ ADMINS = (
 MANAGERS = ADMINS
 
 DATABASE_ENGINE = 'mysql'           # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'ado_mssql'.
-DATABASE_NAME = config['DATABASE_NAME']             # Or path to database file if using sqlite3.
-DATABASE_USER = config['DATABASE_DJANGO_USER']             # Not used with sqlite3.
-DATABASE_PASSWORD = config['DATABASE_DJANGO_PASSWORD']         # Not used with sqlite3.
-DATABASE_HOST = config['DATABASE_HOST']      # Set to empty string for localhost. Not used with sqlite3.
-DATABASE_PORT = config['DATABASE_PORT']      # Set to empty string for default. Not used with sqlite3.
+DATABASE_NAME = CONFIG['DATABASE_NAME']             # Or path to database file if using sqlite3.
+DATABASE_USER = CONFIG['DATABASE_DJANGO_USER']             # Not used with sqlite3.
+DATABASE_PASSWORD = CONFIG['DATABASE_DJANGO_PASSWORD']         # Not used with sqlite3.
+DATABASE_HOST = CONFIG['DATABASE_HOST']      # Set to empty string for localhost. Not used with sqlite3.
+DATABASE_PORT = CONFIG['DATABASE_PORT']      # Set to empty string for default. Not used with sqlite3.
 
 # Local time zone for this installation. Choices can be found here:
 # http://www.postgresql.org/docs/8.1/static/datetime-keywords.html#DATETIME-TIMEZONE-SET-TABLE
@@ -125,7 +131,7 @@ INSTALLED_APPS = (
 
 if conf("use_memcached"):
     import cmemcache
-    MEMCACHE_SERVERS=config["memcache_servers"].split(",")
+    MEMCACHE_SERVERS=CONFIG["memcache_servers"].split(",")
     MEMCACHE=cmemcache.Client(MEMCACHE_SERVERS)
 else:
     MEMCACHE=""
@@ -134,7 +140,7 @@ if conf("LDAP_AUTH"):
 
     import ldap
     AUTHENTICATION_BACKENDS = (
-    'whitetrash.ldapauth.LDAPBackend',
+    #'whitetrash.ldapauth.LDAPBackend',
     'django.contrib.auth.backends.ModelBackend',
     )
     #LDAP_DEBUG=True

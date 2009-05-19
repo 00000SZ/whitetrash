@@ -15,6 +15,7 @@ from hashlib import sha1
 import datetime
 import re
 from urllib import unquote
+import blacklistcache
 
 try:
     from Captcha.Visual.Tests import PseudoGimpy
@@ -63,6 +64,29 @@ def show_captcha(request):
         request.session['captcha_solns'] = [(safe_solutions,datetime.datetime.now())]
     return response
 
+def check_safebrowse(domain,url):
+    """Check the url and domain in the google safebrowsing blacklist.
+    Not strictly neccessary to check the domain, since it is checked as a component of the url.
+    However, whitetrash does not check that the url matches the domain, so we need to check the domain
+    too since that is what matters for the whitelist.  The domain and url will never be different if the
+    form parameters haven't been tampered with.
+
+    Only check safebrowsing on POST.  Checking on GET will introduce unnecessary load on the server for do benefit,
+    especially if there is malware doing a lot of beaconing, generating lots of forms.  Hits against the blacklist will
+    still be logged by the redirector.
+    
+    @return: If it is bad, return redirect to appropriate warning page, if not bad return none"""
+
+    blacklistcache = blacklistcache.BlacklistCache(settings.CONFIG)
+    for check_string in [url,domain]:
+        settings.LOG.debug("Checking %s for badness" % check_string)
+        sbresult = blacklistcache.check_url(check_string)
+        if sbresult == blacklistcache.PHISHING:
+            return HttpResponseRedirect("%s%s/whitelist/forgerydomain=%s" % (settings.SERV_PREFIX,settings.DOMAIN,whitetrash_filters.domain(domain)))
+        else:
+            return HttpResponseRedirect("%s%s/whitelist/attackdomain=%s" % (settings.SERV_PREFIX,settings.DOMAIN,whitetrash_filters.domain(domain)))
+    return None
+    
 @check_login_required
 def addentry(request):
     """Add an entry to the whitelist.
@@ -80,6 +104,12 @@ def addentry(request):
             protocol = form.cleaned_data['protocol']
             url = form.cleaned_data['url']
             comment = form.cleaned_data['comment']
+
+            if settings.SAFEBROWSING:
+                sbcheck=check_safebrowse(domain,url)
+                if sbcheck:
+            	    return sbcheck
+
             src_ip=whitetrash_filters.ip(request.META.get('REMOTE_ADDR'))
             captcha_required = False
 

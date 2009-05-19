@@ -87,8 +87,6 @@ class WhiteListForm(ModelForm):
         """We want to use the URL escaping because it protects us
         from XSS, but unfortunately it screws up our links because it converts
         http: to http%3A.  Use this function to fix this and we are good."""
-        #TODO check url against the google blacklist
-        #Will have to do this with with the raw url
 
         try:
             data = re.sub(r"^(https?)%3A",r"\1:",self.cleaned_data['url'])

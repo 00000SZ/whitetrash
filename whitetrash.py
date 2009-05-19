@@ -30,6 +30,7 @@ import MySQLdb
 import MySQLdb.cursors
 from configobj import ConfigObj
 from socket import inet_aton
+import blacklistcache
 try:
     import cmemcache
 except ImportError:
@@ -58,7 +59,7 @@ class WTSquidRedirector:
 
         self.whitetrash_admin_path="%s://%s" % (self.wtproto,config["whitetrash_domain"])
         self.nonhtml_suffix_re=re.compile(config["nonhtml_suffix_re"])
-        self.ssl_fail_url="sslwhitetrash:3456"
+        self.ssl_fail_url="ssl%s:%s" % (config["whitetrash_domain"],config["cert_server_listen_port"])
         self.fail_string=config["domain_fail_string"]
         self.www=re.compile("^www[0-9]?\.")
         #Strip out everything except the domain
@@ -131,6 +132,13 @@ class WTSquidRedirector:
     def get_error_url(self,errortext):
         return "%s%s\n" % (self.error_url,urllib.quote(errortext))
 
+    def get_sb_fail_url(self,sbresult,protocol,config,domain):
+        if sbresult == blacklistcache.PHISHING:
+            url = "%s://%s/whitelist/forgerydomain=%s" % (self.wtproto,config["whitetrash_domain"],domain)
+        else:
+            url = "%s://%s/whitelist/attackdomain=%s" % (self.wtproto,config["whitetrash_domain"],domain)
+        return url
+
     def check_whitelist_db(self,domain,protocol,method,url,orig_url,clientaddr):
         """Check the db for domain with protocol.
 
@@ -145,7 +153,6 @@ class WTSquidRedirector:
         """
         try:
                     
-
             domain_wild=re.sub("^[a-z0-9-]+\.","",domain,1)
 
             if self.www.match(domain):
@@ -189,18 +196,14 @@ class WTSquidRedirector:
                         result = (False,self.dummy_content_url+"\n")
                     else:
                         if self.safebrowsing:
-                        	##check here so whitelist is applied first - allow admins to bypass
-                        	# FIXME: change fail_url so below code still works.  Make this a function.
+                        	# check safebrowsing here so whitelist is applied first - allow admins to bypass 
+                        	# safebrowsing blacklist
                             sbresult = self.blacklistcache.check_url(orig_url)
                             if sbresult:
-                                if sbresult == self.blacklistcache.PHISHING:
-                                    if protocol == self.PROTOCOL_CHOICES["SSL"]:
-                    		            url = "%s://%s/whitelist/forgerydomain=%s" % (self.wtproto,config["whitetrash_domain"],domain)
-                                    else:
-                    		            url = "%s://%s/whitelist/forgerydomain=%s" % (self.wtproto,config["whitetrash_domain"],domain)
-                                else:
-                    	            url = "%s://%s/whitelist/attackdomain=%s" % (self.wtproto,config["whitetrash_domain"],domain)
-                                return (False,url)
+                                self.log.critical("****SAFEBROWSING BLACKLIST HIT**** on %s blacklist from %s for url: %s using protocol:%s" 
+                                                    % (sbresult,clientaddr,orig_url,protocol))
+                                self.fail_url = self.get_sb_fail_url(sbresult,protocol,config,domain,orig_url)
+                                result = (False,"%s\n" % self.fail_url)
 
                         if method != "GET" and protocol == self.PROTOCOL_CHOICES["HTTP"]:
                             #If this isn't a get ie. usually a POST, posting or anything else to our wt server doesn't make sense
