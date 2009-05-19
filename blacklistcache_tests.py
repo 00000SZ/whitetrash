@@ -36,7 +36,11 @@ class BlacklistCacheTests(unittest.TestCase):
         config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
         self.cache = BlacklistCache(config)
         self.raw_cache = cmemcache.Client(config["memcache_servers"].split(","))
-        self.mgr = SafeBrowsingManager(config["safebrowsing_api_key"])
+        proxy = None
+        if "safebrowsing_proxy" in config:
+        	proxy = config["safebrowsing_proxy"]
+        	print("Using proxy: %s for testing" % proxy)
+        self.mgr = SafeBrowsingManager(config["safebrowsing_api_key"],proxy=proxy)
         self.mgr.do_updates()
 
     def testMalwareVersion1(self):

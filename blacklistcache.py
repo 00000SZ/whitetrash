@@ -19,9 +19,7 @@ import cmemcache
 from safebrowse import *
 import logging
 import logging.config
-#import logging.handlers
-#from logging.handlers import SysLogHandler, RotatingFileHandler 
-
+import time
 
 TIMEOUT = 30 * 60      # 30 minutes
 MALWARE = "malware"
@@ -142,6 +140,9 @@ def update_safebrowsing_blacklist(config):
         cache.log.error(e)
         print e
 
+    sleep_s = int(config["safebrowsing_up_interval_s"])
+    cache.log.debug("Sleeping for %s seconds" % sleep_s)
+    time.sleep(sleep_s)
 
 if __name__ == '__main__':
     main()

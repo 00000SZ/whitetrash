@@ -12,7 +12,6 @@ from hashlib import md5
 import cmemcache
 import logging
 
-
 # Constants for version 1 of the Safe Browsing API
 MALWARE = "malware"
 PHISHING = "black"
@@ -21,6 +20,7 @@ HEADER_REGEX = "\[goog-(malware|black)-hash 1.([0-9]*).*\]"
 HASH_REGEX = "(\+|\-)([a-f0-9]*)"
 #How long to wait for our get request to return
 TIMEOUT = 60      # 60 seconds
+LOGLEVEL = logging.DEBUG
  
 
 class SafeBrowsingUpdate(object):
@@ -33,6 +33,17 @@ class SafeBrowsingUpdate(object):
         self.proxy = proxy
         self.new_hashes = []
         self.old_hashes = []
+
+        # create logger
+        self.log = logging.getLogger("safebrowsing")
+        self.log.setLevel(LOGLEVEL)
+        handler = logging.handlers.SysLogHandler("/dev/log", logging.handlers.SysLogHandler.LOG_USER)
+
+        handler.setLevel(LOGLEVEL)
+        # create formatter
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        handler.setFormatter(formatter)
+        self.log.addHandler(handler)
 
     @property
     def version(self):
@@ -55,13 +66,14 @@ class SafeBrowsingUpdate(object):
 
         file = self.retrieve_update(apikey)
         self.parse_update(file)
+        self.log.debug(self)
 
     def retrieve_update(self, apikey):
         """Grab the latest blacklist from the Google safebrowsing API"""
 
         # Get the full url to use
         url = SB_URL_TEMPLATE % (apikey, self.get_version_string())
-        logging.debug("Grabbing from url: %s" % url)
+        self.log.debug("Grabbing from url: %s" % url)
 
         # Set the timeout for the get request
         # python 2.6 adds timeout as a parameter for urllib2.urlopen()
@@ -70,7 +82,7 @@ class SafeBrowsingUpdate(object):
         # Grab the blacklist
         try:
             if self.proxy:
-                logging.debug("Updating with proxy: %s" % self.proxy)
+                self.log.debug("Updating with proxy: %s" % self.proxy)
                 proxy_support = urllib2.ProxyHandler({"http" : self.proxy})
                 opener = urllib2.build_opener(proxy_support)
                 urllib2.install_opener(opener)
@@ -78,10 +90,10 @@ class SafeBrowsingUpdate(object):
             #return self._local_fopen(url) # for testing only
         except urllib2.URLError, e:
             if hasattr(e, "reason"):
-                logging.error(e.reason)
+                self.log.error(e.reason)
                 raise SafeBrowsingUpdateError(e.reason)
             elif hasattr(e, "code"):
-                logging.error(str(e))
+                self.log.error(str(e))
                 raise SafeBrowsingUpdateError(str(e))
 
     def parse_update(self, file):
@@ -89,17 +101,22 @@ class SafeBrowsingUpdate(object):
 
         self.new_hashes = []
         self.old_hashes = []
-        (type, version) = self.parse_header(file.readline())
-        pattern = re.compile(HASH_REGEX)
-        for line in file:
-            m = pattern.search(line)
-            if m:
-                if m.group(1) == "+":
-                    self.new_hashes.append(m.group(2))
-                elif m.group(1) == "-":
-                    self.old_hashes.append(m.group(2))
+        parsed = self.parse_header(file.readline())
+        if parsed:
+            (type, version) = parsed
+            self.log.debug("Received list type: %s, version: %s" % (type, version))
+            pattern = re.compile(HASH_REGEX)
+            for line in file:
+                m = pattern.search(line)
+                if m:
+                    if m.group(1) == "+":
+                        self.new_hashes.append(m.group(2))
+                    elif m.group(1) == "-":
+                        self.old_hashes.append(m.group(2))
 
-        self._version = int(version)
+            self._version = int(version)
+        else:
+            raise SafeBrowsingUpdateError("Received bad/empty list, no changes made")
 
     def parse_header(self, header):
         """Pull the version number and blacklist type from the header"""
@@ -158,12 +175,12 @@ class SafeBrowsingManager():
                4 : 180,
                5 : MAX_WAIT}
 
-    def __init__(self, apikey, logfile="/tmp/safebrowsing.log", loglevel=logging.ERROR, proxy=None):
+    def __init__(self, apikey, proxy=None):
         self._apikey = apikey
         self.malware  = SafeBrowsingUpdate(MALWARE, -1, proxy)
         self.phishing = SafeBrowsingUpdate(PHISHING, -1, proxy)
-        logging.basicConfig(filename=logfile,level=loglevel,)
 
+    
     def do_updates(self, malware_version=None, phishing_version=None):
         if malware_version:
             self.malware = SafeBrowsingUpdate(MALWARE, malware_version)
