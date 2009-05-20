@@ -275,7 +275,29 @@ class SquidRedirectorUnitTests(RedirectorTest):
         #generate an error by destroying the protocol choices dictionary 
         self.wt_redir.PROTOCOL_CHOICES={}
         self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(False,"%s://whitetrash/whitelist/error=Error%%20checking%%20domain%%20in%%20whitelist\n" % self.wt_redir.wtproto))
-       
+
+
+    def testWhitelistCheckingMultipleResults(self):
+        """If mozilla.org is in the DB disabled, and wiki.mozilla.org is enabled, multiple entries will be returned by
+        our OR query when checking wiki.mozilla.org."""
+        proto=self.wt_redir.PROTOCOL_CHOICES["HTTP"]
+        dom="sub.testwhitetrash.sf.net"
+
+        self.wt_redir.cursor.execute("insert into whitelist_whitelist set domain='testwhitetrash.sf.net',date_added=NOW(),username='wt_unittesting',protocol=%s,url='http://sdlkj',comment='whitetrash testing',enabled=0,hitcount=20,last_accessed=NOW(),client_ip='192.168.1.1'", (self.wt_redir.PROTOCOL_CHOICES["HTTP"]))
+        wild_id = self.wt_redir.cursor.lastrowid
+
+        self.wt_redir.cursor.execute("insert into whitelist_whitelist set domain='sub.testwhitetrash.sf.net',date_added=NOW(),username='wt_unittesting',protocol=%s,url='http://sdlkj',comment='whitetrash testing',enabled=1,hitcount=20,last_accessed=NOW(),client_ip='192.168.1.1'", (self.wt_redir.PROTOCOL_CHOICES["HTTP"]))
+        subdom_id = self.wt_redir.cursor.lastrowid
+
+        # Check we have 2 results
+        # The OR doesn't seem to be deterministic, but there is code addressing this issue in the redirector
+        # Just check we always get the subdomain result.
+        self.wt_redir.cursor.execute("select whitelist_id,enabled from whitelist_whitelist where protocol=%s and ((domain=%s) or (domain=%s))", (proto,dom,"testwhitetrash.sf.net"))
+        res =self.wt_redir.cursor.fetchall()
+        self.assertEqual(len(res),2)
+
+        self.assertEqual(self.wt_redir.get_whitelist_id(proto,dom,"testwhitetrash.sf.net",wild=False),(subdom_id,1))
+
     def tearDown(self):
         self.cleancur.execute("delete from whitelist_whitelist where username='wt_unittesting'")
         self.cleancur.execute("delete from whitelist_whitelist where domain like '%testwhitetrash.sf.net'")

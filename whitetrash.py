@@ -101,7 +101,10 @@ class WTSquidRedirector:
         if wild:
             self.cursor.execute("select whitelist_id,enabled from whitelist_whitelist where domain=%s and protocol=%s", (domain_wild,proto))
         else:
-            self.cursor.execute("select whitelist_id,enabled from whitelist_whitelist where protocol=%s and ((domain=%s) or (domain=%s))", (proto,domain,domain_wild))
+            res = self.cursor.execute("select whitelist_id,enabled from whitelist_whitelist where protocol=%s and ((domain=%s) or (domain=%s))", (proto,domain,domain_wild))
+            if res >1:
+                #If there is more than one result from the or, take the non-wildcarded one.
+                self.cursor.execute("select whitelist_id,enabled from whitelist_whitelist where protocol=%s and domain=%s", (proto,domain))
 
         return self.cursor.fetchone()
 
