@@ -1,27 +1,48 @@
 #! /usr/bin/env
 
-import syslog
-
+import logging
+import logging.config
 import MySQLdb
 from configobj import ConfigObj
-
-syslog.openlog('whitetrash.py',0,syslog.LOG_USER)
-syslog.syslog("Running whitetrash_cleanup")
 
 try:
 
     config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
-    dbh = MySQLdb.Connect(user = config['DATABASE_CLEANUP_USER'],
-                                passwd = config['DATABASE_CLEANUP_PASSWORD'],
-                                db = config['DATABASE_NAME'],
-                                unix_socket = config['DATABASE_UNIX_SOCKET'],
+    logging.config.fileConfig("/etc/whitetrash.conf")
+    log = logging.getLogger("whitetrashCleanup")
+    log.info("Running whitetrash_cleanup")
+
+    dbh = MySQLdb.Connect(user = self.config['DATABASE_CLEANUP_USER'],
+                                passwd = self.config['DATABASE_CLEANUP_PASSWORD'],
+                                db = self.config['DATABASE_NAME'],
+                                unix_socket = self.config['DATABASE_UNIX_SOCKET'],
                                 use_unicode = False
                                 )
-    cursor=dbh.cursor()
-    result=cursor.execute("delete whitelist, hitcount from whitelist left join hitcount on whitelist.whitelist_id=hitcount.whitelist_id where ((DATEDIFF(NOW(),hitcount.timestamp) > %s) or (hitcount.whitelist_id is NULL))",config["timeout_in_days"])
 
-    syslog.syslog("whitetrash_cleanup.py successful. Deleted %s row(s)" % result)
+    cursor=dbh.cursor()
+
+    if config["use_memcached"].upper() =="TRUE":
+        import cmemcache
+        servers=config["memcache_servers"].split(",")
+        cache=cmemcache.Client(servers)
+        result=cursor.execute("select whitelist_id,protocol,domain from whitelist_whitelist where (DATEDIFF(NOW(),last_accessed) > %s)",config["timeout_in_days"])
+        for (id,proto,dom) in cursor.fetchall():
+            key = "|".join((dom,str(proto)))
+            if config["delete_old_domains"].upper() =="TRUE":
+                cache.delete(key)
+            else:
+                cache.set(key,(id,False))
+
+        log.info("Deleted/disabled %s entries in memcache" % result)
+
+    if config["delete_old_domains"].upper() =="TRUE":
+        result=cursor.execute("delete from whitelist_whitelist where (DATEDIFF(NOW(),last_accessed) > %s)",config["timeout_in_days"])
+        log.info("Whitetrash cleanup successful. Deleted %s domains(s)" % result)
+    else:
+        update whitelist_whitelist set enabled =1 where domain="fklsdflkjsdlkf.com"
+        result=cursor.execute("update whitelist_whitelist set enabled=0 where (DATEDIFF(NOW(),hitcount.timestamp) > %s)",config["timeout_in_days"])
+        log.info("Whitetrash cleanup successful. Disabled %s domain(s)" % result)
 
 except Exception,e:
-    syslog.syslog("whitetrash_cleanup.py error:%s" % e)
+    log.error("whitetrash_cleanup.py error:%s" % e)
 
