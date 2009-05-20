@@ -65,15 +65,17 @@ class WhitetrashTestSafeBrowsing(TestCase):
             response = self.client.post("/whitelist/addentry/", {"url":"http://malware.testing.google.test/testing/malware/",
                             "domain":"malware.testing.google.test",
                             "protocol":Whitelist.get_protocol_choice("HTTP"),"comment":"testing"} )
-            self.assertContains(response, "Web Attack", status_code=200)
+            self.assertRedirects(response, "%s%s/whitelist/attackdomain=malware.testing.google.test" % (settings.SERV_PREFIX,settings.DOMAIN),
+                status_code=302, target_status_code=200)
             self.assertFalse(Whitelist.objects.filter(domain="malware.testing.google.test",protocol=Whitelist.get_protocol_choice("HTTP")))
 
             #Same for SSL
             response = self.client.post("/whitelist/addentry/", {"url":"https://malware.testing.google.test/testing/malware/",
                             "domain":"malware.testing.google.test",
                             "protocol":Whitelist.get_protocol_choice("SSL"),"comment":"testing"} )
-            self.assertContains(response, "Web Attack", status_code=200)
-            self.assertFalse(Whitelist.objects.filter(domain="malware.testing.google.test",protocol=Whitelist.get_protocol_choice("HTTP")))
+            self.assertRedirects(response, "%s%s/whitelist/attackdomain=malware.testing.google.test" % (settings.SERV_PREFIX,settings.DOMAIN),
+                status_code=302, target_status_code=200)
+            self.assertFalse(Whitelist.objects.filter(domain="malware.testing.google.test",protocol=Whitelist.get_protocol_choice("SSL")))
 
 class WhitetrashTestGetForm(TestCase):
     fixtures = ["testing.json"]

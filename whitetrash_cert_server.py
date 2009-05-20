@@ -35,6 +35,7 @@ import logging.config
 from OpenSSL import crypto
 import random
 from distutils.dir_util import mkpath
+import blacklistcache
 
 config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
 logging.config.fileConfig("/etc/whitetrash.conf")
@@ -194,7 +195,6 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_CONNECT(self):
-        wtlog.debug("Got connect request: %s" % self.request)
         wtlog.debug("Path: %s" % self.path)
         #strip off the sslwhitetrash bit from the end of the domain
         self.domain = clean_domain(stripre.sub(r"\1",self.path.split(":")[0]))
@@ -205,6 +205,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         ctx = SSL.Context(SSL.SSLv23_METHOD)
         #server.pem's location (containing the server private key and
         #the server certificate).
+        wtlog.debug("Getting cert for domain: %s" % self.domain)
         ctx.use_privatekey_file( config["dynamic_certs_keyfile"] )
         ctx.use_certificate_file( get_cert(self.domain) )
         ssl_socket = SSL.Connection(ctx, self.wfile)
@@ -266,8 +267,8 @@ class SafeBrowsingUpdater(threading.Thread):
 if __name__ in ('main', '__main__'):
 
     if config["safebrowsing"].upper()=="TRUE":
-    	sbu = SafeBrowsingUpdater()
-    	sbu.start()
+        sbu = SafeBrowsingUpdater()
+        sbu.start()
     
     run_http()
 

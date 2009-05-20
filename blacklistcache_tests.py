@@ -38,8 +38,8 @@ class BlacklistCacheTests(unittest.TestCase):
         self.raw_cache = cmemcache.Client(config["memcache_servers"].split(","))
         proxy = None
         if "safebrowsing_proxy" in config:
-        	proxy = config["safebrowsing_proxy"]
-        	print("Using proxy: %s for testing" % proxy)
+            proxy = config["safebrowsing_proxy"]
+            print("Using proxy: %s for testing" % proxy)
         self.mgr = SafeBrowsingManager(config["safebrowsing_api_key"],proxy=proxy)
         self.mgr.do_updates()
 

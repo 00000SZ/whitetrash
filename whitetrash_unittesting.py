@@ -202,7 +202,7 @@ class SquidRedirectorUnitTests(RedirectorTest):
         self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(False,form))
 
     def testSafeBrowsing(self):
-        if self.config["safebrowsing"] == "TRUE":
+        if self.config["safebrowsing"].upper() == "TRUE":
             url="http%3A//malware.testing.google.test/testing/malware/"
             orig_url="http://malware.testing.google.test/testing/malware/"
             ip="192.168.1.1"
@@ -210,20 +210,18 @@ class SquidRedirectorUnitTests(RedirectorTest):
             proto=self.wt_redir.PROTOCOL_CHOICES["HTTP"]
             self.wt_redir.auto_add_all=False
             dom="malware.testing.google.test"
-            self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(False,"sldfjlksdj"))
+            self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),
+                                        (False,'302:https://whitetrash/whitelist/attackdomain=malware.testing.google.test\n'))
+            proto=self.wt_redir.PROTOCOL_CHOICES["SSL"]
+            self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),
+                                        (False,'302:https://whitetrash/whitelist/attackdomain=malware.testing.google.test\n'))
+
 
     def testSafeBrowsingURL(self):
-        url = self.wt_redir.get_sb_fail_url(blacklistcache.PHISHING,self.wt_redir.PROTOCOL_CHOICES["HTTP"],self.config,"phishing.domain.com")
+        url = self.wt_redir.get_sb_fail_url(blacklistcache.PHISHING,"phishing.domain.com")
         self.assertEqual(url,"%s://%s/whitelist/forgerydomain=%s" % 
                                     (self.wt_redir.wtproto,self.config["whitetrash_domain"],"phishing.domain.com"))
-        url = self.wt_redir.get_sb_fail_url(blacklistcache.PHISHING,self.wt_redir.PROTOCOL_CHOICES["SSL"],self.config,"phishing.domain.com")
-        self.assertEqual(url,"%s://%s/whitelist/forgerydomain=%s" % 
-                                    (self.wt_redir.wtproto,self.config["whitetrash_domain"],"phishing.domain.com"))
-        
-        url = self.wt_redir.get_sb_fail_url(blacklistcache.MALWARE,self.wt_redir.PROTOCOL_CHOICES["HTTP"],self.config,"malware.domain.com")
-        self.assertEqual(url,"%s://%s/whitelist/attackdomain=%s" % 
-                                    (self.wt_redir.wtproto,self.config["whitetrash_domain"],"malware.domain.com"))
-        url = self.wt_redir.get_sb_fail_url(blacklistcache.MALWARE,self.wt_redir.PROTOCOL_CHOICES["SSL"],self.config,"malware.domain.com")
+        url = self.wt_redir.get_sb_fail_url(blacklistcache.MALWARE,"malware.domain.com")
         self.assertEqual(url,"%s://%s/whitelist/attackdomain=%s" % 
                                     (self.wt_redir.wtproto,self.config["whitetrash_domain"],"malware.domain.com"))
         

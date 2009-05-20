@@ -55,7 +55,8 @@ class WTSquidRedirector:
 
         self.http_fail_url="%s://%s/whitelist/addentry?" % (self.wtproto,config["whitetrash_domain"])
         self.error_url="%s://%s/whitelist/error=" % (self.wtproto,config["whitetrash_domain"])
-        self.dummy_content_url="%s://blocked%s/empty" % (self.wtproto,config["whitetrash_domain"])
+        #Don't use SSL for this dummy domain that will be blocked, causes strange behaviour in the browser.
+        self.dummy_content_url="http://blocked%s/empty" % (config["whitetrash_domain"])
 
         self.whitetrash_admin_path="%s://%s" % (self.wtproto,config["whitetrash_domain"])
         self.nonhtml_suffix_re=re.compile(config["nonhtml_suffix_re"])
@@ -132,11 +133,11 @@ class WTSquidRedirector:
     def get_error_url(self,errortext):
         return "%s%s\n" % (self.error_url,urllib.quote(errortext))
 
-    def get_sb_fail_url(self,sbresult,protocol,config,domain):
+    def get_sb_fail_url(self,sbresult,domain):
         if sbresult == blacklistcache.PHISHING:
-            url = "%s://%s/whitelist/forgerydomain=%s" % (self.wtproto,config["whitetrash_domain"],domain)
+            url = "%s://%s/whitelist/forgerydomain=%s" % (self.wtproto,self.config["whitetrash_domain"],domain)
         else:
-            url = "%s://%s/whitelist/attackdomain=%s" % (self.wtproto,config["whitetrash_domain"],domain)
+            url = "%s://%s/whitelist/attackdomain=%s" % (self.wtproto,self.config["whitetrash_domain"],domain)
         return url
 
     def check_whitelist_db(self,domain,protocol,method,url,orig_url,clientaddr):
@@ -196,13 +197,13 @@ class WTSquidRedirector:
                         result = (False,self.dummy_content_url+"\n")
                     else:
                         if self.safebrowsing:
-                        	# check safebrowsing here so whitelist is applied first - allow admins to bypass 
-                        	# safebrowsing blacklist
+                            # check safebrowsing here so whitelist is applied first - allow admins to bypass 
+                            # safebrowsing blacklist
                             sbresult = self.blacklistcache.check_url(orig_url)
                             if sbresult:
                                 self.log.critical("****SAFEBROWSING BLACKLIST HIT**** on %s blacklist from %s for url: %s using protocol:%s" 
                                                     % (sbresult,clientaddr,orig_url,protocol))
-                                self.fail_url = self.get_sb_fail_url(sbresult,protocol,config,domain,orig_url)
+                                self.fail_url = self.get_sb_fail_url(sbresult,domain)
                                 result = (False,"%s\n" % self.fail_url)
 
                         if method != "GET" and protocol == self.PROTOCOL_CHOICES["HTTP"]:

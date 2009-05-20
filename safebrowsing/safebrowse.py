@@ -2,7 +2,6 @@
 
 # Tests in safebrowsing_tests.py
 
-import socket
 import urllib2
 import urlparse
 import re
@@ -75,10 +74,6 @@ class SafeBrowsingUpdate(object):
         url = SB_URL_TEMPLATE % (apikey, self.get_version_string())
         self.log.debug("Grabbing from url: %s" % url)
 
-        # Set the timeout for the get request
-        # python 2.6 adds timeout as a parameter for urllib2.urlopen()
-        socket.setdefaulttimeout(TIMEOUT) # 10 seconds
-
         # Grab the blacklist
         try:
             if self.proxy:
@@ -86,7 +81,7 @@ class SafeBrowsingUpdate(object):
                 proxy_support = urllib2.ProxyHandler({"http" : self.proxy})
                 opener = urllib2.build_opener(proxy_support)
                 urllib2.install_opener(opener)
-            return urllib2.urlopen(url)
+            return urllib2.urlopen(url,timeout=TIMEOUT)
             #return self._local_fopen(url) # for testing only
         except urllib2.URLError, e:
             if hasattr(e, "reason"):

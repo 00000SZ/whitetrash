@@ -28,7 +28,7 @@ def index(request):
 
 def check_login_required(func):
     if settings.LOGIN_REQUIRED:
-    	return login_required(func)
+        return login_required(func)
     else:
         return func
 
@@ -77,14 +77,17 @@ def check_safebrowse(domain,url):
     
     @return: If it is bad, return redirect to appropriate warning page, if not bad return none"""
 
-    blacklistcache = blacklistcache.BlacklistCache(settings.CONFIG)
+    blc = blacklistcache.BlacklistCache(settings.CONFIG)
+    settings.LOG.debug("Got %s,%s" % (domain,url))
     for check_string in [url,domain]:
-        settings.LOG.debug("Checking %s for badness" % check_string)
-        sbresult = blacklistcache.check_url(check_string)
-        if sbresult == blacklistcache.PHISHING:
-            return HttpResponseRedirect("%s%s/whitelist/forgerydomain=%s" % (settings.SERV_PREFIX,settings.DOMAIN,whitetrash_filters.domain(domain)))
-        else:
-            return HttpResponseRedirect("%s%s/whitelist/attackdomain=%s" % (settings.SERV_PREFIX,settings.DOMAIN,whitetrash_filters.domain(domain)))
+        if check_string:
+            settings.LOG.debug("Checking %s for badness" % check_string)
+            sbresult = blc.check_url(check_string)
+            if sbresult:
+                if sbresult == blacklistcache.PHISHING:
+                    return HttpResponseRedirect("%s%s/whitelist/forgerydomain=%s" % (settings.SERV_PREFIX,settings.DOMAIN,whitetrash_filters.domain(domain)))
+
+                return HttpResponseRedirect("%s%s/whitelist/attackdomain=%s" % (settings.SERV_PREFIX,settings.DOMAIN,whitetrash_filters.domain(domain)))
     return None
     
 @check_login_required
@@ -96,7 +99,7 @@ def addentry(request):
     """
 
     if request.method == 'POST':
-        settings.LOG.debug("POST request: %s" % request)
+        #settings.LOG.debug("POST request: %s" % request)
         form = WhiteListForm(request.POST)
 
         if form.is_valid(): 
@@ -104,13 +107,15 @@ def addentry(request):
             protocol = form.cleaned_data['protocol']
             url = form.cleaned_data['url']
             comment = form.cleaned_data['comment']
+            src_ip=whitetrash_filters.ip(request.META.get('REMOTE_ADDR'))
 
             if settings.SAFEBROWSING:
                 sbcheck=check_safebrowse(domain,url)
                 if sbcheck:
-            	    return sbcheck
+                    settings.LOG.critical("****SAFEBROWSING BLACKLIST WHITELISTING ATTEMPT**** from IP:%s for url: %s, domain:%s using protocol:%s" 
+                                                    % (src_ip,url,domain,protocol))
+                    return sbcheck
 
-            src_ip=whitetrash_filters.ip(request.META.get('REMOTE_ADDR'))
             captcha_required = False
 
             if ((settings.CAPTCHA_HTTP and protocol == Whitelist.get_protocol_choice('HTTP')) or
