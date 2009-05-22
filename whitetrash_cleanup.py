@@ -39,7 +39,6 @@ try:
         result=cursor.execute("delete from whitelist_whitelist where (DATEDIFF(NOW(),last_accessed) > %s)",config["timeout_in_days"])
         log.info("Whitetrash cleanup successful. Deleted %s domains(s)" % result)
     else:
-        update whitelist_whitelist set enabled =1 where domain="fklsdflkjsdlkf.com"
         result=cursor.execute("update whitelist_whitelist set enabled=0 where (DATEDIFF(NOW(),hitcount.timestamp) > %s)",config["timeout_in_days"])
         log.info("Whitetrash cleanup successful. Disabled %s domain(s)" % result)
 

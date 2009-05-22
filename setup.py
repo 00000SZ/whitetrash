@@ -55,6 +55,7 @@ class WhitetrashInstallData(install):
         execute(self.createCertAuthority,())
         execute(self.createWTApacheCert,())
         execute(self.createDBandUsers,())
+        execute(self.createCleanupCron,())
 
     def installPathFile(self):
         """Put safebrowse on the python path so you don't have to import safebrowsing.safebrowse"""
@@ -284,6 +285,26 @@ class WhitetrashInstallData(install):
                             random.randint(0,wtcs.upper_rand), 
                             (-issue_time, 60*60*24*365*wtcs.cert_years)) 
             open(apachecertfile,'w').write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
+
+    def createCleanupCron(self):
+        """
+        Reads the cron string from whitetrash.conf and creates
+        a daily cron job using this string to run at 3:00am daily.
+        The default cron string in whitetrash.conf is
+        "python whitetrash_cleanup.py" which removes old entries
+        from the whitelist (both in the whitelist and memcache)
+        """
+
+        try:
+            from configobj import ConfigObj
+            config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
+        except Exception,e:
+            print """Error parsing /etc/whitetrash.conf (%s)""" % e
+
+        cron_file = "/etc/cron.d/whitetrash-cleanup"
+        cron_str = config["cleanup_cron"]
+        write_file(cron_file, [cron_str])
+
 
 def setup_args():
     setup_args={
