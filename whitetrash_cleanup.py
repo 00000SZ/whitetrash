@@ -1,4 +1,4 @@
-#! /usr/bin/env
+#!/usr/bin/env python
 
 import logging
 import logging.config
