@@ -12,10 +12,10 @@ try:
     log = logging.getLogger("whitetrashCleanup")
     log.info("Running whitetrash_cleanup")
 
-    dbh = MySQLdb.Connect(user = self.config['DATABASE_CLEANUP_USER'],
-                                passwd = self.config['DATABASE_CLEANUP_PASSWORD'],
-                                db = self.config['DATABASE_NAME'],
-                                unix_socket = self.config['DATABASE_UNIX_SOCKET'],
+    dbh = MySQLdb.Connect(user = config['DATABASE_CLEANUP_USER'],
+                                passwd = config['DATABASE_CLEANUP_PASSWORD'],
+                                db = config['DATABASE_NAME'],
+                                unix_socket = config['DATABASE_UNIX_SOCKET'],
                                 use_unicode = False
                                 )
 
