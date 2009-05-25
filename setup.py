@@ -129,7 +129,7 @@ class WhitetrashInstallData(install):
             self.installDjango()
 
             cur.execute("GRANT INSERT,SELECT,UPDATE on whitetrash.whitelist_whitelist TO %s",(config["DATABASE_WHITETRASH_USER"]))
-            cur.execute("GRANT SELECT,DELETE on whitetrash.whitelist_whitelist TO %s",(config["DATABASE_CLEANUP_USER"]))
+            cur.execute("GRANT SELECT,DELETE.UPDATE on whitetrash.whitelist_whitelist TO %s",(config["DATABASE_CLEANUP_USER"]))
 
         except Exception,e:
             print """Installing database failed (%s). You may need to create database and users manually.""" % e
