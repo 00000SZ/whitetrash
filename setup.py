@@ -325,6 +325,7 @@ def setup_args():
         'packages': ['safebrowsing'],
         'py_modules': ['configobj','blacklistcache'],
         'scripts' : ['whitetrash_cert_server.py',
+                     'whitetrash_cleanup.py',
                      'whitetrash.py'],
         'classifiers' : [
             'License :: OSI-Approved Open Source :: GNU General Public License (GPL)',
