@@ -182,6 +182,13 @@ def get_cert(domain):
         wtlog.debug("Using existing cert at: %s" % certfile)
     return certfile 
 
+def update_safebrowsing(wtlog,config):
+    wtlog.debug("***** Starting safebrowsing updater thread - %s *****" % (str(time.asctime())))
+    blacklistcache.update_safebrowsing_blacklist(config)
+    update_interval = int(config["safebrowsing_up_interval_s"])
+    wtlog.info("***** Safebrowsing update complete - next update in %s seconds *****" % (update_interval))
+    threading.Timer(update_interval, update_safebrowsing,[wtlog,config]).start()
+
 class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def setup(self):
@@ -222,7 +229,7 @@ def run_http(server_class=WhitetrashServer,
     server_address = (config["cert_server_listen_addr"], int(config["cert_server_listen_port"]))
     httpd = server_class(server_address, handler_class)
     PIDFILE = config["pidfile"]
-    DAEMON = False 
+    DAEMON = True 
 
     if (DAEMON):
         # Unix double-fork magic
@@ -253,23 +260,16 @@ def run_http(server_class=WhitetrashServer,
     
     
         # redirect outputs to a log file
+        # Can I do this with logger somehow?
         #sys.stdout = sys.stderr = Log(open(LOGFILE, 'a+'))
-    wtlog.info("***** Whitetrash Server Started - %s *****" % (str(time.asctime())))
-
-    httpd.serve_forever()
-
-class SafeBrowsingUpdater(threading.Thread):
-    def run(self):
-        while True:
-            blacklistcache.update_safebrowsing_blacklist(config)
-
-
-if __name__ in ('main', '__main__'):
 
     if config["safebrowsing"].upper()=="TRUE":
-        sbu = SafeBrowsingUpdater()
-        sbu.start()
-    
+        update_safebrowsing(wtlog,config)
+
+    wtlog.info("***** Whitetrash cert server started - %s *****" % (str(time.asctime())))
+    httpd.serve_forever()
+
+if __name__ in ('main', '__main__'):
     run_http()
 
 

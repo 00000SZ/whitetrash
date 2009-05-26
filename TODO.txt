@@ -1,14 +1,7 @@
-Work is underway on a firefox plugin with a similar interface to 'noscript' that allows users to easily see what sites are being blocked, and quickly whitelist those necessary to load the page. Create list of domains on page load, only check whitelist via HTTP on menu click? Store list of domains created by contentload rather than rebuilding on tab change.  Use the per-tab storage to store the info. Make a stand-alone version of wt as the ff plugin for when a full wt proxy is not available.  All whitelisted domains just stored in browser settings (essentially no script, but for all traffic, not just script?  Have to think about this more).
+Possibly make a stand-alone version of wt as the ff plugin for when a full wt proxy is not available.  All whitelisted domains just stored in browser settings (essentially no script, but for all traffic, not just script?  Have to think about this more).
 
-Possibly have an option to make per-user whitelist the default, and to add into a system-wide whitelist requires admin approval or CAPTCHA.
-
-Rewrite of application in the django framework is almost complete.  Need to put CAPTCHA back in and maybe memcached (not as important as in the redirector).
+Possibly have an option to make per-user whitelist the default, and to add into a system-wide whitelist requires admin approval or CAPTCHA.  Can't think how to do this with current auth system....
 
 Remove added successfully page - just do the refresh straight away with a
 301 moved temporarily?  This page is not necessary and just slows things
 down.
-
-Add in support for the google safebrowsing blacklists.  Insert into a memcache store in a cronjob, check urls in the redirector, have a special error page available in the whitetrash server.
-
-The full SSL site seems to break SSL whitelisting, as does the SSL middleware.  Also need to sort out extr
-a escaping happening in the url - means redirection is broken.

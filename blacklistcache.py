@@ -140,9 +140,5 @@ def update_safebrowsing_blacklist(config):
         cache.log.error(e)
         print e
 
-    sleep_s = int(config["safebrowsing_up_interval_s"])
-    cache.log.debug("Sleeping for %s seconds" % sleep_s)
-    time.sleep(sleep_s)
-
 if __name__ == '__main__':
     main()
