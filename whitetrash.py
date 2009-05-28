@@ -219,7 +219,7 @@ class WTSquidRedirector:
 
         except Exception,e:
             self.log.error("Error checking whitelist with %s,%s,%s,%s.  Error:%s" % (domain,protocol,method,url,e)) 
-            return (False,self.get_error_url("Error checking domain in whitelist"))
+            raise
 
 
     def parseSquidInput(self,squidurl):
@@ -294,8 +294,17 @@ class WTSquidRedirector:
             self.fail_url=self.get_error_url("Bad request logged.  See your sysadmin for assistance.")
             return False
 
+    def _do_check(self):
+        (res,url)=self.check_whitelist_db(self.url_domain_only,
+                                self.protocol,self.method,self.newurl_safe,
+                                self.original_url,self.clientaddr)
+        self.log.debug("Dom: %s, proto:%s, Result: %s, Output url: %s" % 
+                (self.url_domain_only,self.protocol,res,url))
+        sys.stdout.write(url)
+
     def readForever(self):
         """Read squid URL from stdin, and write response to stdout."""
+
 
         while 1:
 
@@ -304,26 +313,16 @@ class WTSquidRedirector:
             if self.parseSquidInput(squidurl):
 
                 try:
-                    (res,url)=self.check_whitelist_db(self.url_domain_only,
-                                            self.protocol,self.method,self.newurl_safe,
-                                            self.original_url,self.clientaddr)
-                    self.log.debug("Dom: %s, proto:%s, Result: %s, Output url: %s" % 
-                            (self.url_domain_only,self.protocol,res,url))
-                    sys.stdout.write(url)
-
+                    self._do_check()                    
                 except Exception,e:
                     #Our database handle has probably timed out.
                     try:
                         self.cursor=db_connect()
-                        (res,url)=self.check_whitelist_db(self.url_domain_only,
-                                                        self.protocol,self.method,self.newurl_safe,
-                                                        self.original_url,self.clientaddr)
-                        sys.stdout.write(url)
-
-                    except:
+                        self._do_check()                    
+                    except Exception,e:
                         #Something weird/bad has happened, tell the user.
                         self.log.error("Error when checking domain in whitelist. Exception: %s" %e)
-                        sys.stdout.write(self.get_error_url())
+                        sys.stdout.write(self.get_error_url("Error checking domain"))
             else:
                 sys.stdout.write(self.fail_url)
 

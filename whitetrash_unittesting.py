@@ -274,7 +274,7 @@ class SquidRedirectorUnitTests(RedirectorTest):
         self.wt_redir.auto_add_all=False
         #generate an error by destroying the protocol choices dictionary 
         self.wt_redir.PROTOCOL_CHOICES={}
-        self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(False,"%s://whitetrash/whitelist/error=Error%%20checking%%20domain%%20in%%20whitelist\n" % self.wt_redir.wtproto))
+        self.assertRaises(KeyError,self.wt_redir.check_whitelist_db,dom,proto,method,url,orig_url,ip)
 
 
     def testWhitelistCheckingMultipleResults(self):

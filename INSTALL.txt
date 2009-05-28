@@ -77,9 +77,9 @@ Make sure the following domains resolve to the whitetrash IP:
  - sslwhitetrash
  - blockedwhitetrash
 
-You can do this with /etc/hosts if you don't have DNS:
-
-    127.0.0.1   localhost whitetrash sslwhitetrash blockedwhitetrash
+If you want to have accurate IP addresses recorded in the database, you will need to add in a proxy exclusion
+for whitetrash.  If you don't do this, all additions to the whitelist will appear to come from the proxy - ie.
+they will have the whitetrash IP.
 
 ===========
 Performance
