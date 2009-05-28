@@ -63,19 +63,9 @@ class WhitetrashInstallData(install):
         self.path_file = "safebrowsing"
         self.create_path_file()
 
-    def _createLogFiles(self):
-        """Touch the logfiles in /var/log owned by the whitetrash user."""
-        mkpath("/var/log")
-        write_file("/var/log/whitetrash.certserver.log","")
-        write_file("/var/log/whitetrash.safebrowsing.log","")
-        os.system("chown whitetrash:whitetrash /var/log/whitetrash.*")
-        print("Log file whitetrash.certserver.log /var/log/whitetrash.safebrowsing.log created in /var/log")
-
     def createWTUser(self):
         ret=os.system("""adduser --shell /bin/false --no-create-home --disabled-password --disabled-login --gecos "" whitetrash""")
-        if ret ==0:
-            self._createLogFiles()
-        else:
+        if ret !=0:
             print "Could not add whitetrash user - already exists?"
 
     def installDjango(self):

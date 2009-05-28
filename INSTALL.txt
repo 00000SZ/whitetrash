@@ -27,10 +27,6 @@ Run the setup script and supply your DB root password:
 
     sudo python setup.py install --mysql-root-passwd="myrootpassword"
 
-Change the log file ownership to your apache user, example below is for ubuntu:
-
-    sudo chown www-data:root /var/log/whitetrash.django.log
-
 Enable apache ssl and modrewrite modules:
 
     sudo a2enmod ssl rewrite
