@@ -49,3 +49,18 @@ def quoteall(value):
     except:
         return ""
 
+@stringfilter
+@register.filter
+def forcewrap(value,inc):
+    """Force text wrapping at inc characters. TODO: finish this."""
+    i=0
+    res=""
+    while (i<(len(value)-inc)):
+        if (i+inc)>len(value):
+            res=("%s%s\n" % (res,value[i:-1]))
+        else:
+            res=("%s%s\n" % (res,value[i:i+inc]))
+        i+=inc
+    return res
+
+
