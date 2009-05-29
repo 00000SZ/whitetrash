@@ -5,14 +5,16 @@ enabled_whitelist = {
     'queryset': Whitelist.objects.filter(enabled=True).order_by("-date_added"),
     'paginate_by': 10,
     'allow_empty': True,
-    'template_name': 'whitelist/whitelist_list.html'
+    'template_name': 'whitelist/whitelist_list.html',
+    'extra_context': dict(isenabled=True)
 }
 
 not_enabled_whitelist = {
     'queryset': Whitelist.objects.filter(enabled=False).order_by("-hitcount"),
     'paginate_by': 10,
     'allow_empty': True,
-    'template_name': 'whitelist/whitelist_list.html'
+    'template_name': 'whitelist/whitelist_list.html',
+    'extra_context': dict(isenabled=False)
 }
 
 delete_domains = {

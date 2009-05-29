@@ -15,22 +15,29 @@
         <form name="delete" action="/whitelist/delete/" method="POST"> 
         {% endif %}
 
-        <table border=1 frame=box>
+        <table>
 
-        <tr>
         {% if delete_domains %}
-        <td><b>Delete?</b></td>
+        <th>Delete?</th>
         {% endif %}
 
-        <td><b>ID</b></td>
-        <td><b>Whitelisted Domain</b></td>
-        <td><b>Hits</b></td>
-        <td><b>First Whitelisted</b></td>
-        <td><b>Last Accessed</b></td>
-        <td><b>Whitelisted by User@IP</b></td>
-        <td><b>Protocol</b></td>
-        <td><b>Comment</b></td>
-        <td><b>Original Request</b></td></tr>
+        <th>ID</th>
+        <th>Whitelisted Domain</th>
+        <th>Hits</th>
+
+        {% if isenabled %}
+            <th>First Whitelisted</th>
+        {% else %}
+            <th>First Requested</th>
+        {% endif %}
+
+        <th>Last Accessed</th>
+        <th>Whitelisted by User@IP</th>
+        <th>Protocol</th>
+        {% if isenabled %}
+            <th>Comment</th>
+        {% endif %}
+        <th>Original Request</th>
 
         {% for item in object_list %}
             <tr>
@@ -46,8 +53,10 @@
             <td>{{item.last_accessed}}</td>
             <td>{{item.username}}@{{item.client_ip}}</td>
             <td>{{item.get_protocol_display}}</td>
-            <td>{{item.comment|escape}}</td>
-            <td>{{item.url|escape}}</td>
+            {% if isenabled %}
+                <td>{{item.comment|escape}}</td>
+            {% endif %}
+            <td class="wtorigurl">{{item.url|escape}}</td>
             </tr>
         {% endfor %}
         </table>

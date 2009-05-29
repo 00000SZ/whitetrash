@@ -31,6 +31,33 @@ hr {
     left: 11em;
 }
 
+#whitelistTable table {
+    border-width: thin thin thin thin;
+    border-spacing: 0em;
+    border-style: solid solid solid solid;
+    border-collapse: collapse;
+}
+
+#whitelistTable td {
+    border-width: thin thin thin thin;
+    padding: 0.3em 0.3em 0.3em 0.3em;
+    border-style: solid solid solid solid;
+}
+
+#whitelistTable td.wtorigurl {
+    width: 50pt;
+}
+
+#whitelistTable th {
+    font-size:1.1em;
+	font-weight:bold; 
+    border-width: thin thin thin thin;
+    padding: 0.3em 0.3em 0.3em 0.3em;
+    border-style: solid solid solid solid;
+    text-align:left;
+}
+
+
 #pageHeader{
     position:relative;
     top:1em;
