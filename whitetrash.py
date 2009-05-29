@@ -113,15 +113,17 @@ class WTSquidRedirector:
         return self.cursor.fetchone()
     
     def add_to_whitelist(self,domain,protocol,username,url,clientaddr):
-        self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),username=%s,protocol=%s,url=%s,comment='Auto add, learning mode',enabled=1,hitcount=1,last_accessed=NOW(),client_ip=%s", (domain,username,protocol,url,clientaddr))
+        self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),username=%s,protocol=%s,url=%s,comment='Auto add, learning mode',enabled=1,hitcount=1,last_accessed=NOW(),client_ip=%s", (domain,username,protocol,self._convert_http(url),clientaddr))
+
+    def _convert_http(self,url):
+        return re.sub(r"^(https?)%3A",r"\1:",url)
 
     def add_disabled_domain(self,domain,protocol,username,url,clientaddr):
         """Add a domain to the table with enabled = 0.
         
         This allows us to keep track of domains that have been requested but not added 
         since they are proabably spyware/trackers/malware."""
-
-        self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),username=%s,protocol=%s,url=%s, comment='', enabled=0,hitcount=1,last_accessed=NOW(), client_ip=%s", (domain,username,protocol,url,clientaddr))
+        self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),username=%s,protocol=%s,url=%s, comment='', enabled=0,hitcount=1,last_accessed=NOW(), client_ip=%s", (domain,username,protocol,self._convert_http(url),clientaddr))
 
     def enable_domain(self,whitelist_id):
         """Update db entry to set enabled=1."""
@@ -267,7 +269,7 @@ class WTSquidRedirector:
 
                 #The full url as passed by squid
                 #urlencode it to make it safe to hand around in forms
-                self.newurl_safe=urllib.quote(spliturl[0])
+                self.newurl_safe=urllib.quote(self.original_url)
                 self.log.debug("sanitised_url: %s" % self.newurl_safe)
 
                 #Get just the client IP
@@ -317,7 +319,7 @@ class WTSquidRedirector:
                 except Exception,e:
                     #Our database handle has probably timed out.
                     try:
-                        self.cursor=db_connect()
+                        self.cursor=self.db_connect()
                         self._do_check()                    
                     except Exception,e:
                         #Something weird/bad has happened, tell the user.
