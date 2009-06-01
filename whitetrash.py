@@ -30,8 +30,8 @@ import MySQLdb
 import MySQLdb.cursors
 from configobj import ConfigObj
 from socket import inet_aton
-import blacklistcache
 try:
+    import blacklistcache
     import cmemcache
 except ImportError:
     pass

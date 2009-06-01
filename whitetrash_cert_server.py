@@ -35,7 +35,10 @@ import logging.config
 from OpenSSL import crypto
 import random
 from distutils.dir_util import mkpath
-import blacklistcache
+try:
+    import blacklistcache
+except ImportError:
+    pass
 
 config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
 logging.config.fileConfig("/etc/whitetrash.conf")

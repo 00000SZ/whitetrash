@@ -29,7 +29,10 @@ from exceptions import TypeError
 import httplib
 import MySQLdb
 import os
-import blacklistcache
+try:
+    import blacklistcache
+except ImportError:
+    pass
 
 class WhitetrashTest(unittest.TestCase):
 
@@ -297,6 +300,9 @@ class SquidRedirectorUnitTests(RedirectorTest):
         self.assertEqual(len(res),2)
 
         self.assertEqual(self.wt_redir.get_whitelist_id(proto,dom,"testwhitetrash.sf.net",wild=False),(subdom_id,1))
+
+    def testCleanup(self):
+        self.wt_redir.cursor.execute("insert into whitelist_whitelist set domain='testwhitetrash.sf.net',date_added='2008-01-01',username='wt_unittesting',protocol=%s,url='http://sdlkj',comment='whitetrash testing',enabled=0,hitcount=20,last_accessed=NOW(),client_ip='192.168.1.1'", (self.wt_redir.PROTOCOL_CHOICES["HTTP"]))
 
     def tearDown(self):
         self.cleancur.execute("delete from whitelist_whitelist where username='wt_unittesting'")
