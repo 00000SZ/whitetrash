@@ -375,9 +375,6 @@ whitetrashOverlay = {
         var entry=tab.webNavigation.sessionHistory.getEntryAtIndex(tab.webNavigation.sessionHistory.index, false);
         var referrer = entry.QueryInterface(Components.interfaces.nsISHEntry).referrerURI;
         tab.webNavigation.loadURI(tab.webNavigation.currentURI.spec, null, referrer, null, null);
-        //maybe don't do this? If it is not correctly added will still be in list, if is added, will
-        //return 1 on next whitelisted check and not be in the list anyway.
-        this.addToPrefsWhitelist(domain,protocol);
     }
 ,
     install: function() {

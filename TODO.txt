@@ -5,3 +5,22 @@ Possibly have an option to make per-user whitelist the default, and to add into 
 Remove added successfully page - just do the refresh straight away with a
 301 moved temporarily?  This page is not necessary and just slows things
 down.
+
+Replicate performance testing from previous release and compare.  Old text from website below:
+
+<h1>Performance Testing</h1>
+<p>
+Performance testing has been conducted using the <a href="http://funkload.nuxeo.org">funkload</a> web testing framework.  Testing scripts and configurations are included in the code repository so the testing can be reproduced.  The tests described below were completed with whitetrash running inside a vmware session on a desktop Dual Pentium 3 GHz with 2 GB of RAM, with around 23 000 entries in the whitelist.
+</p>
+<p>The first test was designed to exercise whitetrash's ability to produce a page for a domain already in the whitelist.  Below are the results from four separate machines making a combined 2000 simultaneous requests for a domain in the whitelist.  The results show this test was easily handled by whitetrash, but producing the page was slow on occassions due to the upstream proxy - these testing sessions actually caused the upstream to crash.</p>
+<ul>
+<li><a href="test_viewwebpages-2007-03-02T10-52-05/index.html">test_viewwebpages-2007-03-02T10-52-05</a>
+<li><a href="test_viewwebpages-2007-03-02T10-53-13/index.html">test_viewwebpages-2007-03-02T10-53-13</a>
+<li><a href="test_viewwebpages-2007-03-02T10-55-10/index.html">test_viewwebpages-2007-03-02T10-55-10</a>
+<li><a href="test_viewwebpages-2007-03-02T11-01-09/index.html">test_viewwebpages-2007-03-02T11-01-09</a>
+</ul>
+<p>
+A second test was performed to test whitetrash's ability to add a large number of new websites into the whitelist.  In this test, 400 then 600 new websites were added to the whitelist simultaneously by requesting a new page (GET) and submitting the completed form (POST).  Whitetrash handled this stress, which is representative of a reasonably large organisation since additions to the whitelist should be much less frequent than selects.  See the results <a href="test_addtowhitelist-2007-02-28T16-03-08/index.html">here</a></p> 
+
+<p>Further testing results will be made available here as they are completed.</p>
+
