@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+
+<!-- Localization Information -->
+<!DOCTYPE dialog SYSTEM "chrome://whitetrash/locale/whitetrash.dtd" >
+<?xml-stylesheet href="chrome://whitetrash/skin/browser.css" type="text/css"?>
+
+
+<overlay id="whitetrash_browser_overlay"
+         xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+
+<dialog id="whitetrashOptions" 
+  onload="wtopt.init()"
+  ondialogaccept="wtopt.save()"
+  title="Whitetrash Options"
+    buttons="accept,cancel"
+  spacerflex="1"
+  persist="screenX screenY"
+  xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+
+<script type="application/x-javascript" src="browser_overlay.js"/>
+
+</dialog>

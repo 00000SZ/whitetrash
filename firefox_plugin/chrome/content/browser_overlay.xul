@@ -25,6 +25,7 @@
                 <menuitem 
                 label="&whitetrashOptions;"
                 tooltiptext="&whitetrashOptions;"
+                oncommand="whitetrashOverlay.openOptionsDialog()"
                 />
                 <menuseparator id="dynamic_content_sep" />
             </menupopup>

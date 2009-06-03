@@ -444,6 +444,12 @@ whitetrashOverlay = {
     	//this.setPref("whitetrash."+proto+".whitelist",cur+=domain+"|");
     }
     ,
+    openOptionsDialog: function(params) {
+        window.openDialog("chrome://whitetrash/content/whitetrashOptions.xul","whitetrashOptions",
+            "chrome, dialog, centerscreen, alwaysRaised",
+            params);
+    },
+
     getPref: function(name, def) {
   	    var IPC=Components.interfaces.nsIPrefBranch;
         try {
