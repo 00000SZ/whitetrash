@@ -43,9 +43,10 @@ class CertServerTest(WhitetrashTest):
 
     def setUp(self):
         super(CertServerTest, self).setUp() 
+        get_cert("bugs.launchpad.net")
         testdomains = ["testing.whitetrash.sf.net","whitetrash.sf.net"]
         for dom in testdomains:
-            cert = get_certfilepath(dom)
+            cert = get_certfilepath("*.",dom)
             if os.path.exists(cert):
                 os.unlink(cert)
 
@@ -55,19 +56,26 @@ class CertServerTest(WhitetrashTest):
         self.assertEqual(("","blah.com"),get_domain("blah.com"))        
 
     def testGetCert(self):
-        """Check certs get created.  THe first label of the domains supplied will be stripped and wildcarded"""
+        """Check certs get created.  The first label of the domains supplied will be stripped and wildcarded"""
 
         assert(os.path.exists(self.config["dynamic_certs_dir"]))
         get_cert("blah.testing.whitetrash.sf.net")
-        assert(os.path.exists(os.path.join(self.config["dynamic_certs_dir"],"net/sf/whitetrash/testing.whitetrash.sf.net.pem")))
+        assert(os.path.exists(os.path.join(self.config["dynamic_certs_dir"],"net/sf/whitetrash/star.testing.whitetrash.sf.net.pem")))
         get_cert("whitetrash.sf.net")
-        assert(os.path.exists(os.path.join(self.config["dynamic_certs_dir"],"net/sf.net.pem")))
+        assert(os.path.exists(os.path.join(self.config["dynamic_certs_dir"],"net/star.sf.net.pem")))
+        get_cert("launchpad.net")
+        assert(os.path.exists(os.path.join(self.config["dynamic_certs_dir"],"net/launchpad.net.pem")))
+        get_cert("bugs.launchpad.net")
+        assert(os.path.exists(os.path.join(self.config["dynamic_certs_dir"],"net/star.launchpad.net.pem")))
+
 
     def testGetCertFilePath(self):
         """Get file path, get_certfilepath assumes first label has already been stripped."""
 
-        self.assertEqual(get_certfilepath("whitetrash.sf.net"),os.path.join(self.config["dynamic_certs_dir"],"net/sf/whitetrash.sf.net.pem"))
-        self.assertEqual(get_certfilepath("com.au"),os.path.join(self.config["dynamic_certs_dir"],"au/com.au.pem"))
+        self.assertEqual(get_certfilepath("","launchpad.net"),os.path.join(self.config["dynamic_certs_dir"],"net/launchpad.net.pem"))
+        self.assertEqual(get_certfilepath("*.","launchpad.net"),os.path.join(self.config["dynamic_certs_dir"],"net/star.launchpad.net.pem"))
+        self.assertEqual(get_certfilepath("","whitetrash.sf.net"),os.path.join(self.config["dynamic_certs_dir"],"net/sf/whitetrash.sf.net.pem"))
+        self.assertEqual(get_certfilepath("*.","com.au"),os.path.join(self.config["dynamic_certs_dir"],"au/star.com.au.pem"))
 
 class RedirectorTest(WhitetrashTest):
 

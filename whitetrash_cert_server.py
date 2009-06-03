@@ -166,19 +166,27 @@ def get_domain(domain):
     else:
         return ("",domain)
 
-def get_certfilepath(domain):
+def get_certfilepath(prefix,domain):
+    """Get the path for a certificate for a given domain.  Assumes the first label has been stripped
+    for domains that will be wildcarded.
+
+    Special case: we have a cert for *.launchpad.net and the user goes to
+    launchpad.net - the 'star' certificate isn't valid so we use the 'star' prefix
+    on the filename to differentiate the two."""
     labels = domain.split(".")
     labels.reverse()
     dirpath = ""
     for dir in labels[:-1]:
         dirpath = os.path.join(dirpath,dir)
         mkpath(os.path.join(config["dynamic_certs_dir"],dirpath))
+    if prefix=="*.":
+        domain = "star.%s" % domain
     wtlog.debug("Returning path %s" % os.path.join(config["dynamic_certs_dir"],dirpath,"%s.pem" % domain))
     return os.path.join(config["dynamic_certs_dir"],dirpath,"%s.pem" % domain)
         
 def get_cert(domain):
     (pref,dom) = get_domain(domain)
-    certfile=get_certfilepath(dom)
+    certfile=get_certfilepath(pref,dom)
     if not cert_exists(certfile):
         create_cert(certfile,pref,dom)
     else:
