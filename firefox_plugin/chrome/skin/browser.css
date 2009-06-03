@@ -7,11 +7,19 @@
 }
 
 .whitetrash-top-level {
-	font-weight: bold;
+    font-weight: bold;
+}
+
+#whitetrashOptions {
+    white-space: normal;
+    width: 40em;
+    min-height: 20em;
+    background-color: menu !important;
+    opacity: 1.0;
+
 }
 
 .options-tab {
-	white-space: normal;
-	width: 40em;
-    min-height: 20em;
+    padding-left: 2em;
+    padding-top: 2em;
 }

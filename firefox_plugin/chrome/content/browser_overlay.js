@@ -146,7 +146,7 @@ whitetrashOverlay = {
     	//Add element disabled, then enable asynchronously when XMLhttprequest returns
 	    this.addDisabledMenuItem(aPopup,display_domain,domain,uri,protocol,"menuitem-iconic whitetrash-can");
 
-        var url=this.wt_protocol+"://whitetrash/whitelist/checkdomain?domain="+domain+"&protocol="+protocol
+        var url=this.wt_protocol+"://"+whitetrashOverlay.getPref("whitetrash.domain","whitetrash")+"/whitelist/checkdomain?domain="+domain+"&protocol="+protocol
         var pagetab = getBrowser().selectedTab;
         var req = new XMLHttpRequest();
         req.open("GET", url, true);
@@ -363,7 +363,7 @@ whitetrashOverlay = {
     addToWhitelist: function(domain,protocol,uri) {
         var http = new XMLHttpRequest();
 
-        http.open("POST", this.wt_protocol+"://whitetrash/whitelist/addentry/", true);
+        http.open("POST", this.wt_protocol+"://"+whitetrashOverlay.getPref("whitetrash.domain","whitetrash")+"/whitelist/addentry/", true);
         var params="domain="+domain+"&comment=&url="+escape(uri)+"&protocol="+protocol;
 
         //Send the proper header information along with the request

@@ -9,25 +9,31 @@
     ondialogaccept="whitetrashOpt.save()"
     title="&whitetrashOptionsLong;"
     buttons="accept,cancel"
-    xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
-    style="background: #000000;">
-<!--fix background color with style sheet, get rid of tabs-->
-
+    xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
 
     <script type="application/x-javascript" src="whitetrashOptions.js"/>
-    <tabbox id="wtopt-tabsMain">
-        <tabs>
-            <tab label="&whitetrashGeneral;" id="wtopt-tabGeneral"/>
-        </tabs>
-        <tabpanels>
-            <tabpanel>
-                <vbox class="options-tab" flex="1">
-                    <hbox>
-                        <label control="wtserverdomain" value="&whitetrashOptionDomain;"/>
-                        <textbox id="wtserverdomain" />
-                    </hbox>
-                </vbox>
-            </tabpanel>
-        </tabpanels>
-    </tabbox>
+    <script type="application/x-javascript" src="browser_overlay.js"/>
+    <vbox class="options-tab" flex="1">
+        <grid>
+        <columns>
+        <column flex="1"/>
+        <column flex="2"/>
+        </columns>
+        <rows>
+        <row>
+            <label control="wtserverdomain" value="&whitetrashOptionDomain;"/>
+            <textbox id="wtserverdomain" />
+        </row>
+        <row>
+            <description control="ml-wtproto" style="white-space: normal">&wtproto.description;</description>
+            <menulist id="ml-wtproto">
+                <menupopup id="mp-wtproto">
+                    <menuitem label="&wtproto.ssl;" value="https" selected="true" />
+                    <menuitem label="&wtproto.http;" value="http" />
+                </menupopup>
+            </menulist>
+        </row>
+        </rows>
+        </grid>
+    </vbox>
 </dialog>

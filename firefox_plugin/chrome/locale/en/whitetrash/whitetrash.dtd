@@ -5,5 +5,8 @@
 <!ENTITY whitetrashOptionsWidth "40em">
 <!ENTITY whitetrashGeneral "General">
 <!ENTITY whitetrashOptionDomain "Whitetrash server domain name: ">
+<!ENTITY wtproto.ssl "SSL">
+<!ENTITY wtproto.http "HTTP">
+<!ENTITY wtproto.description "Protocol used to communicate with the whitetrash server: ">
 
 
