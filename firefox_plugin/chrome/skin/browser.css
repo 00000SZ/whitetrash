@@ -9,3 +9,9 @@
 .whitetrash-top-level {
 	font-weight: bold;
 }
+
+.options-tab {
+	white-space: normal;
+	width: 40em;
+    min-height: 20em;
+}

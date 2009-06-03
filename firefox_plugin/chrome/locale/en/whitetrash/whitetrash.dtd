@@ -1,3 +1,9 @@
 <!ENTITY whitetrashAbout "About Whitetrash...">
 <!ENTITY whitetrashOptions "Options...">
 <!ENTITY whitetrashDefaultTooltip "Enable website">
+<!ENTITY whitetrashOptionsLong "Whitetrash Options">
+<!ENTITY whitetrashOptionsWidth "40em">
+<!ENTITY whitetrashGeneral "General">
+<!ENTITY whitetrashOptionDomain "Whitetrash server domain name: ">
+
+

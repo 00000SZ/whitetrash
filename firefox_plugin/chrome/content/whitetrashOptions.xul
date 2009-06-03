@@ -4,19 +4,30 @@
 <!DOCTYPE dialog SYSTEM "chrome://whitetrash/locale/whitetrash.dtd" >
 <?xml-stylesheet href="chrome://whitetrash/skin/browser.css" type="text/css"?>
 
-
-<overlay id="whitetrash_browser_overlay"
-         xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
-
 <dialog id="whitetrashOptions" 
-  onload="wtopt.init()"
-  ondialogaccept="wtopt.save()"
-  title="Whitetrash Options"
+    onload="whitetrashOpt.init()"
+    ondialogaccept="whitetrashOpt.save()"
+    title="&whitetrashOptionsLong;"
     buttons="accept,cancel"
-  spacerflex="1"
-  persist="screenX screenY"
-  xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+    xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+    style="background: #000000;">
+<!--fix background color with style sheet, get rid of tabs-->
 
-<script type="application/x-javascript" src="browser_overlay.js"/>
 
+    <script type="application/x-javascript" src="whitetrashOptions.js"/>
+    <tabbox id="wtopt-tabsMain">
+        <tabs>
+            <tab label="&whitetrashGeneral;" id="wtopt-tabGeneral"/>
+        </tabs>
+        <tabpanels>
+            <tabpanel>
+                <vbox class="options-tab" flex="1">
+                    <hbox>
+                        <label control="wtserverdomain" value="&whitetrashOptionDomain;"/>
+                        <textbox id="wtserverdomain" />
+                    </hbox>
+                </vbox>
+            </tabpanel>
+        </tabpanels>
+    </tabbox>
 </dialog>
