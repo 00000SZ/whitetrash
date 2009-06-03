@@ -1,9 +1,10 @@
 from django.conf.urls.defaults import *
 from whitetrash.whitelist.models import Whitelist
+from django.conf import settings
 
 enabled_whitelist = {
     'queryset': Whitelist.objects.filter(enabled=True).order_by("-date_added"),
-    'paginate_by': 10,
+    'paginate_by': settings.PAGE_LIST_LENGTH,
     'allow_empty': True,
     'template_name': 'whitelist/whitelist_list.html',
     'extra_context': dict(isenabled=True)
@@ -11,7 +12,7 @@ enabled_whitelist = {
 
 not_enabled_whitelist = {
     'queryset': Whitelist.objects.filter(enabled=False).order_by("-hitcount"),
-    'paginate_by': 10,
+    'paginate_by': settings.PAGE_LIST_LENGTH,
     'allow_empty': True,
     'template_name': 'whitelist/whitelist_list.html',
     'extra_context': dict(isenabled=False)
@@ -20,7 +21,7 @@ not_enabled_whitelist = {
 delete_domains = {
     #Futher filtering of list in view to display only domains owned by user.
     'queryset': Whitelist.objects.all(),
-    'paginate_by': 10,
+    'paginate_by': settings.PAGE_LIST_LENGTH,
     'allow_empty': True,
     'template_name': 'whitelist/whitelist_list.html',
     'extra_context': dict(delete_domains=True)
