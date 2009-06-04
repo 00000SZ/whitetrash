@@ -36,6 +36,32 @@ try:
 except ImportError:
     pass
 
+
+class if_enabled(object):
+    """
+    A decorator that will only execute a function if the option
+    passed in is "true" or "TRUE".  Useful for making sure calls
+    to functions are only made if the config requires them to be
+    """
+
+    def __init__(self, option):
+        self.option = option
+
+    def __call__(self, f):
+        config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
+        enabled = False
+        try:
+            if config[self.option].upper() == "TRUE":
+                enabled = True
+        except KeyError:
+            pass
+
+        def new(*args):
+            if enabled:
+                f(*args)
+        return new
+
+
 class WTSquidRedirector:
     """Whitetrash squid redirector."""
 
@@ -52,6 +78,8 @@ class WTSquidRedirector:
             self.wtproto = "302:https"
         else:
             self.wtproto = "http"
+        # Tell squid NOT to redirect
+        self.CONTINUE = "\n"
 
         self.http_fail_url="%s://%s/whitelist/addentry?" % (self.wtproto,config["whitetrash_domain"])
         self.error_url="%s://%s/whitelist/error=" % (self.wtproto,config["whitetrash_domain"])
@@ -68,7 +96,6 @@ class WTSquidRedirector:
         self.domain_sanitise=re.compile(config["domain_regex"])
         self.auto_add_all=config["auto_add_all_domains"].upper()=="TRUE"
         self.safebrowsing = config["safebrowsing"].upper()=="TRUE"
-        self.blacklistcache = blacklistcache.BlacklistCache(config)
         
         self.cursor=self.db_connect()
 
@@ -102,7 +129,7 @@ class WTSquidRedirector:
             self.cursor.execute("select whitelist_id,enabled from whitelist_whitelist where domain=%s and protocol=%s", (domain_wild,proto))
         else:
             res = self.cursor.execute("select whitelist_id,enabled from whitelist_whitelist where protocol=%s and ((domain=%s) or (domain=%s))", (proto,domain,domain_wild))
-            if res >1:
+            if res > 1:
                 #If there is more than one result from the or, take the non-wildcarded one.
                 self.cursor.execute("select whitelist_id,enabled from whitelist_whitelist where protocol=%s and domain=%s", (proto,domain))
 
@@ -145,84 +172,87 @@ class WTSquidRedirector:
             url = "%s://%s/whitelist/attackdomain=%s" % (self.wtproto,self.config["whitetrash_domain"],domain)
         return url
 
-    def check_whitelist_db(self,domain,protocol,method,url,orig_url,clientaddr):
+    def add_domain(self, domain, protocol, url, clientaddr):
+        """
+        Adds a new domain to the list.  This domain is disabled by default.
+        If whitetrash is in learning mode the domain will be enabled (whitelisted)
+        """
+
+        # Learning mode
+        if self.auto_add_all:
+            self.add_to_whitelist(domain, protocol, 'auto', url, clientaddr)
+
+        # Normal mode
+        else:
+            self.add_disabled_domain(domain, protocol, 'notwhitelisted', url, clientaddr)
+            return self.fail_url
+
+    def update_domain(self):
+        """
+        Update a domain that is already in the list.
+
+        This just updates the hitcount by default however if whitetrash is in
+        learning mode the domain will be enabled (whitelisted)
+        """
+
+        # Learning mode
+        if self.auto_add_all:
+            self.enable_domain(whitelist_id)
+
+        # Normal mode
+        else:
+            self.update_hitcount(whitelist_id)
+            return self.fail_url
+
+    def check_whitelist_db(self, domain, protocol, method, url, orig_url, clientaddr):
         """Check the db for domain with protocol.
 
         @param domain:      Domain to be checked
         @param protocol:    Protocol to pair with the domain, HTTP|SSL enum
         @param url:         Sanitised url 
         @param orig_url:    The original un-sanitised url
-        @return:            Tuple (True if domain is whitelisted,url to write back to squid)
+        @return:            Url to redirect squid to
 
         If domain is present (ie. in whitelist), write \n as url redirector output (no change)
         If domain is not present, write self.fail_url as redirector output
         """
         try:
-                    
-            domain_wild=re.sub("^[a-z0-9-]+\.","",domain,1)
 
+            # drop the first component from the URL
+            if "." in domain:
+                (_, domain_wild) = domain.split(".", 1)
+
+            # if the domain starts with www[0-9]
             if self.www.match(domain):
-                white_id=self.get_whitelist_id(protocol,domain,domain_wild,wild=True)
-                domain=domain_wild
-
+                # whitelist all subdomains
+                white_id = self.get_whitelist_id(protocol, domain, domain_wild, wild=True)
+                domain = domain_wild
             else:
-                white_id=self.get_whitelist_id(protocol,domain,domain_wild,wild=False)
+                # whitelist only that specific domain
+                white_id = self.get_whitelist_id(protocol, domain, domain_wild, wild=False)
 
             if white_id:
-                (whitelist_id,enabled)=white_id
+                (whitelist_id, enabled) = white_id
             else:
-                whitelist_id=False
+                whitelist_id = False
 
-            if whitelist_id and enabled==1:
-
+            if whitelist_id and enabled:
+                # The domain is already whitelisted
                 self.update_hitcount(whitelist_id)
-                result = (True,"\n")
-
+            elif whitelist_id:
+                redirect = self.update_domain(domain, protocol, url, clientaddr)
             else:
+                redirect = self.add_domain(domain, protocol, url, clientaddr)
 
-                if self.auto_add_all:
-                    if whitelist_id:
-                        self.enable_domain(whitelist_id)
-                    else:
-                        self.add_to_whitelist(domain,protocol,'auto',url,clientaddr)
+            if not redirect:
+                # The only conditions under which we should continue onto the requested url.
+                assert self.auto_add_all or (whitelist_id and enabled), "Whitelist bypassed"
 
-                    result = (True,"\n")
-                else:
-                    
-                    if whitelist_id:
-                        self.update_hitcount(whitelist_id)
-                    else:
-                        self.add_disabled_domain(domain,protocol,'notwhitelisted',url,clientaddr)
-
-
-                    if protocol == self.PROTOCOL_CHOICES["HTTP"] and \
-                        self.nonhtml_suffix_re.match(orig_url):
-                        #only makes sense to return the form if the browser is expecting html
-                        #This is something other than html so just give some really small dummy content.
-                        result = (False,self.dummy_content_url+"\n")
-                    else:
-                        if self.safebrowsing:
-                            # check safebrowsing here so whitelist is applied first - allow admins to bypass 
-                            # safebrowsing blacklist
-                            sbresult = self.blacklistcache.check_url(orig_url)
-                            if sbresult:
-                                self.log.critical("****SAFEBROWSING BLACKLIST HIT**** on %s blacklist from %s for url: %s using protocol:%s" 
-                                                    % (sbresult,clientaddr,orig_url,protocol))
-                                self.fail_url = self.get_sb_fail_url(sbresult,domain)
-                                result = (False,"%s\n" % self.fail_url)
-
-                        if method != "GET" and protocol == self.PROTOCOL_CHOICES["HTTP"]:
-                            #If this isn't a get ie. usually a POST, posting or anything else to our wt server doesn't make sense
-                            #send a 302 moved temporarily back to the client so they request the web form.
-                            self.fail_url = "302:%s" % self.fail_url
-                        result = (False,self.fail_url+"\n")
-
-            return result
+            return redirect
 
         except Exception,e:
             self.log.error("Error checking whitelist with %s,%s,%s,%s.  Error:%s" % (domain,protocol,method,url,e)) 
             raise
-
 
     def parseSquidInput(self,squidurl):
         """Parse squid input line. Return true if parsing is successful.
@@ -296,13 +326,44 @@ class WTSquidRedirector:
             self.fail_url=self.get_error_url("Bad request logged.  See your sysadmin for assistance.")
             return False
 
+    def get_redirect_url(self, url):
+        """
+        Handles the corner cases of a HTTP request and makes sure the response
+        will be suitably handled by the user's browser.
+        """
+
+        if not url:
+            return None
+
+        # It only makes sense to return the form if the browser is expecting html.
+        # This is something other than html so just give some really small dummy content.
+        if self.protocol is self.PROTOCOL_CHOICES["HTTP"] and self.nonhtml_suffix_re.match(self.original_url):
+            return self.dummy_content_url + "\n"
+
+        # If this isn't a GET ie. usually a POST
+        # POSTing or anything else to the whitetrash server doesn't make sense.
+        # Send a "302 moved temporarily" back to the client so they request the web form.
+        if self.method is not "GET" and self.protocol is self.PROTOCOL_CHOICES["HTTP"]:
+            self.fail_url = "302:%s" % url
+            return self.fail_url + "\n"
+
+        return url
+
+ 
     def _do_check(self):
-        (res,url)=self.check_whitelist_db(self.url_domain_only,
-                                self.protocol,self.method,self.newurl_safe,
-                                self.original_url,self.clientaddr)
+        redirect = self.check_whitelist_db(self.url_domain_only,
+                                self.protocol, self.method, self.newurl_safe,
+                                self.original_url, self.clientaddr)
+
+        redirect = self.get_redirect_url(redirect)
+
         self.log.debug("Dom: %s, proto:%s, Result: %s, Output url: %s" % 
-                (self.url_domain_only,self.protocol,res,url))
-        sys.stdout.write(url)
+                (self.url_domain_only, self.protocol, not bool(redirect), redirect))
+
+        if redirect:
+            sys.stdout.write(redirect)
+        else:
+            sys.stdout.write(self.CONTINUE)
 
     def readForever(self):
         """Read squid URL from stdin, and write response to stdout."""
@@ -336,6 +397,7 @@ class WTSquidRedirectorCached(WTSquidRedirector):
         WTSquidRedirector.__init__(self,config)
         self.servers=config["memcache_servers"].split(",")
         self.cache=cmemcache.Client(self.servers)
+        self.blacklistcache = blacklistcache.BlacklistCache(config)
 
     def enable_domain(self,whitelist_id):
         """Update db and memcache entry to set enabled=1."""
@@ -376,6 +438,33 @@ class WTSquidRedirectorCached(WTSquidRedirector):
                     self.cache.set(key,result)
             return result
 
+    @if_enabled("safebrowsing")
+    def check_safebrowsing_blacklist(self, url):
+        # check safebrowsing here so whitelist is applied first - allow admins to bypass 
+        # safebrowsing blacklist
+        sbresult = self.blacklistcache.check_url(orig_url)
+        if sbresult:
+            self.log.critical("****SAFEBROWSING BLACKLIST HIT**** on %s blacklist from %s for url: %s using protocol:%s" 
+                                    % (sbresult, clientaddr, orig_url, protocol))
+            self.fail_url = self.get_sb_fail_url(sbresult, domain)
+            return self.fail_url + "\n"
+
+    def _do_check(self):
+        redirect = self.check_whitelist_db(self.url_domain_only,
+                                self.protocol,self.method,self.newurl_safe,
+                                self.original_url,self.clientaddr)
+
+        sbredirect = self.check_safebrowsing_blacklist(url)
+        redirect = self.get_redirect_url(sbredirect)
+
+        self.log.debug("Dom: %s, proto:%s, Result: %s, Output url: %s" % 
+                (self.url_domain_only, self.protocol, not bool(url), redirect))
+
+        if redirect:
+            sys.stdout.write(redirect)
+        else:
+            sys.stdout.write(self.CONTINUE)
+ 
 if __name__ == "__main__":
     config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
     if config["use_memcached"].upper()=="TRUE":
