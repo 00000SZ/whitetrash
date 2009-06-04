@@ -28,8 +28,8 @@
             <description control="ml-wtproto" style="white-space: normal">&wtproto.description;</description>
             <menulist id="ml-wtproto">
                 <menupopup id="mp-wtproto">
-                    <menuitem label="&wtproto.ssl;" value="https" selected="true" />
-                    <menuitem label="&wtproto.http;" value="http" />
+                    <menuitem id="wtproto-https" label="&wtproto.ssl;" value="https" selected="true" />
+                    <menuitem id="wtproto-http" label="&wtproto.http;" value="http" />
                 </menupopup>
             </menulist>
         </row>

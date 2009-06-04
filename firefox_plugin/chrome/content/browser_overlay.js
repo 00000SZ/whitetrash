@@ -10,7 +10,6 @@ whitetrashOverlay = {
     prefs:null,
     logger:null,
     ss:null,
-    wt_protocol: "https",
     whitelist_http: {},
     whitelist_ssl: {},
 
@@ -146,7 +145,9 @@ whitetrashOverlay = {
     	//Add element disabled, then enable asynchronously when XMLhttprequest returns
 	    this.addDisabledMenuItem(aPopup,display_domain,domain,uri,protocol,"menuitem-iconic whitetrash-can");
 
-        var url=this.wt_protocol+"://"+whitetrashOverlay.getPref("whitetrash.domain","whitetrash")+"/whitelist/checkdomain?domain="+domain+"&protocol="+protocol
+        proto_pref=whitetrashOverlay.getPref("whitetrash.protocol","https");
+        var url=proto_pref+"://"+whitetrashOverlay.getPref("whitetrash.domain","whitetrash")+"/whitelist/checkdomain?domain="+domain+"&protocol="+protocol
+        whitetrashOverlay.logger.logStringMessage("Checking domain with url: "+url);
         var pagetab = getBrowser().selectedTab;
         var req = new XMLHttpRequest();
         req.open("GET", url, true);
@@ -362,8 +363,8 @@ whitetrashOverlay = {
 ,
     addToWhitelist: function(domain,protocol,uri) {
         var http = new XMLHttpRequest();
-
-        http.open("POST", this.wt_protocol+"://"+whitetrashOverlay.getPref("whitetrash.domain","whitetrash")+"/whitelist/addentry/", true);
+        proto_pref=whitetrashOverlay.getPref("whitetrash.protocol","https");
+        http.open("POST", proto_pref+"://"+whitetrashOverlay.getPref("whitetrash.domain","whitetrash")+"/whitelist/addentry/", true);
         var params="domain="+domain+"&comment=&url="+escape(uri)+"&protocol="+protocol;
 
         //Send the proper header information along with the request
@@ -371,6 +372,7 @@ whitetrashOverlay = {
         http.setRequestHeader("Content-length", params.length);
         http.setRequestHeader("Connection", "close");
         http.send(params);
+        whitetrashOverlay.logger.logStringMessage("Adding domain with: "+proto_pref+"://"+whitetrashOverlay.getPref("whitetrash.domain","whitetrash")+"/whitelist/addentry/ and params:"+params);
         var tab = getBrowser().mCurrentBrowser;
         var entry=tab.webNavigation.sessionHistory.getEntryAtIndex(tab.webNavigation.sessionHistory.index, false);
         var referrer = entry.QueryInterface(Components.interfaces.nsISHEntry).referrerURI;
