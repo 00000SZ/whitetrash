@@ -364,19 +364,44 @@ whitetrashOverlay = {
     addToWhitelist: function(domain,protocol,uri) {
         var http = new XMLHttpRequest();
         proto_pref=whitetrashOverlay.getPref("whitetrash.protocol","https");
-        http.open("POST", proto_pref+"://"+whitetrashOverlay.getPref("whitetrash.domain","whitetrash")+"/whitelist/addentry/", true);
+        var url = proto_pref+"://"+whitetrashOverlay.getPref("whitetrash.domain","whitetrash")+"/whitelist/addentry/";
+        http.open("POST",url, true);
         var params="domain="+domain+"&comment=&url="+escape(uri)+"&protocol="+protocol;
 
         //Send the proper header information along with the request
         http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
         http.setRequestHeader("Content-length", params.length);
         http.setRequestHeader("Connection", "close");
+
+        http.onreadystatechange = function () {
+            if (http.readyState == 4) {
+        	    if(http.status == 200) {
+
+                    success_re = /<title>Whitetrash: Access Granted<\/title>/;
+                    if (success_re.exec(http.responseText)) {
+                        var tab = getBrowser().mCurrentBrowser;
+                        var entry=tab.webNavigation.sessionHistory.getEntryAtIndex(tab.webNavigation.sessionHistory.index, false);
+                        var referrer = entry.QueryInterface(Components.interfaces.nsISHEntry).referrerURI;
+                        tab.webNavigation.loadURI(tab.webNavigation.currentURI.spec, null, referrer, null, null);
+                    } else {
+                    	//We aren't logged in, open login in new tab
+                    	//Redirect to whitelist after login
+                        gBrowser.selectedTab = gBrowser.addTab(proto_pref+"://"+whitetrashOverlay.getPref("whitetrash.domain","whitetrash")+"/accounts/login/?next=/whitelist/");
+                        //Below will add the domain after login, which is nice, but might
+                        //be confusing because it will refresh to what is probably part
+                        //of a page after it is whitelisted.  Could avoid by adding a
+                        //paramter to determine whether to refresh after addition?
+                        //gBrowser.selectedTab = gBrowser.addTab(url+"?"+params);
+
+                    }
+                }else{
+                    whitetrashOverlay.logger.logStringMessage("Error when adding domain: "+http.status+" text: "+http.responseText);
+                }
+            }
+        };
+
         http.send(params);
         whitetrashOverlay.logger.logStringMessage("Adding domain with: "+proto_pref+"://"+whitetrashOverlay.getPref("whitetrash.domain","whitetrash")+"/whitelist/addentry/ and params:"+params);
-        var tab = getBrowser().mCurrentBrowser;
-        var entry=tab.webNavigation.sessionHistory.getEntryAtIndex(tab.webNavigation.sessionHistory.index, false);
-        var referrer = entry.QueryInterface(Components.interfaces.nsISHEntry).referrerURI;
-        tab.webNavigation.loadURI(tab.webNavigation.currentURI.spec, null, referrer, null, null);
     }
 ,
     install: function() {
