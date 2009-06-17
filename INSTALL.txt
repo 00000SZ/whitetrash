@@ -58,6 +58,15 @@ An example config with comments has been installed in /etc/squid/squid.conf, you
 If you have a large network, check the performance section below.
 This config is for Squid 2.7.STABLE3.  Your original squid.conf is backed up in the same directory.  You may want to use vimdiff on the whitetrash and package conf file to pull in any options from newer versions of squid.
 
+OCSP
+~~~~
+http://www.ietf.org/rfc/rfc2560.txt
+
+Online Certificate Status Protocol checking is enabled on Firefox 3 by default.  This is a problem for whitetrash.  If the ocsp domain in the AuthorityInfoAccess section of a server certificate is not whitelisted, Firefox allows a generous timeout before the page is presented (which, looks to a user like the proxy is really slow).  You can either:
+
+1. Disable it in about:config, security.OCSP.enabled (not recommended)
+2. Whitelist all known OCSP domains.  This is done for you in the example squid.conf, although the list may be incomplete.  Searching for "ocsp" in the admin interface to find any missed ones is probably a good idea.
+
 The result
 ~~~~~~~~~~
 
@@ -118,7 +127,13 @@ To install memcached:
     cd cmemcache-0.95
     sudo python setup.py install
 
-    Customise /etc/memcached
+    Customise /etc/memcached.conf
+
+If you see errors like this:
+
+    mcm_server_readable():2587: timeout: Operation now in progress: select(2) call timed out for read(2)able fds
+
+in the squid cache.log, it is memcache hitting its maximum connections limit.  Increase the limit with the -c option in /etc/memcached.conf
 
 System
 ------
