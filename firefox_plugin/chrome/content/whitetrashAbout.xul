@@ -13,10 +13,9 @@
     <vbox id="clientBox">
         <hbox align="start">
             <vbox id="logoBox">
-                <image id="logo" src="chrome://whitetrash/skin/wtcan.png" class="text-link"/>
+                <image id="logo" src="chrome://whitetrash/skin/logo.png" class="text-link"/>
             </vbox>
             <vbox flex="1">
-                <label value="Whitetrash" id="extensionName" crop="right"/>
                 <label value="Plugin Version &whitetrashPluginVersion;" id="extensionVersion" crop="right"/>
                 <spacer flex="1"/>
                 <hbox id="creatorBox">

@@ -33,12 +33,6 @@
     padding: 1em;
 }
 
-#extensionName {
-  font-size: large;
-  font-weight: bold;
-  color: #448;
-}
-
 #extensionVersion {
   color: #448;
 }
