@@ -35,6 +35,7 @@ import logging.config
 from OpenSSL import crypto
 import random
 from distutils.dir_util import mkpath
+from traceback import format_exc
 try:
     import blacklistcache
 except ImportError:
@@ -213,24 +214,28 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_CONNECT(self):
-        wtlog.debug("Path: %s" % self.path)
-        #strip off the sslwhitetrash bit from the end of the domain
-        self.domain = clean_domain(stripre.sub(r"\1",self.path.split(":")[0]))
-        self.send_response(200, 'OK')
-        self.end_headers()
+        try:
+            wtlog.debug("Path: %s" % self.path)
+            #strip off the sslwhitetrash bit from the end of the domain
+            self.domain = clean_domain(stripre.sub(r"\1",self.path.split(":")[0]))
+            self.send_response(200, 'OK')
+            self.end_headers()
 
-        #Switch our socket to SSL
-        ctx = SSL.Context(SSL.SSLv23_METHOD)
-        #server.pem's location (containing the server private key and
-        #the server certificate).
-        wtlog.debug("Getting cert for domain: %s" % self.domain)
-        ctx.use_privatekey_file( config["dynamic_certs_keyfile"] )
-        ctx.use_certificate_file( get_cert(self.domain) )
-        ssl_socket = SSL.Connection(ctx, self.wfile)
-        self.rfile = socket._fileobject(ssl_socket, "rb", self.rbufsize)
-        self.wfile = socket._fileobject(ssl_socket, "wb", self.wbufsize)
-        ssl_socket.set_accept_state()
-        self.handle()
+            #Switch our socket to SSL
+            ctx = SSL.Context(SSL.SSLv23_METHOD)
+            #server.pem's location (containing the server private key and
+            #the server certificate).
+            wtlog.debug("Getting cert for domain: %s" % self.domain)
+            ctx.use_privatekey_file( config["dynamic_certs_keyfile"] )
+            ctx.use_certificate_file( get_cert(self.domain) )
+            ssl_socket = SSL.Connection(ctx, self.wfile)
+            self.rfile = socket._fileobject(ssl_socket, "rb", self.rbufsize)
+            self.wfile = socket._fileobject(ssl_socket, "wb", self.wbufsize)
+            ssl_socket.set_accept_state()
+            self.handle()
+        except Exception,e:
+            wtlog.error(format_exc())
+            raise
 
 class WhitetrashServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
     pass
@@ -275,7 +280,7 @@ def run_http(server_class=WhitetrashServer,
         #sys.stdout = sys.stderr = Log(open(LOGFILE, 'a+'))
 
     if config["safebrowsing"].upper()=="TRUE":
-        update_safebrowsing(wtlog,config)
+        threading.Thread(target=update_safebrowsing, args=[wtlog,config]).start()
 
     wtlog.info("***** Whitetrash cert server started - %s *****" % (str(time.asctime())))
     httpd.serve_forever()
