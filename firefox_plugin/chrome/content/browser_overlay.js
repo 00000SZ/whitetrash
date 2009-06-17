@@ -477,6 +477,12 @@ whitetrashOverlay = {
             params);
     },
 
+    openAboutDialog: function(params) {
+        window.open("chrome://whitetrash/content/whitetrashAbout.xul",
+        "About Whitetrash",
+        "chrome,dialog,centerscreen");
+    },
+
     getPref: function(name, def) {
   	    var IPC=Components.interfaces.nsIPrefBranch;
         try {

@@ -19,6 +19,39 @@
 
 }
 
+#whitetrashAbout {
+    white-space: normal;
+    width: 30em;
+    min-height: 20em;
+    background-color: white !important;
+    opacity: 1.0;
+    font-size: 1.1em;
+
+}
+
+#whitetrashAbout vbox {
+    padding: 1em;
+}
+
+#extensionName {
+  font-size: large;
+  font-weight: bold;
+  color: #448;
+}
+
+#extensionVersion {
+  color: #448;
+}
+
+#extensionDescription {
+  color: #444;
+  overflow: auto;
+}
+
+#extensionCreator {
+  font-weight: bold;
+}
+
 .options-tab {
     padding-left: 2em;
     padding-top: 2em;

@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+
+<!-- Localization Information -->
+<!DOCTYPE dialog SYSTEM "chrome://whitetrash/locale/whitetrash.dtd" >
+<?xml-stylesheet href="chrome://whitetrash/skin/browser.css" type="text/css"?>
+
+<dialog title="About Whitetrash"
+    chromehidden="menubar toolbar location directories status extrachrome" 
+    id="whitetrashAbout" buttons="accept" 
+    xmlns:em="http://www.mozilla.org/2004/em-rdf#" 
+    xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+
+    <vbox id="clientBox">
+        <hbox align="start">
+            <vbox id="logoBox">
+                <image id="logo" src="chrome://whitetrash/skin/wtcan.png" class="text-link"/>
+            </vbox>
+            <vbox flex="1">
+                <label value="Whitetrash" id="extensionName" crop="right"/>
+                <label value="Plugin Version &whitetrashPluginVersion;" id="extensionVersion" crop="right"/>
+                <spacer flex="1"/>
+                <hbox id="creatorBox">
+                    <label id="extensionCreatorLabel" value="Author:"/>
+                    <label id="extensionCreator" class="text-link" value="&whitetrashPluginAuthor;" flex="1"/>
+                </hbox>
+            </vbox>
+        </hbox>
+        <separator class="thin"/>
+        <description id="extensionDescription" flex="1">&whitetrashPluginDescription;</description>
+    </vbox>
+</dialog>
+
+

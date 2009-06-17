@@ -1,4 +1,7 @@
 <!ENTITY whitetrashAbout "About Whitetrash...">
+<!ENTITY whitetrashPluginVersion "0.1">
+<!ENTITY whitetrashPluginDescription "Whitetrash is designed to protect the user from web-based attacks and exfiltration of data by malware. It also breaks common command-and-control mechanisms used by malware, while being user and sysadmin friendly. See http://whitetrash.sourceforge.net/ for more information.">
+<!ENTITY whitetrashPluginAuthor "gregsfdev">
 <!ENTITY whitetrashOptions "Options...">
 <!ENTITY whitetrashDefaultTooltip "Enable website">
 <!ENTITY whitetrashOptionsLong "Whitetrash Options">

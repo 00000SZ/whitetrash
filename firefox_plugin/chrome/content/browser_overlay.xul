@@ -21,6 +21,7 @@
                 <menuitem 
                 label="&whitetrashAbout;"
                 tooltiptext="&whitetrashAbout;"
+                oncommand="whitetrashOverlay.openAboutDialog()"
                 />
                 <menuitem 
                 label="&whitetrashOptions;"
