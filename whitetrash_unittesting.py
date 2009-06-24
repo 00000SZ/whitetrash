@@ -39,32 +39,6 @@ class WhitetrashTest(unittest.TestCase):
     def setUp(self):
         self.config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
 
-
-class if_enabled(object):
-    """
-    A decorator that will only execute a function if the option
-    passed in is "true" or "TRUE".  Useful for making sure calls
-    to functions are only made if the config requires them to be
-    """
-
-    def __init__(self, option):
-        self.option = option
-
-    def __call__(self, f):
-        config = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
-        enabled = False
-        try:
-            if config[self.option].upper() == "TRUE":
-                enabled = True
-        except KeyError:
-            pass
-
-        def new(*args):
-            if enabled:
-                f(*args)
-        return new
-
-
 class CertServerTest(WhitetrashTest):
 
     def setUp(self):
@@ -238,7 +212,6 @@ class SquidRedirectorUnitTests(RedirectorTest):
         dom="testwhitetrash.sf.net"
         self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(False,form))
 
-    @if_enabled("safebrowsing")
     def testSafeBrowsing(self):
         if self.config["safebrowsing"].upper() == "TRUE":
             url="http%3A//malware.testing.google.test/testing/malware/"
@@ -255,7 +228,6 @@ class SquidRedirectorUnitTests(RedirectorTest):
                                         (False,'302:https://whitetrash/whitelist/attackdomain=malware.testing.google.test\n'))
 
 
-    @if_enabled("safebrowsing")
     def testSafeBrowsingURL(self):
         url = self.wt_redir.get_sb_fail_url(blacklistcache.PHISHING,"phishing.domain.com")
         self.assertEqual(url,"%s://%s/whitelist/forgerydomain=%s" % 
