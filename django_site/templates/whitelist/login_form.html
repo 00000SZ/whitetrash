@@ -6,8 +6,10 @@
 <form method="post" action=".">
     <div id="loginPrompt">
 
-        {% if form.has_errors %}
-        <p id="errorText">Your username and password didn't match. Please try again.</p>
+        {% if form.non_field_errors %}
+        <div id="errorText">
+            <p>{{form.non_field_errors|escape}}</p>
+        </div>
         {% endif %}
 
         <table>
@@ -17,8 +19,13 @@
 
         <input type="submit" value="login" />
         <input type="hidden" name="next" value="{{ next|quoteall }}" />
+
     </div>
 </form>
+
+<script type="text/javascript">
+document.getElementById('id_username').focus()
+</script>
 
 {% endblock %}
 

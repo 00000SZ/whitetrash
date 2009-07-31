@@ -1,3 +1,5 @@
+Handle ftp.
+
 Possibly make a stand-alone version of wt as the ff plugin for when a full wt proxy is not available.  All whitelisted domains just stored in browser settings (essentially no script, but for all traffic, not just script?  Have to think about this more).
 
 Possibly have an option to make per-user whitelist the default, and to add into a system-wide whitelist requires admin approval or CAPTCHA.  Can't think how to do this with current auth system....

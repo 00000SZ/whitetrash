@@ -40,7 +40,7 @@
                     {{ form.captcha_response.errors }}
                 </div>
             {% endif %}
-            <input type="submit" value="I Agree" class="LgnBtn" />
+            <input id="wt_submit_btn" type="submit" value="I Agree" class="LgnBtn" />
             {% if form.non_field_errors %}
             <div id="errorText">
                 <p>{{form.non_field_errors|escape}}</p>
@@ -51,6 +51,11 @@
 
         </div>
     </form>
+
+    <script type="text/javascript">
+    document.getElementById('wt_submit_btn').focus()
+    </script>
+
 
 {% endblock %}
 
