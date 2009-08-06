@@ -9,6 +9,7 @@
         {% if form.non_field_errors %}
         <div id="errorText">
             <p>{{form.non_field_errors|escape}}</p>
+            <p>Corporate lockout policies (such as lockout after three incorrect attempts) <b>may</b> apply.</p>
         </div>
         {% endif %}
 
