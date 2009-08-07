@@ -2,6 +2,10 @@
 Unit Tests
 ==========
 
+You should run the tests as the whitetrash user, to prevent any issues with file ownership after the tests have run:
+
+    sudo su -s /bin/bash whitetrash
+
 Django
 ~~~~~~
 
