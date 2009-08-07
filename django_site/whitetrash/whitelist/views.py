@@ -15,12 +15,20 @@ from hashlib import sha1
 import datetime
 import re
 from urllib import unquote
-import blacklistcache
+    
+try:
+    import blacklistcache
+except ImportError:
+    if settings.SAFEBROWSING:
+        settings.LOG.error("Couldn't import blacklistcache, not using safebrowsing")
+        raise
 
 try:
     from Captcha.Visual.Tests import PseudoGimpy
 except ImportError:
-    print "PyCAPTCHA not installed.  Use: easy_install http://pypi.python.org/packages/2.4/P/PyCAPTCHA/PyCAPTCHA-0.4-py2.4.egg"
+    if (settings.CAPTCHA_HTTP) or (settings.CAPTCHA_SSL):
+        settings.LOG.error("PyCAPTCHA not installed.  Use: easy_install http://pypi.python.org/packages/2.4/P/PyCAPTCHA/PyCAPTCHA-0.4-py2.4.egg")
+        raise
 
 def index(request):
     """Handle a request for the domain with a blank path."""
@@ -206,10 +214,21 @@ def addentry(request):
         form = WhiteListForm(initial={'url': url,
                             'protocol':proto,
                             'domain':domain})
+        
+        if (proto==Whitelist.get_protocol_choice('HTTP') and settings.CAPTCHA_HTTP) or \
+            (proto==Whitelist.get_protocol_choice('SSL') and settings.CAPTCHA_SSL):
+            show_captcha=True
+        else:
+            show_captcha=False
 
+        return render_to_response('whitelist/whitelist_getform.html', {
+        'form': form, 'captcha': show_captcha},
+        context_instance=RequestContext(request)) 
 
+    #This is the last resort case if form is not valid.
+    #Make a best-guess at CAPTCHA requirement (if it is on for HTTP should probably display it)
     return render_to_response('whitelist/whitelist_getform.html', {
-        'form': form, 'captcha':settings.CAPTCHA_HTTP},
+        'form': form, 'captcha': show_captcha},
         context_instance=RequestContext(request)) 
 
 @check_login_required

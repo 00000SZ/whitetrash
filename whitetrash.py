@@ -68,7 +68,8 @@ class WTSquidRedirector:
         self.domain_sanitise=re.compile(config["domain_regex"])
         self.auto_add_all=config["auto_add_all_domains"].upper()=="TRUE"
         self.safebrowsing = config["safebrowsing"].upper()=="TRUE"
-        self.blacklistcache = blacklistcache.BlacklistCache(config)
+        if self.safebrowsing:
+            self.blacklistcache = blacklistcache.BlacklistCache(config)
         
         self.cursor=self.db_connect()
 

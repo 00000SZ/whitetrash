@@ -42,7 +42,7 @@ else:
 LOGIN_REDIRECT_URL = "/whitelist/addentry/?url=&domain="
 DOMAIN = CONFIG["whitetrash_domain"]
 
-DEBUG = True
+DEBUG = False 
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
@@ -132,7 +132,12 @@ INSTALLED_APPS = (
 )
 
 if conf("use_memcached"):
-    import cmemcache
+    try:
+        import cmemcache
+    except ImportError:
+        LOG.error("Couldn't import cmemcache")
+        raise
+
     MEMCACHE_SERVERS=CONFIG["memcache_servers"].split(",")
     MEMCACHE=cmemcache.Client(MEMCACHE_SERVERS)
 else:

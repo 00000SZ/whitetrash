@@ -42,14 +42,7 @@ Make sure the whitetrash_cert server gets started in the default runlevels by (o
 
 If you would like to enable the CAPTCHA (http://en.wikipedia.org/wiki/Captcha) test for whitelist additions, you will need to install PyCAPTCHA: http://cheeseshop.python.org/pypi/PyCAPTCHA/0.4  using easy_install (python-setuptools) and the python-imaging package.
 
-LDAP
-~~~~
-
-To enable LDAP authentication:
-
-    - install the python-ldap package
-    - set LDAP_AUTH = "True" in whitetrash.conf
-    - change the LDAP entries in django_site/whitetrash/settings.py 
+    sudo easy_install http://pypi.python.org/packages/2.4/P/PyCAPTCHA/PyCAPTCHA-0.4-py2.4.egg
 
 Squid Config
 ~~~~~~~~~~~~
@@ -89,6 +82,16 @@ Make sure the following domains resolve to the whitetrash IP:
 If you want to have accurate IP addresses recorded in the database, you will need to add in a proxy exclusion
 for whitetrash.  If you don't do this, all additions to the whitelist will appear to come from the proxy - ie.
 they will have the whitetrash IP.
+
+LDAP
+~~~~
+
+To enable LDAP authentication:
+
+    - install the python-ldap package
+    - set LDAP_AUTH = "True" in whitetrash.conf
+    - change the LDAP entries in django_site/whitetrash/settings.py 
+
 
 ===========
 Performance
@@ -173,4 +176,30 @@ And finally recompile::
     ./configure --with-maxfd=8192
 
 Unfortunately despite doing all of this, I couldn't get squid to use more than 4096 file descriptors!  Look at syslog for any errors and warnings.
+
+
+===============
+Troubleshooting
+===============
+
+Django complains it can't find settings.py
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Check all directory permissions in the whole path that whitetrash is sitting in.  Directories should be 755, and python files should be readable by all.
+
+I get network timeouts for SSL
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Check your squid logs, make sure you are resolving sslwhitetrash and blockedwhitetrash.
+
+I get 'Bad request logged'
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This is usually due to domains not matching the domain regex.  If you use a non-standard internal.dns.name.lan scheme for internal DNS, I suggest whitelisting all internal names ".lan." in the whitetrash.conf file.  You should probably do this for performance anyway.
+
+Debugging
+~~~~~~~~~
+
+Set DEBUG=TRUE in django_site/whitetrash/settings.py
+Change logging levels in whitetrash.conf to DEBUG and restart squid and apache.
 
