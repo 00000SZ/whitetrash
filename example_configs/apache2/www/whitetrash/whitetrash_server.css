@@ -96,7 +96,7 @@ hr {
     position:relative;
     top:1.2em;
     background:#000000 url(green_rect.png) no-repeat top left;
-    height:20em;
+    height:13em;
     width:20em;
 }
 
@@ -106,6 +106,13 @@ hr {
     top:1em;
     width:16em;
     color:#000;
+}
+
+#pluginlink{
+    font-size:1.2em;
+    position:relative;
+    left:1em;
+    width:14em;
 }
 
 #viewlist{
