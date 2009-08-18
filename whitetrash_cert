@@ -43,6 +43,7 @@ test -x $DAEMON || exit 0
 d_start() {
     touch $PIDFILE
     chown whitetrash:whitetrash $PIDFILE
+#    ulimit -n 65536
 	start-stop-daemon --start --chuid whitetrash --pidfile $PIDFILE \
 		--exec $DAEMON \
 		|| echo -n " already running"

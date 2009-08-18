@@ -141,19 +141,22 @@ in the squid cache.log, it is memcache hitting its maximum connections limit.  I
 System
 ------
 
-If you have a lot of users, you will have to make the standard system modifications to allow squid to consume lots of system resources::
+If you have a lot of users, you will have to make the standard system modifications to allow squid to consume lots of system resources, starting with open file handles (to avoid the 'too many open files errors'):
 
-    echo 8192 > /proc/sys/fs/file-max
+Check /proc/sys/fs/file-max is a suitably large number (on my system it is 304231, which should be enough)
+    
+    cat /proc/sys/fs/file-max
 
-Edit /etc/init.d/squid and put this at the very start::
+If you get permission denied errors when setting the ulimit, add these lines to /etc/security/limits.conf (I *think* this requires reboot, but could be wrong)
 
-    ulimit -HSn 8192
+    whitetrash      soft    nofile         196608 
+    whitetrash      hard    nofile         196608
 
-Edit /etc/default/squid (this is probably ubuntu/debian specific, you might find it in /etc/squid/squid.conf)::
+Edit /etc/default/squid (this is probably ubuntu/debian specific, you might find it in /etc/squid/squid.conf):
 
-    SQUID_MAXFD=8192
+    SQUID_MAXFD=65536
 
-By default squid will fire up 5 instances of the redirector, you can change this, and if you have many users you will need a lot more.  Note that if you make this a large number you will probably want to increase the maximum number of mysql connections your mysql server will allow (100 by default).  You probably want lots of redirector processes in squid.conf::
+By default squid will fire up 5 instances of the redirector, you can change this, and if you have many users you will need a lot more.  Note that if you make this a large number you will probably want to increase the maximum number of mysql connections your mysql server will allow (100 by default).  You probably want lots of redirector processes in squid.conf:
 
     redirect_children 100
 
@@ -166,17 +169,6 @@ You may get complaints about too many connections being tracked, so::
     cat /proc/sys/net/ipv4/ip_conntrack_max
 
     echo 70000 > /proc/sys/net/ipv4/ip_conntrack_max
-
-Edit /usr/include/bits/typesizes.h::
-
-    #define _FD_SETSIZE            8192
-
-And finally recompile::
-
-    ./configure --with-maxfd=8192
-
-Unfortunately despite doing all of this, I couldn't get squid to use more than 4096 file descriptors!  Look at syslog for any errors and warnings.
-
 
 ===============
 Troubleshooting
@@ -196,6 +188,11 @@ I get 'Bad request logged'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This is usually due to domains not matching the domain regex.  If you use a non-standard internal.dns.name.lan scheme for internal DNS, I suggest whitelisting all internal names ".lan." in the whitetrash.conf file.  You should probably do this for performance anyway.
+
+'Too many open files' errors appear in syslog
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+See the performance section in this file.
 
 Debugging
 ~~~~~~~~~
