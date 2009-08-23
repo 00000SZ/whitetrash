@@ -6,6 +6,10 @@
     list-style-image: url(wtcan-tick.png);
 }
 
+.whitetrash-link {
+    list-style-image: url(wtlink.png);
+}
+
 .whitetrash-top-level {
     font-weight: bold;
 }

@@ -15,12 +15,13 @@ whitetrashOverlay = {
 
     domainMenuList: {
         domains: {},
-        domainStruct: function(domain,disp_domain,uri,proto) {
+        domainStruct: function(domain,disp_domain,uri,proto,tag) {
         	this.domain=domain;
         	this.disp_domain=disp_domain;
         	this.uri=uri;
         	this.proto=proto;
-        	this.printString=this.domain+","+this.disp_domain+","+this.uri+","+this.proto;
+        	this.tag=tag;
+        	this.printString=this.domain+","+this.disp_domain+","+this.uri+","+this.proto+","+this.tag;
         }
         ,
         countDomains: function(hash) {
@@ -33,6 +34,7 @@ whitetrashOverlay = {
         }
         ,
         isDup: function(thislist,d) {
+
         	if (thislist[d]) {
         		return true;
             } else {
@@ -66,7 +68,7 @@ whitetrashOverlay = {
         	var dlist = flatlist.split("|");
         	for (var i = 0; i < dlist.length; i++) {
             	var thisd = dlist[i].split(",");
-            	this.storeDomainInfo(this.domains,thisd[0],thisd[1],thisd[2],thisd[3]);
+            	this.storeDomainInfo(this.domains,thisd[0],thisd[1],thisd[2],thisd[3],thisd[4]);
             }
         }
         ,
@@ -98,14 +100,15 @@ whitetrashOverlay = {
         	for (var dom in this.domains) {
                 whitetrashOverlay.createMenuItem(popup,
                                         this.domains[dom].disp_domain,this.domains[dom].domain,
-                                        this.domains[dom].uri,this.domains[dom].proto,trim);
+                                        this.domains[dom].uri,this.domains[dom].proto,
+                                        this.domains[dom].tag,trim);
         	}
         	if (trim) {this.saveList(getBrowser().selectedTab);}
         }
         ,
-        storeDomainInfo: function(domainlist,domain,disp_domain,uri,proto) {
-        	//Shouldn't the key be by protocol too???
-            domainlist[domain]= new this.domainStruct(domain,disp_domain,uri.replace(",","%2c"),proto);
+        storeDomainInfo: function(domainlist,domain,disp_domain,uri,proto,tag) {
+        	//FIXME: Shouldn't the key be by protocol too???
+            domainlist[disp_domain]= new this.domainStruct(domain,disp_domain,uri.replace(",","%2c"),proto,tag);
         }
         ,
         saveList: function(tab) {
@@ -137,7 +140,17 @@ whitetrashOverlay = {
         this.logger.logStringMessage(e.responseText);
     }
 ,
-    checkDomainInWhitelist: function(aPopup,display_domain,domain,uri,protocol) {
+    setIconAttribute: function(menuitem,tag) {
+    	//Set icon attributes based on the tag this domain came from.
+    	//TODO: Currently this is the first tag-type seen for each domain.
+    	//The tab-state-storage makes domains with multiple tag-types
+    	//hard to keep track of.  But would be nice to have an icon for 'multiple'.
+        if (tag=="link") {
+            menuitem.setAttribute("class","menuitem-iconic whitetrash-link");
+        }
+    }
+,
+    checkDomainInWhitelist: function(aPopup,display_domain,domain,uri,protocol,tag) {
     	//Currently I am caching whitelisted entries for the duration of the session.  See addtoPrefsWhitelist
     	//if you want to cache across sessions.  Non-whitelisted domains are checked when the user clicks the menu
     	//Assuming domain and protocol have already been sanitised.
@@ -165,6 +178,7 @@ whitetrashOverlay = {
                         var newcurrentTab = getBrowser().selectedTab;
                         if (newcurrentTab == pagetab) {
                             disableditem.setAttribute("disabled","false");
+                            whitetrashOverlay.setIconAttribute(disableditem,tag);
                         }
 
                     } else if (req.responseText=="1") {
@@ -193,7 +207,7 @@ whitetrashOverlay = {
         aPopup.appendChild(item);
     }
 ,
-    createMenuItem: function(aPopup,display_domain,domain,uri,protocol,trim_list) {
+    createMenuItem: function(aPopup,display_domain,domain,uri,protocol,tag,trim_list) {
         var new_domain = getBrowser().currentURI.host;
 
         //Only display menuitem if it is for the current domain in the tab
@@ -216,7 +230,7 @@ whitetrashOverlay = {
                 return;
     	    }
 
-            this.checkDomainInWhitelist(aPopup,display_domain,domain,uri,protocol);
+            this.checkDomainInWhitelist(aPopup,display_domain,domain,uri,protocol,tag);
 
         } else {
 
@@ -275,7 +289,6 @@ whitetrashOverlay = {
             	//If the list already has something in it, we'll need a pipe.
             	tabWhitelistData+="|";
             }
-            var domainslist = {};
 
             for (var i = 0; i < tags.length; i++) { 
         	    var uri=null;
@@ -294,11 +307,11 @@ whitetrashOverlay = {
 
                         if (proto!= -1) {
 
-                            if (!whitetrashOverlay.domainMenuList.isDup(domainslist,thedomain)) {
+                            var	display_domain=this_doc.domain+":"+thedomain;
+                            if (!whitetrashOverlay.domainMenuList.isDup(this.domainMenuList.domains,display_domain)) {
 
-                                var	display_domain=this_doc.domain+":"+thedomain;
-                                tabWhitelistData+=thedomain+","+display_domain+","+escape(uri)+","+proto+"|";
-                                whitetrashOverlay.domainMenuList.storeDomainInfo(domainslist,thedomain,display_domain,uri,proto);
+                                tabWhitelistData+=thedomain+","+display_domain+","+escape(uri)+","+proto+","+tag_name+"|";
+                                whitetrashOverlay.domainMenuList.storeDomainInfo(this.domainMenuList.domains,thedomain,display_domain,uri,proto,tag_name);
                             }
                         } else {
                             this.logger.logStringMessage("Bad protocol: "+uri);
