@@ -13,6 +13,10 @@ whitetrashOverlay = {
     whitelist_http: {},
     whitelist_ssl: {},
 
+    log: function(this_string) {
+        this.logger.logStringMessage("[Whitetrash] "+this_string);
+    },
+
     domainMenuList: {
         domains: {},
         domainStruct: function(domain,disp_domain,uri,proto,tag) {
@@ -28,7 +32,7 @@ whitetrashOverlay = {
         	var count=0;
         	for (var i in hash) {
                 count+=1;
-        	    whitetrashOverlay.logger.logStringMessage("dom:"+hash[i].printString);
+        	    whitetrashOverlay.log("dom:"+hash[i].printString);
             }
             return count;
         }
@@ -54,7 +58,7 @@ whitetrashOverlay = {
         	//Unfortunately the store/restore didn't work properly, even when just doing set
         	//then get straight-away, the object I got back was bad.  Maybe it can't handle
         	//an associative array of objects?
-        	whitetrashOverlay.logger.logStringMessage("flattening list");
+        	whitetrashOverlay.log("flattening list");
         	var result="";
             for (var d in this.domains) {
                 result+=this.domains[d].printString+"|";
@@ -114,30 +118,30 @@ whitetrashOverlay = {
         saveList: function(tab) {
         	var count=this.countDomains(this.domains);
         	if (count!=0) {
-        	    whitetrashOverlay.logger.logStringMessage("list length:"+count);
+        	    whitetrashOverlay.log("list length:"+count);
                 whitetrashOverlay.ss.setTabValue(tab, "whitetrash.domain.list",this.flattenList());
-        	    whitetrashOverlay.logger.logStringMessage("post save tab state:"+ whitetrashOverlay.ss.getTabState(tab));
+        	    whitetrashOverlay.log("post save tab state:"+ whitetrashOverlay.ss.getTabState(tab));
             } else {
-        	    whitetrashOverlay.logger.logStringMessage("deleting empty list");
+        	    whitetrashOverlay.log("deleting empty list");
                 whitetrashOverlay.ss.deleteTabValue(tab, "whitetrash.domain.list");
             }
         }
         ,
         loadList: function(tab) {
-        	whitetrashOverlay.logger.logStringMessage("current tab state:"+ whitetrashOverlay.ss.getTabState(tab));
+        	whitetrashOverlay.log("current tab state:"+ whitetrashOverlay.ss.getTabState(tab));
             var retrievedList = whitetrashOverlay.ss.getTabValue(tab, "whitetrash.domain.list");
             if (retrievedList) {
             	this.inflateList(retrievedList);
                 this.restoreMenu();
             } else {
-                whitetrashOverlay.logger.logStringMessage("ignoring retrieved null list");
+                whitetrashOverlay.log("ignoring retrieved null list");
             }
         }
 
     }//end MenuList class
 ,
     onError: function(e) {
-        this.logger.logStringMessage(e.responseText);
+        this.log(e.responseText);
     }
 ,
     setIconAttribute: function(menuitem,tag) {
@@ -160,7 +164,7 @@ whitetrashOverlay = {
 
         proto_pref=whitetrashOverlay.getPref("whitetrash.protocol","https");
         var url=proto_pref+"://"+whitetrashOverlay.getPref("whitetrash.domain","whitetrash")+"/whitelist/checkdomain?domain="+domain+"&protocol="+protocol
-        whitetrashOverlay.logger.logStringMessage("Checking domain with url: "+url);
+        whitetrashOverlay.log("Checking domain with url: "+url);
         var pagetab = getBrowser().selectedTab;
         var req = new XMLHttpRequest();
         req.open("GET", url, true);
@@ -168,7 +172,7 @@ whitetrashOverlay = {
         req.onreadystatechange = function () {
             if (req.readyState == 4) {
         	    if(req.status == 200) {
-                    whitetrashOverlay.logger.logStringMessage("domain: "+domain+", resp: "+req.responseText);
+                    whitetrashOverlay.log("domain: "+domain+", resp: "+req.responseText);
 
                     var disableditem = document.getElementById(domain+protocol);
         	    	if (req.responseText=="0") {
@@ -186,11 +190,11 @@ whitetrashOverlay = {
                         whitetrashOverlay.addToPrefsWhitelist(domain,protocol);
                         disableditem.setAttribute("class","menuitem-iconic whitetrash-can-tick");
                     } else {
-                        whitetrashOverlay.logger.logStringMessage("Error checking domain: "+req.responseText);
+                        whitetrashOverlay.log("Error checking domain: "+req.responseText);
                     }
 
                 }else{
-                    whitetrashOverlay.logger.logStringMessage(req.responseText);
+                    whitetrashOverlay.log(req.responseText);
                 }
             }
         };
@@ -226,7 +230,7 @@ whitetrashOverlay = {
     	    	    return }
 
     	    } else {
-                this.logger.logStringMessage("CreateMenuItem bad protocol: "+protocol);
+                this.log("CreateMenuItem bad protocol: "+protocol);
                 return;
     	    }
 
@@ -235,10 +239,10 @@ whitetrashOverlay = {
         } else {
 
             if (trim_list){
-                //whitetrashOverlay.logger.logStringMessage("removing from array"+display_domain);
+                //whitetrashOverlay.log("removing from array"+display_domain);
                 delete this.domainMenuList.domains[domain];
             } else {
-                whitetrashOverlay.logger.logStringMessage("not displaying"+display_domain);
+                whitetrashOverlay.log("not displaying"+display_domain);
             }
         }
 
@@ -314,16 +318,16 @@ whitetrashOverlay = {
                                 whitetrashOverlay.domainMenuList.storeDomainInfo(this.domainMenuList.domains,thedomain,display_domain,uri,proto,tag_name);
                             }
                         } else {
-                            this.logger.logStringMessage("Bad protocol: "+uri);
+                            this.log("Bad protocol: "+uri);
                         }
                     } else {
-                        this.logger.logStringMessage("Bad domain: "+uri);
+                        this.log("Bad domain: "+uri);
                     }
                 }
             }
 
             //Strip off the last pipe and save.
-            //this.logger.logStringMessage("Whitelistdata final: "+tabWhitelistData.substring(0,tabWhitelistData.length-1));
+            //this.log("Whitelistdata final: "+tabWhitelistData.substring(0,tabWhitelistData.length-1));
             this.ss.setTabValue(thistab, "whitetrash.domain.list",tabWhitelistData.substring(0,tabWhitelistData.length-1));
         }
     }
@@ -334,7 +338,7 @@ whitetrashOverlay = {
 ,
     onContentLoad: function(doc) {
 
-        this.logger.logStringMessage("Parsing content");
+        this.log("Parsing content");
 
         if (doc instanceof HTMLDocument) {
 
@@ -343,12 +347,12 @@ whitetrashOverlay = {
             	//Loading... and Untitled empty tabs on every tab changed
             	var valid_domain = doc.domain;
             } catch(e) {
-                this.logger.logStringMessage("No domain, ignoring");
+                this.log("No domain, ignoring");
             }
 
             if ((doc.body) && (doc.body.innerHTML.length!=null) && (valid_domain)) {
 
-                this.logger.logStringMessage("Parsing domain:"+doc.domain);
+                this.log("Parsing domain:"+doc.domain);
                 //TODO: only display options for img and script elements with no content, i.e. they were 404ed
                 //maybe only iframes with the form in them?  what about nesting?
                 //this way I don't have to keep a list of whitelisted stuff.
@@ -360,7 +364,7 @@ whitetrashOverlay = {
                 whitetrashOverlay.parseHTML(wt_sb_menu_popup,"script","src",doc);
 
             }else {
-                this.logger.logStringMessage("Empty document");
+                this.log("Empty document");
             }
         }
     }
@@ -368,7 +372,7 @@ whitetrashOverlay = {
     reloadMenu: function() {
         //Clear the current menu list and load the stored domain list if present.  
         //If this is a new tab the oncontent load listener will build the new list.
-        this.logger.logStringMessage("Reloading Menu");
+        this.log("Reloading Menu");
         var wt_sb_menu_popup = document.getElementById("wt_sb_menu");
         whitetrashOverlay.deleteDynamicMenuItems(wt_sb_menu_popup);
         whitetrashOverlay.domainMenuList.loadList(getBrowser().selectedTab);
@@ -408,13 +412,13 @@ whitetrashOverlay = {
 
                     }
                 }else{
-                    whitetrashOverlay.logger.logStringMessage("Error when adding domain: "+http.status+" text: "+http.responseText);
+                    whitetrashOverlay.log("Error when adding domain: "+http.status+" text: "+http.responseText);
                 }
             }
         };
 
         http.send(params);
-        whitetrashOverlay.logger.logStringMessage("Adding domain with: "+proto_pref+"://"+whitetrashOverlay.getPref("whitetrash.domain","whitetrash")+"/whitelist/addentry/ and params:"+params);
+        whitetrashOverlay.log("Adding domain with: "+proto_pref+"://"+whitetrashOverlay.getPref("whitetrash.domain","whitetrash")+"/whitelist/addentry/ and params:"+params);
     }
 ,
     install: function() {
@@ -474,7 +478,7 @@ whitetrashOverlay = {
     	//perhaps don't store in prefs so list is only maintained for browser session?
     	//This is what I'm doing, uncomment lines below to store in prefs
 
-        //this.logger.logStringMessage("adding to prefs:"+domain+proto);
+        //this.log("adding to prefs:"+domain+proto);
     	//var cur=this.getPref("whitetrash."+proto+".whitelist");
     	if (proto==this.getProtocolCode("HTTP")) {
     	    this.whitelist_http[domain]=true;
