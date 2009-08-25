@@ -151,6 +151,12 @@ whitetrashOverlay = {
     	//hard to keep track of.  But would be nice to have an icon for 'multiple'.
         if (tag=="link") {
             menuitem.setAttribute("class","menuitem-iconic whitetrash-link");
+        } else if (tag=="img") {
+            menuitem.setAttribute("class","menuitem-iconic whitetrash-img");
+        } else if (tag=="iframe") {
+            menuitem.setAttribute("class","menuitem-iconic whitetrash-iframe");
+        } else if (tag=="script") {
+            menuitem.setAttribute("class","menuitem-iconic whitetrash-script");
         }
     }
 ,

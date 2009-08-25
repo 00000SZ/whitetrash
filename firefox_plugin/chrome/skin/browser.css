@@ -10,6 +10,18 @@
     list-style-image: url(wtlink.png);
 }
 
+.whitetrash-img {
+    list-style-image: url(wtimg.png);
+}
+
+.whitetrash-iframe {
+    list-style-image: url(wtiframe.png);
+}
+
+.whitetrash-script {
+    list-style-image: url(wtscript.png);
+}
+
 .whitetrash-top-level {
     font-weight: bold;
 }
