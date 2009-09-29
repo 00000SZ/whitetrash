@@ -90,8 +90,10 @@ To enable LDAP authentication:
 
     - install the python-ldap package
     - set LDAP_AUTH = "True" in whitetrash.conf
-    - change the LDAP entries in django_site/whitetrash/settings.py 
+    - change the LDAP entries in django_site/whitetrash/settings.py
+    - see django_site/whitetrash/ldapauth.py for documentation on django ldap options 
 
+For troubleshooting, enable LDAP debug in settings.py and disable SSL for LDAP so you can see what is going on.  Check the logs (syslog by default).  If you get stuck, use ipython to manually run the important bits of code from ldapauth.py where it binds to the server (not too complicated).
 
 ===========
 Performance
