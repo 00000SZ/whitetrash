@@ -228,7 +228,7 @@ def addentry(request):
     #This is the last resort case if form is not valid.
     #Make a best-guess at CAPTCHA requirement (if it is on for HTTP should probably display it)
     return render_to_response('whitelist/whitelist_getform.html', {
-        'form': form, 'captcha': show_captcha},
+        'form': form, 'captcha': settings.CAPTCHA_HTTP},
         context_instance=RequestContext(request)) 
 
 @check_login_required

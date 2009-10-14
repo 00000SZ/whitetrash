@@ -247,7 +247,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 # Known problem.  If client passes a certificate (even though we don't ask for it)
                 # the SSL library tries to parse and verify it.  This is bound to fail since there
                 # are plenty of apps out there that self-sign client certs.  Ignore this particular error.
-                if e[0]!=('SSL routines', 'SSL3_READ_BYTES', 'tlsv1 alert unknown ca'):
+                if (e[0][2] and e[0][2]!='tlsv1 alert unknown ca'):
                     raise
         except Exception,e:
             wtlog.error(format_exc())
@@ -290,10 +290,7 @@ def run_http(server_class=WhitetrashServer,
             print >>sys.stderr, "fork #2 failed: %d (%s)" % (e.errno, e.strerror)
             sys.exit(1)
     
-    
-        # redirect outputs to a log file
-        # Can I do this with logger somehow?
-        #sys.stdout = sys.stderr = Log(open(LOGFILE, 'a+'))
+        sys.stdout = sys.stderr = open(os.devnull, 'w')
 
     if config["safebrowsing"].upper()=="TRUE":
         threading.Thread(target=update_safebrowsing, args=[wtlog,config]).start()

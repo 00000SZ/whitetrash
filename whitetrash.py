@@ -212,7 +212,7 @@ class WTSquidRedirector:
                                 self.fail_url = self.get_sb_fail_url(sbresult,domain)
                                 result = (False,"%s\n" % self.fail_url)
 
-                        if method != "GET" and protocol == self.PROTOCOL_CHOICES["HTTP"]:
+                        if not self.fail_url.startswith("302") and method != "GET" and protocol == self.PROTOCOL_CHOICES["HTTP"]:
                             #If this isn't a get ie. usually a POST, posting or anything else to our wt server doesn't make sense
                             #send a 302 moved temporarily back to the client so they request the web form.
                             self.fail_url = "302:%s" % self.fail_url
@@ -366,6 +366,7 @@ class WTSquidRedirectorCached(WTSquidRedirector):
             self.log.debug("Using cache value %s: %s" % (key,cache_value))
             return cache_value
         elif cache_value_wild:
+            self.log.debug("Using wild cache value %s: %s" % (key,cache_value_wild))
             return cache_value_wild
         else:
             result=WTSquidRedirector.get_whitelist_id(self,proto,domain,domain_wild,wild)
