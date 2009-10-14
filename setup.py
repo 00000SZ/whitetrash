@@ -15,6 +15,7 @@ try:
     from distutils.dir_util import copy_tree,mkpath
     from distutils.util import execute
     from distutils.command.install import install 
+    from distutils.sysconfig import get_python_lib
 
 except ImportError:
     print """Error: The "distutils" standard module, which is required for the
@@ -156,7 +157,10 @@ class WhitetrashInstallData(install):
             copy_file(thisfile,os.path.join(self.web_root,"whitetrash/"))
 
         if not os.path.exists(os.path.join(self.web_root,"whitetrash/media")):
-            os.symlink("/usr/share/python-support/python-django/django/contrib/admin/media/", os.path.join(self.web_root,"whitetrash/media"))
+            if os.path.exists("/usr/share/python-support/python-django/django/contrib/admin/media/"):
+                os.symlink("/usr/share/python-support/python-django/django/contrib/admin/media/", os.path.join(self.web_root,"whitetrash/media"))
+            else:
+                os.symlink(os.path.join(get_python_lib(),"django/contrib/admin/media/"), os.path.join(self.web_root,"whitetrash/media"))
 
     def copySquidConfigs(self):
         if os.path.exists("/etc/squid/squid.conf"):

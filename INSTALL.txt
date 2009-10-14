@@ -23,7 +23,7 @@ edit whitetrash.conf:
 
  - Change all of the database user passwords, these users will be created for you by the installation script
 
-Run the setup script and supply your DB root password:
+Run the setup script and supply your DB root password (see other optional params such as apache web root with 'python setup.py install --help'):
 
     sudo python setup.py install --mysql-root-passwd="myrootpassword"
 
