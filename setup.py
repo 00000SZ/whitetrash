@@ -76,6 +76,19 @@ class WhitetrashInstallData(install):
         import settings # Assumed to be in the same directory.
         execute_manager(settings,argv=['manage.py','syncdb'])
 
+        from django.contrib.auth.models import User,UserManager
+        um=UserManager()
+
+        auto=User(username="auto",password=um.make_random_password(length=15),
+                    is_staff=False,is_active=True,is_superuser=False)
+        auto.set_password(um.make_random_password(length=15))
+        auto.save()
+
+        notwlisted=User(username="notwhitelisted",
+                    is_staff=False,is_active=True,is_superuser=False)
+        notwlisted.set_password(um.make_random_password(length=15))
+        notwlisted.save()
+
     def createDBUser(self,dbcur,user,passwd):
         try:
             dbcur.execute("CREATE USER %s@'localhost' IDENTIFIED BY %s",(user,passwd))
@@ -120,6 +133,9 @@ class WhitetrashInstallData(install):
             self.installDjango()
 
             cur.execute("GRANT INSERT,SELECT,UPDATE on whitetrash.whitelist_whitelist TO %s",(config["DATABASE_WHITETRASH_USER"]))
+            #Need this so the redirector can find the user ids for the auto and notwhitelisted
+            #users
+            cur.execute("GRANT SELECT on whitetrash.auth_user TO %s",(config["DATABASE_WHITETRASH_USER"]))
             cur.execute("GRANT SELECT,DELETE,UPDATE on whitetrash.whitelist_whitelist TO %s",(config["DATABASE_CLEANUP_USER"]))
 
         except Exception,e:

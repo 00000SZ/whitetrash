@@ -98,7 +98,7 @@ class SquidRedirectorUnitTests(RedirectorTest):
     def setUp(self):
         super(SquidRedirectorUnitTests, self).setUp() 
         self.wt_redir=WTSquidRedirector(self.config)
-        self.wt_redir.cursor.execute("insert into whitelist_whitelist set domain='alreadywhitelisted.whitetrash.sf.net.wt',date_added=NOW(),username='wt_unittesting',protocol=%s,url='http://sdlkj',comment='whitetrash testing',enabled=1,hitcount=20,last_accessed=NOW(),client_ip='192.168.1.1'", (self.wt_redir.PROTOCOL_CHOICES["HTTP"]))
+        self.wt_redir.cursor.execute("insert into whitelist_whitelist set domain='alreadywhitelisted.whitetrash.sf.net.wt',date_added=NOW(),user_id=%s,protocol=%s,url='http://sdlkj',comment='whitetrash testing',enabled=1,hitcount=20,last_accessed=NOW(),client_ip='192.168.1.1'", (self.wt_redir.get_uid('auto'),self.wt_redir.PROTOCOL_CHOICES["HTTP"]))
 
     def testURLParsing(self):
 
@@ -148,7 +148,6 @@ class SquidRedirectorUnitTests(RedirectorTest):
     def testEnableDomain(self):
         self.wt_redir.add_disabled_domain("disabled.testwhitetrash.sf.net.wt",
                                         self.wt_redir.PROTOCOL_CHOICES["HTTP"],
-                                        "wt_unittesting",
                                         "http%3A//www.testwhitetrash.sf.net.wt/FAQ",
                                         "192.168.3.1")
 
@@ -169,7 +168,6 @@ class SquidRedirectorUnitTests(RedirectorTest):
     def testAddToWhitelist(self):
         self.wt_redir.add_to_whitelist("insertme.new.whitetrash.sf.net.wt",
                                         self.wt_redir.PROTOCOL_CHOICES["HTTP"],
-                                        "wt_unittesting",
                                         "http%3A//www.whitetrash.sf.net.wt/FAQ",
                                         "192.168.3.1")
 
@@ -184,7 +182,7 @@ class SquidRedirectorUnitTests(RedirectorTest):
 
     def testGetWhitelistID(self):
 
-        self.wt_redir.cursor.execute("insert into whitelist_whitelist set domain='testwild.whitetrash.sf.net.wt',date_added=NOW(),username='wt_unittesting',protocol=%s,url='http://sdlkj',comment='whitetrash testing',enabled=1,hitcount=1,last_accessed=NOW(),client_ip='192.168.1.1'", (self.wt_redir.PROTOCOL_CHOICES["HTTP"]))
+        self.wt_redir.cursor.execute("insert into whitelist_whitelist set domain='testwild.whitetrash.sf.net.wt',date_added=NOW(),user_id=%s,protocol=%s,url='http://sdlkj',comment='whitetrash testing',enabled=1,hitcount=1,last_accessed=NOW(),client_ip='192.168.1.1'", (self.wt_redir.get_uid('auto'),self.wt_redir.PROTOCOL_CHOICES["HTTP"]))
 
         if not self.wt_redir.get_whitelist_id(self.wt_redir.PROTOCOL_CHOICES["HTTP"],
                                                 "www.testwild.whitetrash.sf.net.wt","testwild.whitetrash.sf.net.wt",wild=True):
@@ -293,10 +291,10 @@ class SquidRedirectorUnitTests(RedirectorTest):
         proto=self.wt_redir.PROTOCOL_CHOICES["HTTP"]
         dom="sub.testwhitetrash.sf.net.wt"
 
-        self.wt_redir.cursor.execute("insert into whitelist_whitelist set domain='testwhitetrash.sf.net.wt',date_added=NOW(),username='wt_unittesting',protocol=%s,url='http://sdlkj',comment='whitetrash testing',enabled=0,hitcount=20,last_accessed=NOW(),client_ip='192.168.1.1'", (self.wt_redir.PROTOCOL_CHOICES["HTTP"]))
+        self.wt_redir.cursor.execute("insert into whitelist_whitelist set domain='testwhitetrash.sf.net.wt',date_added=NOW(),user_id=%s,protocol=%s,url='http://sdlkj',comment='whitetrash testing',enabled=0,hitcount=20,last_accessed=NOW(),client_ip='192.168.1.1'", (self.wt_redir.get_uid('auto'),self.wt_redir.PROTOCOL_CHOICES["HTTP"]))
         wild_id = self.wt_redir.cursor.lastrowid
 
-        self.wt_redir.cursor.execute("insert into whitelist_whitelist set domain='sub.testwhitetrash.sf.net.wt',date_added=NOW(),username='wt_unittesting',protocol=%s,url='http://sdlkj',comment='whitetrash testing',enabled=1,hitcount=20,last_accessed=NOW(),client_ip='192.168.1.1'", (self.wt_redir.PROTOCOL_CHOICES["HTTP"]))
+        self.wt_redir.cursor.execute("insert into whitelist_whitelist set domain='sub.testwhitetrash.sf.net.wt',date_added=NOW(),user_id=%s,protocol=%s,url='http://sdlkj',comment='whitetrash testing',enabled=1,hitcount=20,last_accessed=NOW(),client_ip='192.168.1.1'", (self.wt_redir.get_uid('auto'),self.wt_redir.PROTOCOL_CHOICES["HTTP"]))
         subdom_id = self.wt_redir.cursor.lastrowid
 
         # Check we have 2 results
@@ -309,10 +307,10 @@ class SquidRedirectorUnitTests(RedirectorTest):
         self.assertEqual(self.wt_redir.get_whitelist_id(proto,dom,"testwhitetrash.sf.net.wt",wild=False),(subdom_id,1))
 
     def testCleanup(self):
-        self.wt_redir.cursor.execute("insert into whitelist_whitelist set domain='testwhitetrash.sf.net.wt',date_added='2008-01-01',username='wt_unittesting',protocol=%s,url='http://sdlkj',comment='whitetrash testing',enabled=0,hitcount=20,last_accessed=NOW(),client_ip='192.168.1.1'", (self.wt_redir.PROTOCOL_CHOICES["HTTP"]))
+        self.wt_redir.cursor.execute("insert into whitelist_whitelist set domain='testwhitetrash.sf.net.wt',date_added='2008-01-01',user_id=%s,protocol=%s,url='http://sdlkj',comment='whitetrash testing',enabled=0,hitcount=20,last_accessed=NOW(),client_ip='192.168.1.1'", (self.wt_redir.get_uid('auto'),self.wt_redir.PROTOCOL_CHOICES["HTTP"]))
 
     def tearDown(self):
-        self.cleancur.execute("delete from whitelist_whitelist where username='wt_unittesting'")
+        self.cleancur.execute("delete from whitelist_whitelist where user_id=%s",(self.wt_redir.get_uid('auto')))
         self.cleancur.execute("delete from whitelist_whitelist where domain like '%sf.net.wt'")
 
 class CachedSquidRedirectorUnitTests(SquidRedirectorUnitTests):

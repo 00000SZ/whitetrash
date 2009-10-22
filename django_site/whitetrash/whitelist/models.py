@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 from datetime import datetime
 from django.forms import ModelForm,HiddenInput,CharField,ValidationError,Widget
 from django.conf import settings
@@ -29,11 +30,11 @@ class Whitelist(models.Model):
     whitelist_id=models.AutoField("ID",primary_key=True)
     domain=models.CharField("Domain Name",max_length=70,blank=False)
     date_added=models.DateTimeField(db_index=True,auto_now_add=True,
-                            help_text="""If the domain is whitelisted, this timestamp is the time it was added
-                            to the whitelist.  If the domain is not whitelisted, it is the time the domain was 
-                            first requested.""",blank=False)
+           help_text="""If the domain is whitelisted, this timestamp is the time it was added
+           to the whitelist.  If the domain is not whitelisted, it is the time the domain was 
+           first requested.""",blank=False)
     protocol=models.PositiveSmallIntegerField(db_index=True,choices=PROTOCOL_CHOICES,blank=False)
-    username=models.CharField("Added By User",max_length=30,db_index=True,blank=False)
+    user=models.ForeignKey(User,verbose_name="Added By User",db_index=True,blank=False)
     client_ip=models.IPAddressField(db_index=True,blank=False)
     url=models.CharField(max_length=255,blank=True)
     comment=models.CharField(max_length=100,blank=True)
@@ -64,7 +65,7 @@ class Whitelist(models.Model):
         unique_together = (("domain", "protocol","enabled"),)
 
     def __str__(self):
-        return "%s: %s - %s %s %s hits" % (self.whitelist_id,self.get_protocol_display(),self.domain,self.username,self.hitcount)
+        return "%s: %s - %s %s %s hits" % (self.whitelist_id,self.get_protocol_display(),self.domain,self.user.username,self.hitcount)
 
 class WhiteListForm(ModelForm):
     url=CharField(max_length=255,widget=HiddenInput,required=False)

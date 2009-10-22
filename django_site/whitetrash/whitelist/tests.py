@@ -21,7 +21,7 @@ class WhitetrashTestGeneral(TestCase):
         """This test only really works (see commented out version) when SSL is disabled,
         because the inbuilt client doesn't have SSL post, and a HTTP post causes a redirect
         to SSL."""
-        response = self.client.post("/accounts/login/", {"username":"testuser",
+        response = self.client.post("/accounts/login/", {"username":"whitetrashtestuser",
                             "password":"passwd",
                             "next":"/whitelist/addentry/?url=http%3A%2F%2Fwww.testing.com%2F%26domain=www.testing.com"} )
         #self.assertRedirects(response, "whitelist/addentry/?url=http%3A%2F%2Fwww.testing.com%2F%26domain=www.testing.com",
@@ -61,7 +61,7 @@ class WhitetrashTestSafeBrowsing(TestCase):
         """Adding a known bad blacklisted domain should fail if safebrowsing is enabled."""
 
         if settings.SAFEBROWSING:
-            self.client.login(username='testuser', password='passwd')
+            self.client.login(username='whitetrashtestuser', password='passwd')
             response = self.client.post("/whitelist/addentry/", {"url":"http://malware.testing.google.test/testing/malware/",
                             "domain":"malware.testing.google.test",
                             "protocol":Whitelist.get_protocol_choice("HTTP"),"comment":"testing"} )
@@ -81,14 +81,14 @@ class WhitetrashTestGetForm(TestCase):
     fixtures = ["testing.json"]
 
     def setUp(self):
-        self.client.login(username='testuser', password='passwd')
+        self.client.login(username='whitetrashtestuser', password='passwd')
 
     def testGetFormHTTP(self):
         response = self.client.get("/whitelist/addentry/", {"url":"http%3A//sldjflksjdf.com/","domain":"sldjflksjdf.com"} )
         self.assertTemplateUsed(response, 'whitelist/whitelist_getform.html')
         self.assertContains(response, 'name="domain" value="sldjflksjdf.com"', status_code=200)
         self.assertContains(response, 'selected="selected">HTTP', status_code=200)
-        self.assertContains(response, 'Client Username: </b>testuser', status_code=200)
+        self.assertContains(response, 'Client Username: </b>whitetrashtestuser', status_code=200)
         self.assertContains(response, '<input type="hidden" name="url" value="http%3A//sldjflksjdf.com/"', status_code=200)
 
     def testGetFormXSS(self):
@@ -108,14 +108,14 @@ class WhitetrashTestAddEntry(TestCase):
     fixtures = ["testing.json"]
 
     def setUp(self):
-        self.client.login(username='testuser', password='passwd')
+        self.client.login(username='whitetrashtestuser', password='passwd')
 
     def testAddHTTP(self):
         response = self.client.post("/whitelist/addentry/", {"url":"http%3A//sldjflksjdf.com/",
                         "domain":"test1.com",
                         "protocol":Whitelist.get_protocol_choice("HTTP"),"comment":"testing"} )
         self.assertContains(response, "Whitetrash: Access Granted", status_code=200)
-        self.assertContains(response, "Thank you testuser", status_code=200)
+        self.assertContains(response, "Thank you whitetrashtestuser", status_code=200)
         self.assertTrue(Whitelist.objects.filter(domain="test1.com",protocol=Whitelist.get_protocol_choice("HTTP")))
 
     def testAddSSL(self):
@@ -124,7 +124,7 @@ class WhitetrashTestAddEntry(TestCase):
                         "protocol":Whitelist.get_protocol_choice("SSL"),"comment":"testing"} )
         self.assertTemplateUsed(response, 'whitelist/whitelist_added.html')
         self.assertContains(response, "Whitetrash: Access Granted", status_code=200)
-        self.assertContains(response, "Thank you testuser", status_code=200)
+        self.assertContains(response, "Thank you whitetrashtestuser", status_code=200)
         self.assertTrue(Whitelist.objects.filter(domain="test1.com",protocol=Whitelist.get_protocol_choice("SSL")))
 
     def testEnableDomain(self):
@@ -197,7 +197,7 @@ class WhitetrashTestCaptcha(TestCase):
     fixtures = ["testing.json"]
 
     def setUp(self):
-        self.client.login(username='testuser', password='passwd')
+        self.client.login(username='whitetrashtestuser', password='passwd')
 
     def testGetFormHTTP(self):
         if settings.CAPTCHA_HTTP:
@@ -205,7 +205,7 @@ class WhitetrashTestCaptcha(TestCase):
             self.assertTemplateUsed(response, 'whitelist/whitelist_getform.html')
             self.assertContains(response, 'name="domain" value="sldjflksjdf.com"', status_code=200)
             self.assertContains(response, 'selected="selected">HTTP', status_code=200)
-            self.assertContains(response, 'Client Username: </b>testuser', status_code=200)
+            self.assertContains(response, 'Client Username: </b>whitetrashtestuser', status_code=200)
             self.assertContains(response, '<input type="hidden" name="url" value="http%3A//sldjflksjdf.com/"', status_code=200)
             self.assertContains(response, '<img id="captchaImage"', status_code=200)
             
@@ -214,7 +214,7 @@ class WhitetrashTestDelEntry(TestCase):
     fixtures = ["testing.json"]
 
     def setUp(self):
-        self.client.login(username='testuser', password='passwd')
+        self.client.login(username='whitetrashtestuser', password='passwd')
 
     def testdelMultipleEntries(self):
         self.assertTrue(Whitelist.objects.filter(pk=1))
@@ -258,7 +258,7 @@ class WhitetrashTestDomainCheck(TestCase):
     fixtures = ["testing.json"]
 
     def setUp(self):
-        self.client.login(username='testuser', password='passwd')
+        self.client.login(username='whitetrashtestuser', password='passwd')
 
     def testCheckDomainInList(self):
         response = self.client.get("/whitelist/checkdomain/", {"domain":"testing1.com","protocol":Whitelist.get_protocol_choice("HTTP")} )

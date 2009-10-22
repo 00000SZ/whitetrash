@@ -163,7 +163,7 @@ def addentry(request):
                 domain=re.sub("^[a-z0-9-]+\.","",dom_temp,1)
 
             w,created = Whitelist.objects.get_or_create(domain=domain,protocol=protocol, 
-                                defaults={'username':request.user,'url':url,
+                                defaults={'user':request.user,'url':url,
                                 'comment':comment,'enabled':True,'client_ip':src_ip})
 
             if not url:
@@ -180,7 +180,7 @@ def addentry(request):
                     context_instance=RequestContext(request)) 
 
             elif not created and not w.enabled:
-                w.username = request.user
+                w.user = request.user
                 w.url = url
                 w.comment = comment
                 w.enabled = True
@@ -237,7 +237,7 @@ def limited_object_list(*args, **kwargs):
     This view is used to present our delete interface. args[0] is the request object.
     """
 
-    kwargs['queryset']=Whitelist.objects.filter(enabled=True).filter(username=args[0].user).order_by("-date_added")
+    kwargs['queryset']=Whitelist.objects.filter(enabled=True).filter(user=args[0].user).order_by("-date_added")
 
     return object_list(*args, **kwargs)
 
@@ -254,14 +254,14 @@ def delete_entries(request):
                     raise ValidationError("Bad ID passed")
 
             if settings.MEMCACHE:
-                list=Whitelist.objects.filter(pk__in=idlist).filter(username=request.user)
+                list=Whitelist.objects.filter(pk__in=idlist).filter(user=request.user)
                 for obj in list:
                     key = "|".join((obj.domain,str(obj.protocol)))
                     if settings.MEMCACHE.get(key):
                         settings.MEMCACHE.delete(key)
                     obj.delete()
             else:
-                Whitelist.objects.filter(pk__in=idlist).filter(username=request.user).delete()
+                Whitelist.objects.filter(pk__in=idlist).filter(user=request.user).delete()
 
 
             return render_to_response('whitelist/whitelist_deleted.html', 

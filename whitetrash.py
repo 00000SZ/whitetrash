@@ -73,6 +73,14 @@ class WTSquidRedirector:
         
         self.cursor=self.db_connect()
 
+
+        self.auto_uname = self.get_uid("auto")
+        self.notw_uname = self.get_uid("notwhitelisted")
+
+    def get_uid(self,username):
+        self.cursor.execute("select id from auth_user where username=%s", (username))
+        return self.cursor.fetchone()[0]
+
     def db_connect(self):
         """Connect to the database and return a DB cursor"""
 
@@ -113,23 +121,23 @@ class WTSquidRedirector:
         self.cursor.execute("select protocol,domain from whitelist_whitelist where whitelist_id=%s", (whitelist_id))
         return self.cursor.fetchone()
     
-    def add_to_whitelist(self,domain,protocol,username,url,clientaddr):
-        self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),username=%s,protocol=%s,url=%s,comment='Auto add, learning mode',enabled=1,hitcount=1,last_accessed=NOW(),client_ip=%s", (domain,username,protocol,self._convert_http(url),clientaddr))
+    def add_to_whitelist(self,domain,protocol,url,clientaddr):
+        self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),user_id=%s,protocol=%s,url=%s,comment='Auto add, learning mode',enabled=1,hitcount=1,last_accessed=NOW(),client_ip=%s", (domain,self.auto_uname,protocol,self._convert_http(url),clientaddr))
 
     def _convert_http(self,url):
         return re.sub(r"^(https?)%3A",r"\1:",url)
 
-    def add_disabled_domain(self,domain,protocol,username,url,clientaddr):
+    def add_disabled_domain(self,domain,protocol,url,clientaddr):
         """Add a domain to the table with enabled = 0.
         
         This allows us to keep track of domains that have been requested but not added 
         since they are proabably spyware/trackers/malware."""
-        self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),username=%s,protocol=%s,url=%s, comment='', enabled=0,hitcount=1,last_accessed=NOW(), client_ip=%s", (domain,username,protocol,self._convert_http(url),clientaddr))
+        self.cursor.execute("insert into whitelist_whitelist set domain=%s,date_added=NOW(),user_id=%s,protocol=%s,url=%s, comment='', enabled=0,hitcount=1,last_accessed=NOW(), client_ip=%s", (domain,self.notw_uname,protocol,self._convert_http(url),clientaddr))
 
     def enable_domain(self,whitelist_id):
         """Update db entry to set enabled=1."""
 
-        ret=self.cursor.execute("update whitelist_whitelist set username='auto',date_added=NOW(),last_accessed=NOW(),comment='Auto add, learning mode',enabled=1,hitcount=hitcount+1 where whitelist_id=%s", whitelist_id)
+        ret=self.cursor.execute("update whitelist_whitelist set user_id=%s,date_added=NOW(),last_accessed=NOW(),comment='Auto add, learning mode',enabled=1,hitcount=hitcount+1 where whitelist_id=%s", (self.auto_uname,whitelist_id))
         if ret!=1:
             raise ValueError("Error enabling domain, it must be present in the table")
 
@@ -185,7 +193,7 @@ class WTSquidRedirector:
                     if whitelist_id:
                         self.enable_domain(whitelist_id)
                     else:
-                        self.add_to_whitelist(domain,protocol,'auto',url,clientaddr)
+                        self.add_to_whitelist(domain,protocol,url,clientaddr)
 
                     result = (True,"\n")
                 else:
@@ -193,7 +201,7 @@ class WTSquidRedirector:
                     if whitelist_id:
                         self.update_hitcount(whitelist_id)
                     else:
-                        self.add_disabled_domain(domain,protocol,'notwhitelisted',url,clientaddr)
+                        self.add_disabled_domain(domain,protocol,url,clientaddr)
 
 
                     if protocol == self.PROTOCOL_CHOICES["HTTP"] and \

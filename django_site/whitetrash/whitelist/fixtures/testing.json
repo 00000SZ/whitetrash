@@ -3,7 +3,7 @@
         "pk": 1, 
         "model": "auth.user", 
         "fields": {
-            "username": "testuser", 
+            "username": "whitetrashtestuser", 
             "first_name": "", 
             "last_name": "", 
             "is_active": 1, 
@@ -22,7 +22,7 @@
         "pk": 1, 
         "model": "whitelist.whitelist", 
         "fields": {
-            "username": "testuser", 
+            "user": 1, 
             "comment": "to be deleted", 
             "domain": "testing1.com", 
             "protocol": 1, 
@@ -39,7 +39,7 @@
         "pk": 2, 
         "model": "whitelist.whitelist", 
         "fields": {
-            "username": "nottestuser", 
+            "user": 2, 
             "comment": "to be deleted", 
             "domain": "testing2.com", 
             "protocol": 1, 
@@ -56,7 +56,7 @@
         "pk": 3, 
         "model": "whitelist.whitelist", 
         "fields": {
-            "username": "testuser", 
+            "user": 1, 
             "comment": "to be deleted", 
             "domain": "testing3.com", 
             "protocol": 2, 
@@ -73,7 +73,7 @@
         "pk": 4, 
         "model": "whitelist.whitelist", 
         "fields": {
-            "username": "testuser", 
+            "user": 1, 
             "comment": "a disabled domain", 
             "domain": "testing4.com", 
             "protocol": 1, 
@@ -90,7 +90,7 @@
         "pk": 5, 
         "model": "whitelist.whitelist", 
         "fields": {
-            "username": "testuser", 
+            "user": 1, 
             "comment": "to be deleted", 
             "domain": "testwhitetrash.sf.net", 
             "protocol": 1, 

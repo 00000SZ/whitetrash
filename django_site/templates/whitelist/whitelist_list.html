@@ -51,7 +51,7 @@
             <td>{{item.hitcount}}</td>
             <td>{{item.date_added}}</td>
             <td>{{item.last_accessed}}</td>
-            <td>{{item.username}}@{{item.client_ip}}</td>
+            <td>{{item.user.username}}@{{item.client_ip}}</td>
             <td>{{item.get_protocol_display}}</td>
             {% if isenabled %}
                 <td>{{item.comment|escape}}</td>
