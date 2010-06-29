@@ -174,11 +174,12 @@ def addentry(request):
                     url="http://%s" % domain
 
             if not created and w.enabled:
-                form._errors["domain"] = ErrorList(["Domain already whitelisted."])
-                return render_to_response('whitelist/whitelist_getform.html', {
-                    'form': form, 'captcha':captcha_required},
-                    context_instance=RequestContext(request)) 
-
+            	#already in the db, so just redirect,
+            	#show the info in the db but redirect to the new url
+                return render_to_response('whitelist/whitelist_added.html', 
+                                    { 'url':url,'protocol':w.protocol,'domain':w.domain,'client_ip':w.client_ip,'comment':w.comment},
+                                    context_instance=RequestContext(request)) 
+                
             elif not created and not w.enabled:
                 w.user = request.user
                 w.url = url

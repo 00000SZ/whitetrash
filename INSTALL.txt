@@ -44,6 +44,8 @@ If you would like to enable the CAPTCHA (http://en.wikipedia.org/wiki/Captcha) t
 
     sudo easy_install http://pypi.python.org/packages/2.4/P/PyCAPTCHA/PyCAPTCHA-0.4-py2.4.egg
 
+You might want to also check that the django admin interface media files have been correctly linked with /var/www/whitetrash/media
+
 Squid Config
 ~~~~~~~~~~~~
 

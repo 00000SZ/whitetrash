@@ -174,7 +174,7 @@ class WhitetrashInstallData(install):
 
         if not os.path.exists(os.path.join(self.web_root,"whitetrash/media")):
             if os.path.exists("/usr/share/python-support/python-django/django/contrib/admin/media/"):
-                os.symlink("/usr/share/python-support/python-django/django/contrib/admin/media/", os.path.join(self.web_root,"whitetrash/media"))
+                os.symlink("/usr/share/pyshared/django/contrib/admin/media", os.path.join(self.web_root,"whitetrash/media"))
             else:
                 os.symlink(os.path.join(get_python_lib(),"django/contrib/admin/media/"), os.path.join(self.web_root,"whitetrash/media"))
 
