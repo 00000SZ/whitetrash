@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from whitetrash.whitelist.models import Whitelist
+from whitetrash.tlds import TLDHelper
 from django.test import TestCase
 from django.conf import settings
 
@@ -289,4 +290,27 @@ class WhitetrashTestDomainCheck(TestCase):
         response = self.client.get("/whitelist/checkdomain/", {"domain":"testing1.com","protocol":"'"} )
         self.assertContains(response, "Error", status_code=200)
 
+class WhitetrashTestTLDs(TestCase):
 
+    def setUp(self):
+        self.tldtester = TLDHelper("effective_tld_names.dat")
+
+    def testDomains(self):
+        tt= self.tldtester
+        self.assertTrue(tt.is_public("com"))
+        self.assertTrue(tt.is_public("net"))
+        self.assertTrue(tt.is_public("org"))
+        self.assertTrue(tt.is_public("info"))
+        self.assertTrue(tt.is_public("com.au"))
+        self.assertTrue(tt.is_public("co.uk"))
+        self.assertTrue(tt.is_public("md.us"))
+        self.assertTrue(tt.is_public("us"))
+        self.assertTrue(tt.is_public("wa.au"))
+
+        self.assertFalse(tt.is_public("linux.conf.au"))
+        self.assertFalse(tt.is_public("act.gov.au"))
+        self.assertFalse(tt.is_public("csiro.au"))
+        self.assertFalse(tt.is_public("whitetrash.com.au"))
+        self.assertFalse(tt.is_public("whitetrash.net.au"))
+        self.assertFalse(tt.is_public("whitetrash.co.uk"))
+        self.assertFalse(tt.is_public("whitetrash.com"))
