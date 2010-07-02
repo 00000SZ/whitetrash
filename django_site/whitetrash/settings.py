@@ -1,5 +1,6 @@
 # Django settings for whitetrash project.
 from configobj import ConfigObj
+from wtdomains import TLDHelper
 import logging
 import logging.config
 from re import compile
@@ -30,6 +31,8 @@ ROOT = os.path.dirname(os.path.realpath(__file__))
 def absp(path):
     return os.path.join(ROOT,path)
 
+TLD = TLDHelper(absp("effective_tld_names.dat"))
+
 #session expiry time in seconds.
 SESSION_COOKIE_AGE = 28800
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
@@ -42,7 +45,7 @@ else:
 LOGIN_REDIRECT_URL = "/whitelist/addentry/?url=&domain="
 DOMAIN = CONFIG["whitetrash_domain"]
 
-DEBUG = False 
+DEBUG = True 
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (

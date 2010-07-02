@@ -15,6 +15,7 @@ from hashlib import sha1
 import datetime
 import re
 from urllib import unquote
+from wtdomains import WTDomainUtils
     
 try:
     import blacklistcache
@@ -30,15 +31,17 @@ except ImportError:
         settings.LOG.error("PyCAPTCHA not installed.  Use: easy_install http://pypi.python.org/packages/2.4/P/PyCAPTCHA/PyCAPTCHA-0.4-py2.4.egg")
         raise
 
-def index(request):
-    """Handle a request for the domain with a blank path."""
-    return HttpResponsePermanentRedirect("http://%s/whitelist/view/list/" % settings.DOMAIN)
 
 def check_login_required(func):
     if settings.LOGIN_REQUIRED:
         return login_required(func)
     else:
         return func
+
+def index(request):
+    """Handle a request for the domain with a blank path."""
+    return HttpResponsePermanentRedirect("http://%s/whitelist/view/list/" % settings.DOMAIN)
+
 
 @check_login_required
 def show_captcha(request):
@@ -157,10 +160,7 @@ def addentry(request):
                         'form': form, 'captcha':True},
                         context_instance=RequestContext(request)) 
 
-            if re.match("^www[0-9]?\.",domain):
-                # If this is a www domain, strip off the www.
-                dom_temp=domain
-                domain=re.sub("^[a-z0-9-]+\.","",dom_temp,1)
+            #TODO Quick check to make sure this isn't already whitelisted by a wildcard rule
 
             w,created = Whitelist.objects.get_or_create(domain=domain,protocol=protocol, 
                                 defaults={'user':request.user,'url':url,

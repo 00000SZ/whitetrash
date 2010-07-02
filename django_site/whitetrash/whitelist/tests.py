@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from whitetrash.whitelist.models import Whitelist
-from whitetrash.tlds import TLDHelper
+from whitetrash.wtdomains import TLDHelper,WTDomainUtils
 from django.test import TestCase
 from django.conf import settings
 
@@ -112,12 +112,34 @@ class WhitetrashTestAddEntry(TestCase):
         self.client.login(username='whitetrashtestuser', password='passwd')
 
     def testAddHTTP(self):
-        response = self.client.post("/whitelist/addentry/", {"url":"http%3A//sldjflksjdf.com/",
-                        "domain":"test1.com",
-                        "protocol":Whitelist.get_protocol_choice("HTTP"),"comment":"testing"} )
-        self.assertContains(response, "Whitetrash: Access Granted", status_code=200)
-        self.assertContains(response, "Thank you whitetrashtestuser", status_code=200)
-        self.assertTrue(Whitelist.objects.filter(domain="test1.com",protocol=Whitelist.get_protocol_choice("HTTP")))
+        if AUTO_SUBDOMAINS_WHITELIST == "ALL":
+
+            response = self.client.post("/whitelist/addentry/", {"url":"http%3A//sldjflksjdf.com/",
+                            "domain":"www.test1.com",
+                            "protocol":Whitelist.get_protocol_choice("HTTP"),"comment":"testing"} )
+            self.assertContains(response, "Whitetrash: Access Granted", status_code=200)
+            self.assertContains(response, "Thank you whitetrashtestuser", status_code=200)
+            self.assertTrue(Whitelist.objects.filter(domain="%stest1.com" % settings.ALL_WILD_CHR,protocol=Whitelist.get_protocol_choice("HTTP")))
+
+        elif AUTO_SUBDOMAINS_WHITELIST == "ONE_LABEL":
+
+            response = self.client.post("/whitelist/addentry/", {"url":"http%3A//sldjflksjdf.com/",
+                            "domain":"www.test1.com",
+                            "protocol":Whitelist.get_protocol_choice("HTTP"),"comment":"testing"} )
+            self.assertContains(response, "Whitetrash: Access Granted", status_code=200)
+            self.assertContains(response, "Thank you whitetrashtestuser", status_code=200)
+            self.assertTrue(Whitelist.objects.filter(domain="%stest1.com" % settings.ONE_WILD_CHR,protocol=Whitelist.get_protocol_choice("HTTP")))
+
+        elif AUTO_SUBDOMAINS_WHITELIST == "NONE":
+
+            response = self.client.post("/whitelist/addentry/", {"url":"http%3A//sldjflksjdf.com/",
+                            "domain":"www.test1.com",
+                            "protocol":Whitelist.get_protocol_choice("HTTP"),"comment":"testing"} )
+            self.assertContains(response, "Whitetrash: Access Granted", status_code=200)
+            self.assertContains(response, "Thank you whitetrashtestuser", status_code=200)
+            self.assertTrue(Whitelist.objects.filter(domain="www.test1.com",protocol=Whitelist.get_protocol_choice("HTTP")))
+
+
 
     def testAddSSL(self):
         response = self.client.post("/whitelist/addentry/", {"url":"",
@@ -145,12 +167,13 @@ class WhitetrashTestAddEntry(TestCase):
             self.assertTrue(enabled,"Domain should be enabled in the memcache")
 
     def testAlreadyWhitelisted(self):
-        response = self.client.post("/whitelist/addentry/", {"url":"",
+        response = self.client.post("/whitelist/addentry/", {"url":"http://anewurl",
                         "domain":"testing1.com",
-                        "protocol":Whitelist.get_protocol_choice("HTTP"),"comment":"testing"} )
-        self.assertTemplateUsed(response, 'whitelist/whitelist_getform.html')
-        self.assertContains(response, "Domain already whitelisted", status_code=200)
-        self.assertFormError(response, 'form', 'domain', 'Domain already whitelisted.')
+                        "protocol":Whitelist.get_protocol_choice("HTTP"),"comment":"anewcomment"} )
+        self.assertTemplateUsed(response, 'whitelist/whitelist_added.html')
+        self.assertContains(response, "Whitetrash: Access Granted", status_code=200)
+        #Check we didn't set a new url or comment - the original is intact.
+        self.assertFalse(Whitelist.objects.filter(domain="testing1.com",protocol=Whitelist.get_protocol_choice("HTTP"),url="http://anewurl") | Whitelist.objects.filter(domain="testing1.com",protocol=Whitelist.get_protocol_choice("HTTP"),comment="anewcomment"))
 
     def testAddBadDomain(self):
         response = self.client.post("/whitelist/addentry/", {"url":"http%3A//sldjflksjdf.com/","domain":"test1.invalidtoolong",
@@ -291,8 +314,10 @@ class WhitetrashTestDomainCheck(TestCase):
         self.assertContains(response, "Error", status_code=200)
 
 class WhitetrashTestTLDs(TestCase):
+    fixtures = ["testing.json"]
 
     def setUp(self):
+        self.client.login(username='whitetrashtestuser', password='passwd')
         self.tldtester = TLDHelper("effective_tld_names.dat")
 
     def testDomains(self):
@@ -306,11 +331,43 @@ class WhitetrashTestTLDs(TestCase):
         self.assertTrue(tt.is_public("md.us"))
         self.assertTrue(tt.is_public("us"))
         self.assertTrue(tt.is_public("wa.au"))
+        self.assertTrue(tt.is_public("!"))
+        self.assertTrue(tt.is_public("*"))
+        self.assertTrue(tt.is_public(""))
 
         self.assertFalse(tt.is_public("linux.conf.au"))
+        self.assertFalse(tt.is_public("bit.ly"))
+        self.assertFalse(tt.is_public("del.icio.us"))
         self.assertFalse(tt.is_public("act.gov.au"))
         self.assertFalse(tt.is_public("csiro.au"))
         self.assertFalse(tt.is_public("whitetrash.com.au"))
         self.assertFalse(tt.is_public("whitetrash.net.au"))
         self.assertFalse(tt.is_public("whitetrash.co.uk"))
         self.assertFalse(tt.is_public("whitetrash.com"))
+
+    def testWhitelistPublicSuffix(self):
+
+        response = self.client.post("/whitelist/addentry/", {"url":"http%3A//sldjflksjdf.com.au/",
+                        "domain":"com.au",
+                        "protocol":Whitelist.get_protocol_choice("HTTP"),"comment":"testing"} )
+        self.assertTemplateUsed(response, 'whitelist/whitelist_getform.html')
+        self.assertContains(response, 'class="errorlist"', status_code=200)
+        self.assertFormError(response, 'form', 'domain', "Public suffixes cannot be whitelisted.")
+
+
+class WhitetrashTestDomainUtils(TestCase):
+
+    def setUp(self):
+        self.du = WTDomainUtils()
+
+    def testWildCardAll(self):
+        self.assertEquals(self.du.all_wildcard("a.a.c.us.co.uk.com.au"),"uk.com.au")
+        self.assertEquals(self.du.all_wildcard("test.com.au"),"test.com.au")
+        self.assertRaises(ValueError,self.du.all_wildcard,"com.au")
+        self.assertRaises(ValueError,self.du.all_wildcard,"com")
+
+    def testWildCardOneLabel(self):
+        self.assertEquals(self.du.one_label_wildcard("a.a.c.us.co.uk.com.au"),"a.c.us.co.uk.com.au")
+        self.assertEquals(self.du.all_wildcard("test.com.au"),"test.com.au")
+        self.assertRaises(ValueError,self.du.all_wildcard,"com.au")
+        self.assertRaises(ValueError,self.du.all_wildcard,"com")

@@ -16,6 +16,12 @@ class Whitelist(models.Model):
         (2,'SSL'),
     )
 
+    WILDCARD_CHOICES = (
+        (1,'ALL'),
+        (2,'ONE'),
+        (3,'NONE'),
+    )
+
     def get_protocol_choice(cls,this_string):
         """Return the database short version of the protocol string."""
 
@@ -25,10 +31,21 @@ class Whitelist(models.Model):
         settings.LOG.debug("No such protocol: %s" % this_string)
     	raise ValueError("No such protocol")
 
+    def get_wildcard_choice(cls,this_string):
+        """Return the database short version of the wildcard string."""
+
+        for (num,proto_string) in cls.WILDCARD_CHOICES:
+    	    if proto_string == this_string:
+    		    return num
+        settings.LOG.debug("No such wildcard: %s" % this_string)
+    	raise ValueError("No such wildcard")
+
     get_protocol_choice = classmethod(get_protocol_choice)
+    get_wildcard_choice = classmethod(get_wildcard_choice)
 
     whitelist_id=models.AutoField("ID",primary_key=True)
     domain=models.CharField("Domain Name",max_length=70,blank=False)
+    wildcard=models.PositiveSmallIntegerField(db_index=True,choices=WILDCARD_CHOICES,blank=False)
     date_added=models.DateTimeField(db_index=True,auto_now_add=True,
            help_text="""If the domain is whitelisted, this timestamp is the time it was added
            to the whitelist.  If the domain is not whitelisted, it is the time the domain was 
@@ -75,6 +92,9 @@ class WhiteListForm(ModelForm):
         data = self.cleaned_data['domain']
         try:
             settings.DOMAIN_REGEX.match(data).group()
+            if settings.TLD.is_public:
+                settings.LOG.debug("Attempt to whitelist public suffix: %s" % data)
+                raise ValidationError("Public suffixes cannot be whitelisted.")
             return data
         except AttributeError:
             settings.LOG.debug("Bad domain: %s" % data)
