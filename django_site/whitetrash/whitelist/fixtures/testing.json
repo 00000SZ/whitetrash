@@ -106,6 +106,42 @@
             "hitcount": 0, 
             "date_added": "2009-02-05 22:04:50"
         }
+    },
+
+   {
+        "pk": 6, 
+        "model": "whitelist.whitelist", 
+        "fields": {
+            "user": 1, 
+            "comment": "to be deleted", 
+            "domain": "wildcardonelabel.com.au", 
+            "wildcard": 2,
+            "protocol": 1, 
+            "url": "http://wildcardonelabel.com.au", 
+            "last_accessed": "2009-02-05 22:04:50", 
+            "enabled": 1, 
+            "client_ip": "222.221.1.2", 
+            "hitcount": 0, 
+            "date_added": "2009-02-05 22:04:50"
+        }
+    },
+   {
+        "pk": 7, 
+        "model": "whitelist.whitelist", 
+        "fields": {
+            "user": 1, 
+            "comment": "to be deleted", 
+            "domain": "wildcardall.com.au", 
+            "wildcard": 1,
+            "protocol": 1, 
+            "url": "http://wildcardall.com.au", 
+            "last_accessed": "2009-02-05 22:04:50", 
+            "enabled": 1, 
+            "client_ip": "222.221.1.2", 
+            "hitcount": 0, 
+            "date_added": "2009-02-05 22:04:50"
+        }
     }
+
 
 ]

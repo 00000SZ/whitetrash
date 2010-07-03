@@ -160,7 +160,15 @@ def addentry(request):
                         'form': form, 'captcha':True},
                         context_instance=RequestContext(request)) 
 
-            #TODO Quick check to make sure this isn't already whitelisted by a wildcard rule
+            du = WTDomainUtils()
+            #settings.LOG.debug("Checking dom:%s, proto:%s to see if it has been whitelisted by a wildcard" % (domain,protocol))
+            qs = du.is_whitelisted(domain,protocol)
+            if qs:
+            	i=qs.get()
+                return render_to_response('whitelist/whitelist_added.html', 
+                                { 'url':url,'protocol':i.protocol,'domain':i.domain,'client_ip':i.client_ip,'comment':i.comment},
+                                context_instance=RequestContext(request)) 
+
 
             w,created = Whitelist.objects.get_or_create(domain=domain,protocol=protocol, 
                                 defaults={'user':request.user,'url':url,
@@ -176,6 +184,7 @@ def addentry(request):
             if not created and w.enabled:
             	#already in the db, so just redirect,
             	#show the info in the db but redirect to the new url
+            	#This often happens if people open tabs with links to same domain.
                 return render_to_response('whitelist/whitelist_added.html', 
                                     { 'url':url,'protocol':w.protocol,'domain':w.domain,'client_ip':w.client_ip,'comment':w.comment},
                                     context_instance=RequestContext(request)) 

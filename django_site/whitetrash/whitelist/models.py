@@ -92,7 +92,7 @@ class WhiteListForm(ModelForm):
         data = self.cleaned_data['domain']
         try:
             settings.DOMAIN_REGEX.match(data).group()
-            if settings.TLD.is_public:
+            if settings.TLD.is_public(data):
                 settings.LOG.debug("Attempt to whitelist public suffix: %s" % data)
                 raise ValidationError("Public suffixes cannot be whitelisted.")
             return data

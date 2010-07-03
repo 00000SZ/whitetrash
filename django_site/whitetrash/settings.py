@@ -1,6 +1,6 @@
 # Django settings for whitetrash project.
 from configobj import ConfigObj
-from wtdomains import TLDHelper
+from tlds import TLDHelper
 import logging
 import logging.config
 from re import compile
