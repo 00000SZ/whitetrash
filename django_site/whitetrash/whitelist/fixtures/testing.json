@@ -141,6 +141,74 @@
             "hitcount": 0, 
             "date_added": "2009-02-05 22:04:50"
         }
+    },
+   {
+        "pk": 8, 
+        "model": "whitelist.whitelist", 
+        "fields": {
+            "user": 1, 
+            "comment": "to be deleted", 
+            "domain": "testwild.whitetrash.sf.net.wt", 
+            "wildcard": 2,
+            "protocol": 1, 
+            "url": "http://testwild.whitetrash.sf.net.wt", 
+            "last_accessed": "2009-02-05 22:04:50", 
+            "enabled": 1, 
+            "client_ip": "222.221.1.2", 
+            "hitcount": 0, 
+            "date_added": "2009-02-05 22:04:50"
+        }
+    },
+   {
+        "pk": 9, 
+        "model": "whitelist.whitelist", 
+        "fields": {
+            "user": 1, 
+            "comment": "to be deleted", 
+            "domain": "testwhitetrash.sf.net.wt", 
+            "wildcard": 2,
+            "protocol": 1, 
+            "url": "http://testwhitetrash.sf.net.wt", 
+            "last_accessed": "2009-02-05 22:04:50", 
+            "enabled": 0, 
+            "client_ip": "222.221.1.2", 
+            "hitcount": 0, 
+            "date_added": "2009-02-05 22:04:50"
+        }
+    },
+   {
+        "pk": 10, 
+        "model": "whitelist.whitelist", 
+        "fields": {
+            "user": 1, 
+            "comment": "to be deleted", 
+            "domain": "sub.testwhitetrash.sf.net.wt", 
+            "wildcard": 2,
+            "protocol": 1, 
+            "url": "http://sub.testwhitetrash.sf.net.wt", 
+            "last_accessed": "2009-02-05 22:04:50", 
+            "enabled": 1, 
+            "client_ip": "222.221.1.2", 
+            "hitcount": 0, 
+            "date_added": "2009-02-05 22:04:50"
+        }
+    },
+   {
+        "pk": 11, 
+        "model": "whitelist.whitelist", 
+        "fields": {
+            "user": 1, 
+            "comment": "to be deleted", 
+            "domain": "disabled.testwhitetrash.sf.net.wt", 
+            "wildcard": 2,
+            "protocol": 1, 
+            "url": "http://disabled.testwhitetrash.sf.net.wt", 
+            "last_accessed": "2009-02-05 22:04:50", 
+            "enabled": 0, 
+            "client_ip": "222.221.1.2", 
+            "hitcount": 0, 
+            "date_added": "2009-02-05 22:04:50"
+        }
     }
 
 

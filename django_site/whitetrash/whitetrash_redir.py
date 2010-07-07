@@ -36,15 +36,19 @@ try:
 except ImportError:
     pass
 
+#TODO replace all db cursor stuff
+#TODO figure out how to change setup.py and where to put this so imports still work...
+from django.core.management import setup_environ
+import settings
+setup_environ(settings)
+from whitelist.models import Whitelist,WhiteListForm,WhiteListCheckDomainForm
+
 class WTSquidRedirector:
     """Whitetrash squid redirector."""
 
     def __init__(self,config):
         self.config=config
-        logging.config.fileConfig("/etc/whitetrash.conf")
-        self.log = logging.getLogger("whitetrashRedir")
 
-        self.PROTOCOL_CHOICES={'HTTP':1,'SSL':2}
         if config["ssl_server_enabled"].upper()=="TRUE":
             #If we are using ssl tell the client to go get the website with SSL
             #If I don't do this, it will do a GET, then get a redirect from apache
@@ -204,7 +208,7 @@ class WTSquidRedirector:
                         self.add_disabled_domain(domain,protocol,url,clientaddr)
 
 
-                    if protocol == self.PROTOCOL_CHOICES["HTTP"] and \
+                    if protocol == Whitelist.get_protocol_choice('HTTP') and \
                         self.nonhtml_suffix_re.match(orig_url):
                         #only makes sense to return the form if the browser is expecting html
                         #This is something other than html so just give some really small dummy content.
@@ -215,12 +219,12 @@ class WTSquidRedirector:
                             # safebrowsing blacklist
                             sbresult = self.blacklistcache.check_url(orig_url)
                             if sbresult:
-                                self.log.critical("****SAFEBROWSING BLACKLIST HIT**** on %s blacklist from %s for url: %s using protocol:%s" 
+                                settings.LOG.critical("****SAFEBROWSING BLACKLIST HIT**** on %s blacklist from %s for url: %s using protocol:%s" 
                                                     % (sbresult,clientaddr,orig_url,protocol))
                                 self.fail_url = self.get_sb_fail_url(sbresult,domain)
                                 result = (False,"%s\n" % self.fail_url)
 
-                        if not self.fail_url.startswith("302") and method != "GET" and protocol == self.PROTOCOL_CHOICES["HTTP"]:
+                        if not self.fail_url.startswith("302") and method != "GET" and protocol == Whitelist.get_protocol_choice("HTTP"):
                             #If this isn't a get ie. usually a POST, posting or anything else to our wt server doesn't make sense
                             #send a 302 moved temporarily back to the client so they request the web form.
                             self.fail_url = "302:%s" % self.fail_url
@@ -229,7 +233,7 @@ class WTSquidRedirector:
             return result
 
         except Exception,e:
-            self.log.error("Error checking whitelist with %s,%s,%s,%s.  Error:%s" % (domain,protocol,method,url,e)) 
+            settings.LOG.error("Error checking whitelist with %s,%s,%s,%s.  Error:%s" % (domain,protocol,method,url,e)) 
             raise
 
 
@@ -254,8 +258,8 @@ class WTSquidRedirector:
             self.method = spliturl[3]
 
             if self.method=="CONNECT":
-                self.log.debug("Protocol=SSL")
-                self.protocol=self.PROTOCOL_CHOICES["SSL"]
+                settings.LOG.debug("Protocol=SSL")
+                self.protocol=Whitelist.get_protocol_choice("SSL")
                 domain = self.domain_sanitise.match(spliturl[0].split(":")[0]).group()
 
                 #Get just the client IP
@@ -272,36 +276,36 @@ class WTSquidRedirector:
                 if not self.method.isalpha():
                     raise ValueError("Bad HTTP request method is not alphabetic")
 
-                self.log.debug("Protocol=HTTP")
-                self.protocol=self.PROTOCOL_CHOICES["HTTP"]
+                settings.LOG.debug("Protocol=HTTP")
+                self.protocol=Whitelist.get_protocol_choice("HTTP")
                 self.fail_url=self.http_fail_url
 
                 #The full url as passed by squid
                 #urlencode it to make it safe to hand around in forms
                 self.newurl_safe=urllib.quote(self.original_url)
-                self.log.debug("sanitised_url: %s" % self.newurl_safe)
+                settings.LOG.debug("sanitised_url: %s" % self.newurl_safe)
 
                 #Get just the client IP
                 self.clientaddr=spliturl[1].split("/")[0]
                 #use inet_aton to validate the IP
                 inet_aton(self.clientaddr)
-                self.log.debug("client address: %s" % self.clientaddr)
+                settings.LOG.debug("client address: %s" % self.clientaddr)
 
                 #strip out the domain.
                 if spliturl[0].lower().startswith("http://"):
                     url_domain_only_unsafe=self.domain_regex.match(spliturl[0].lower().replace("http://","",1)).group()
-                    self.log.debug("unsafe: %s" % url_domain_only_unsafe)
+                    settings.LOG.debug("unsafe: %s" % url_domain_only_unsafe)
                 else:
                     raise ValueError("Bad domain doesn't start with http")
         
                 #sanitise it
                 self.url_domain_only=self.domain_sanitise.match(url_domain_only_unsafe).group()
-                self.log.debug("domainonly: %s" % self.url_domain_only)
+                settings.LOG.debug("domainonly: %s" % self.url_domain_only)
                 self.fail_url+="url=%s&domain=%s" % (self.newurl_safe,self.url_domain_only)
                 return True
 
         except Exception,e:
-            self.log.error("Error parsing string '%s' from squid.  Error:%s" % (squidurl,e)) 
+            settings.LOG.error("Error parsing string '%s' from squid.  Error:%s" % (squidurl,e)) 
             self.fail_url=self.get_error_url("Bad request logged.  See your sysadmin for assistance.")
             return False
 
@@ -309,7 +313,7 @@ class WTSquidRedirector:
         (res,url)=self.check_whitelist_db(self.url_domain_only,
                                 self.protocol,self.method,self.newurl_safe,
                                 self.original_url,self.clientaddr)
-        self.log.debug("Dom: %s, proto:%s, Result: %s, Output url: %s" % 
+        settings.LOG.debug("Dom: %s, proto:%s, Result: %s, Output url: %s" % 
                 (self.url_domain_only,self.protocol,res,url))
         sys.stdout.write(url)
 
@@ -320,7 +324,7 @@ class WTSquidRedirector:
         while 1:
 
             squidurl=sys.stdin.readline()
-            self.log.debug("String received from squid: %s" % squidurl)
+            settings.LOG.debug("String received from squid: %s" % squidurl)
             if self.parseSquidInput(squidurl):
 
                 try:
@@ -332,7 +336,7 @@ class WTSquidRedirector:
                         self._do_check()                    
                     except Exception,e:
                         #Something weird/bad has happened, tell the user.
-                        self.log.error("Error when checking domain in whitelist. Exception: %s" %e)
+                        settings.LOG.error("Error when checking domain in whitelist. Exception: %s" %e)
                         sys.stdout.write(self.get_error_url("Error checking domain"))
             else:
                 sys.stdout.write(self.fail_url)
@@ -371,15 +375,15 @@ class WTSquidRedirectorCached(WTSquidRedirector):
         cache_value_wild=self.cache.get(key_wild)
 
         if cache_value and not wild:
-            self.log.debug("Using cache value %s: %s" % (key,cache_value))
+            settings.LOG.debug("Using cache value %s: %s" % (key,cache_value))
             return cache_value
         elif cache_value_wild:
-            self.log.debug("Using wild cache value %s: %s" % (key,cache_value_wild))
+            settings.LOG.debug("Using wild cache value %s: %s" % (key,cache_value_wild))
             return cache_value_wild
         else:
             result=WTSquidRedirector.get_whitelist_id(self,proto,domain,domain_wild,wild)
             if result:
-                self.log.debug("Got result from db %s: %s" % (key,str(result[0])))
+                settings.LOG.debug("Got result from db %s: %s" % (key,str(result[0])))
                 if wild:
                     self.cache.set(key_wild,result)
                 else:

@@ -25,6 +25,8 @@ SAFEBROWSING = conf("safebrowsing")
 
 DOMAIN_REGEX=compile(CONFIG["domain_regex"])
 
+AUTO_WILDCARD = CONFIG["AUTO_WILDCARD"]
+
 #Fix weird need to specify absolute paths
 import os.path
 ROOT = os.path.dirname(os.path.realpath(__file__))

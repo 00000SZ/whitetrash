@@ -1,0 +1,28 @@
+{% extends "whitelist/base.html" %}
+
+{% block title %}Whitetrash: Domain Already Whitelisted{% endblock %}
+{% block meta %}<meta http-equiv="refresh" CONTENT="1;URL={{ url }}" />{% endblock %}
+
+{% block content %}
+
+        <div id="requestDetails">
+            <div id="requestDetailsText">
+                <p><b>Timestamp: </b>{{ date_added }}</p>
+                <p><b>Domain: </b>{{ domain }}</p>
+                <p><b>Client Username: </b>{{ prev_user }}</p>
+                {% if client_ip %}
+                <p><b>Client IP: </b>{{ client_ip }}</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div id="centreContent">
+            <h1>Thank you {{ user.username }}</h1>
+            <p>
+            The {{ domain }} domain already exists in the whitetrash database.</p>
+            <p>Your browser should automatically take you to the website. If it doesn't you can use this link:</p>
+            <p><a href="{{ url }}">{{ url|escape }}</a></p>
+        </div>
+
+{% endblock %}
+

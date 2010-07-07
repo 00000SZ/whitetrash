@@ -127,12 +127,9 @@ def addentry(request):
                                                     % (src_ip,url,domain,protocol))
                     return sbcheck
 
-            captcha_required = False
-
             if ((settings.CAPTCHA_HTTP and protocol == Whitelist.get_protocol_choice('HTTP')) or
                 (settings.CAPTCHA_SSL and protocol == Whitelist.get_protocol_choice('SSL'))):
 
-                captcha_required = True
                 captcha_passed = False 
 
                 settings.LOG.debug("CAPTCHA response: %s" % form.cleaned_data['captcha_response'])
@@ -165,14 +162,15 @@ def addentry(request):
             qs = du.is_whitelisted(domain,protocol)
             if qs:
             	i=qs.get()
-                return render_to_response('whitelist/whitelist_added.html', 
-                                { 'url':url,'protocol':i.protocol,'domain':i.domain,'client_ip':i.client_ip,'comment':i.comment},
-                                context_instance=RequestContext(request)) 
-
+                return render_to_response('whitelist/whitelist_already_listed.html', 
+                                    { 'url':url,'domain':i.domain,'client_ip':i.client_ip,
+                                    'prev_user':i.user, 'date_added': i.date_added },
+                                    context_instance=RequestContext(request)) 
 
             w,created = Whitelist.objects.get_or_create(domain=domain,protocol=protocol, 
                                 defaults={'user':request.user,'url':url,
-                                'comment':comment,'enabled':True,'client_ip':src_ip})
+                                'comment':comment,'enabled':True,'client_ip':src_ip,
+                                'wildcard':Whitelist.get_wildcard_choice(settings.AUTO_WILDCARD)})
 
             if not url:
                 #Handle SSL by refreshing to the domain added
@@ -185,8 +183,9 @@ def addentry(request):
             	#already in the db, so just redirect,
             	#show the info in the db but redirect to the new url
             	#This often happens if people open tabs with links to same domain.
-                return render_to_response('whitelist/whitelist_added.html', 
-                                    { 'url':url,'protocol':w.protocol,'domain':w.domain,'client_ip':w.client_ip,'comment':w.comment},
+                return render_to_response('whitelist/whitelist_already_listed.html', 
+                                    { 'url':url,'domain':w.domain,'client_ip':w.client_ip,
+                                    'prev_user':w.user, 'date_added': w.date_added },
                                     context_instance=RequestContext(request)) 
                 
             elif not created and not w.enabled:
@@ -195,8 +194,8 @@ def addentry(request):
                 w.comment = comment
                 w.enabled = True
                 w.client_ip = src_ip
+                w.wildcard = Whitelist.get_wildcard_choice(settings.AUTO_WILDCARD)
                 w.save()
-
 
             return render_to_response('whitelist/whitelist_added.html', 
                                     { 'url':url,'protocol':protocol,'domain':domain,'client_ip':src_ip,'comment':comment},
