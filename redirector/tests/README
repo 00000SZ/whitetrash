@@ -1,0 +1,20 @@
+Running the tests
+=================
+
+These tests make use of the nose testing framwork (http://somethingaboutorange.com/mrl/projects/nose/0.11.0/index.html)
+
+You can run all tests from this or the parent directory by simply running: nosetests
+You can run all tests except memcache tests by simply running: nosetests -a '!memcache'
+You can run all tests except database tests by simply running: nosetests -a '!database'
+The above combinations can be combined. For example: nosetests -a '!memcache' '!database'
+
+These tests assume you have the whitetrash and safebrowsing on the PYTHONPATH.
+
+Writing tests
+=============
+For writing tests refer to the nose documentation (http://somethingaboutorange.com/mrl/projects/nose/0.11.0/index.html).
+Nose tests can be written as python unittests (as has been done here) or they can be written more succinctly by not inheriting TestCase but instead just using a name matching test_*.
+
+If your writing a test that will fail without a database connection, please decorate the test with '@attr("database")' (you may need to import attr from nose.plugins.attrib). Similarly for memcache dependent tests decorate with '@attr("memcache").
+
+If you don't override the logging config, nose nicely captures the logging output and displays the appropiate logs for any failed tests. Enjoy!
