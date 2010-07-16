@@ -1,5 +1,5 @@
 from django.conf import settings
-from whitetrash.whitelist.models import Whitelist
+from django_site.whitetrash.whitelist.models import Whitelist
 from django.db.models import Q,F
 from urlparse import urlparse
 

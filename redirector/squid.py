@@ -32,6 +32,7 @@ from collections import namedtuple
 from urlparse import urlparse
 
 from common import RedirectMap
+from django_site.whitetrash import settings
 from django_site.whitetrash.wtdomains import WTDomainUtils
 
 try:
@@ -174,7 +175,7 @@ class RedirectHandler(object):
         """
         Is this request on the Google safebrowsing blacklists?
         """
-        if !self.safebrowsing:
+        if not self.safebrowsing:
            return False
 
         return self.blc.check_url(self.request.url)
