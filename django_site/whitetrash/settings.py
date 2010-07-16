@@ -4,13 +4,22 @@ from tlds import TLDHelper
 import logging
 import logging.config
 from re import compile
+from sys import exit
+import os
 
-CONFIG = ConfigObj("/etc/whitetrash.conf")["DEFAULT"]
+
+CONFIG_FILENAME = "whitetrash.conf"
+if not os.path.exists(CONFIG_FILENAME):
+    CONFIG_FILENAME = "/etc/whitetrash.conf"
+if not os.path.exists(CONFIG_FILENAME):
+    print "Can't find config file in current directory or /etc"
+    exit(1)
+CONFIG = ConfigObj("whitetrash.conf")["DEFAULT"]
 
 def conf(config_item):
     return CONFIG[config_item].upper() == "TRUE"
 
-logging.config.fileConfig("/etc/whitetrash.conf")
+logging.config.fileConfig(CONFIG_FILENAME)
 LOG = logging.getLogger("whitetrashDjango")
 
 LOGIN_REQUIRED = conf("LOGIN_REQUIRED")

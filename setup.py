@@ -142,8 +142,11 @@ class WhitetrashInstallData(install):
             print """Installing database failed (%s). You may need to create database and users manually.""" % e
 
     def copyApacheConfigs(self):
+        # Whitetrash now looks in the cwd for whitetrash.conf then in /etc/whitetrash.conf
+        # For apache this behaviour should force whitetrash to use /etc/whitetrash.conf because
+        # apache's cwd should be /usr/sbin/apache2 (on ubuntu at least) and there won't be a whitetrash.conf
+        # Would be good to confirm this behaviour
         if os.path.exists(os.path.join(self.apache_configdir,"sites-available")):
-    
             #Replace the placeholder with our actual code location
             apache_wt_conf=open("example_configs/apache2/whitetrash","r").read()
             open("example_configs/apache2/whitetrash","w").write(apache_wt_conf.replace("directory/where/whitetrash/is",os.path.abspath("django_site")))
@@ -160,9 +163,7 @@ class WhitetrashInstallData(install):
             copy_file(os.path.join(self.apache_configdir,"sites-available/whitetrash"), os.path.join(self.apache_configdir,"sites-enabled/whitetrash"),link="sym")
 
             mkpath(os.path.join(self.apache_configdir,"ssl")) 
-            
         else:
-
             print """Apache2 not installed, couldn't find %s""" % os.path.join(self.apache_configdir,"sites-available")
             sys.exit(1)
 
