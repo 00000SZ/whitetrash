@@ -63,7 +63,7 @@ class RedirectHandler(object):
         self.input_stream = input
         self.output_stream = output
         self.redirect = None
-        self.du = WTDomainUtils()
+        self.dom_util = WTDomainUtils() 
 
     def __enter__(self):
         """
@@ -128,33 +128,35 @@ class RedirectHandler(object):
     def evaluate_request(self):
         """
         Applies redirection rules to a squid request
+
+        domain is evaluated in this order:
+
+        1. Blacklisted
+        2. Whitelisted
+        3. Non-html
+        4. Whitetrash form for adding
         """
-        if self.non_html_regex.match(self.request.url):
-            self.redirect = self.redirect_map.empty_content_url()
-            log.debug("Preparing to send user to %s" % self.redirect)
-            return
-
-        if not self.is_whitelisted():
-            self.redirect = self.redirect_map.add_site_url()
-            log.debug("Preparing to send user to %s" % self.redirect)
-            return
-
         if self.is_blacklisted():
             self.redirect = self.redirect_map.blocked_malicious_url()
             log.debug("Preparing to send user to %s" % self.redirect)
             return
 
-    def is_whitelisted(self):
-        """
-        Set's self.redirect_url based on whether the request is whitelisted or
-        not.
-        """
-        return self.du.is_whitelisted(self.domain,self.protocol)
+        if self.dom_util.is_whitelisted(self.domain,self.protocol):
+        	self.dom_util.update_hitcount()
+        	return
+
+        if self.non_html_regex.match(self.request.url):
+            self.redirect = self.redirect_map.empty_content_url()
+            log.debug("Preparing to send user to %s" % self.redirect)
+            return
+
+        self.redirect = self.redirect_map.add_site_url()
+        log.debug("Preparing to send user to %s" % self.redirect)
+        return
 
     def is_blacklisted(self):
         """
-        Set's self.redirect_url based on whether the request is on the Google
-        safebrowsing blacklists or not.
+        Is this request on the Google safebrowsing blacklists?
         """
         return False
 

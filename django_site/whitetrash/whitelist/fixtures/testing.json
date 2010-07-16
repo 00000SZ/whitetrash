@@ -209,7 +209,40 @@
             "hitcount": 0, 
             "date_added": "2009-02-05 22:04:50"
         }
+    },
+   {
+        "pk": 12, 
+        "model": "whitelist.whitelist", 
+        "fields": {
+            "user": 1, 
+            "comment": "to be deleted", 
+            "domain": "label.twomatchingrules.com", 
+            "wildcard": 3,
+            "protocol": 1, 
+            "url": "http://label.twomatchingrules.com", 
+            "last_accessed": "2009-02-05 22:04:50", 
+            "enabled": 0, 
+            "client_ip": "222.221.1.2", 
+            "hitcount": 30, 
+            "date_added": "2009-02-05 22:04:50"
+        }
+    },
+   {
+        "pk": 13, 
+        "model": "whitelist.whitelist", 
+        "fields": {
+            "user": 1, 
+            "comment": "to be deleted", 
+            "domain": "twomatchingrules.com", 
+            "wildcard": 2,
+            "protocol": 1, 
+            "url": "http://twomatchingrules.com", 
+            "last_accessed": "2009-02-05 22:04:50", 
+            "enabled": 0, 
+            "client_ip": "222.221.1.2", 
+            "hitcount": 0, 
+            "date_added": "2009-02-05 22:04:50"
+        }
     }
-
 
 ]

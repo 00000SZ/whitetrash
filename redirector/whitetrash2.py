@@ -33,7 +33,6 @@ from configobj import ConfigObj
 
 from redirector.common import RedirectMap
 from redirector.squid import RedirectHandler
-from redirector.whitelist import Whitelist
 
 config_file = "/etc/whitetrash.conf"
 
@@ -84,14 +83,6 @@ def configure():
     # Used for validating requests
     regex = get_option("nonhtml_siffix_re", default=".*(jpg|gif|png|css|js|ico|swf)$")
     RedirectHandler.non_html_regex = re.compile(regex)
-
-    # Database credentials for the whitelist
-    Whitelist.db_user = get_option("DATABASE_WHITETRASH_USER", "whitetrash")
-    Whitelist.db_passwd = get_option("DATABASE_WHITETRASH_PASSWORD", "")
-    Whitelist.db_name = get_option("DATABASE_NAME", "whitetrash")
-    Whitelist.db_port = get_option("DATABASE_PORT", "3306")
-    Whitelist.db_socket = get_option("DATABASE_UNIX_SOCKET", "/var/run/mysqld/mysqld.sock")
-
 
 def get_option(option, default):
     """

@@ -5,6 +5,7 @@ from whitetrash.tlds import TLDHelper
 from whitetrash.wtdomains import WTDomainUtils
 from django.test import TestCase
 from django.conf import settings
+from django.db.models import Q
 
 import sys
 from os.path import join
@@ -420,6 +421,21 @@ class WhitetrashTestWTDomains(TestCase):
         self.assertTrue(self.du.is_whitelisted("lots.of.labels.wildcardall.com.au",1)) 
         self.assertTrue(self.du.is_whitelisted("wildcardall.com.au",1)) 
         self.assertTrue(self.du.is_whitelisted("one.wildcardall.com.au",1)) 
+
+    def testUpdateHitcount(self):
+
+        self.du.update_hitcount("onelabel.wildcardonelabel.com.au",1) 
+        self.assertEqual(Whitelist.objects.filter(domain="wildcardonelabel.com.au",protocol=1)[0].hitcount,1)
+
+        #check we only incremented "twomatchingrules.com"
+        self.du.update_hitcount("twomatchingrules.com",1) 
+        self.assertEqual(Whitelist.objects.filter(domain="twomatchingrules.com",protocol=1)[0].hitcount,1)
+        self.assertEqual(Whitelist.objects.filter(domain="label.twomatchingrules.com",protocol=1)[0].hitcount,30)
+
+        #check we only incremented "twomatchingrules.com" *and* "label.twomatchingrules.com"
+        self.du.update_hitcount("label.twomatchingrules.com",1) 
+        self.assertEqual(Whitelist.objects.filter(domain="twomatchingrules.com",protocol=1)[0].hitcount,2)
+        self.assertEqual(Whitelist.objects.filter(domain="label.twomatchingrules.com",protocol=1)[0].hitcount,31)
 
 
 class WhitetrashTestCertServer(TestCase):
