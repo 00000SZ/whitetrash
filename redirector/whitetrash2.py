@@ -84,6 +84,13 @@ def configure():
     regex = get_option("nonhtml_siffix_re", default=".*(jpg|gif|png|css|js|ico|swf)$")
     RedirectHandler.non_html_regex = re.compile(regex)
 
+    # So we know whether to check the blacklist 
+    RedirectHandler.safebrowsing = get_option("safebrowsing", default=False)
+
+    # Should we automatically add all domains we see 
+    RedirectHandler.auto_add = get_option("auto_add_all_domains", default=False)
+
+
 def get_option(option, default):
     """
     Returns a value from the config, interpolating the value's type from the default supplied

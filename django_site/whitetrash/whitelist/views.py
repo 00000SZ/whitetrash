@@ -16,6 +16,7 @@ import datetime
 import re
 from urllib import unquote
 from wtdomains import WTDomainUtils
+from wtcaptcha import get_captcha_image,check_captcha 
     
 try:
     import blacklistcache
@@ -23,14 +24,6 @@ except ImportError:
     if settings.SAFEBROWSING:
         settings.LOG.error("Couldn't import blacklistcache, not using safebrowsing")
         raise
-
-try:
-    from Captcha.Visual.Tests import PseudoGimpy
-except ImportError:
-    if (settings.CAPTCHA_HTTP) or (settings.CAPTCHA_SSL):
-        settings.LOG.error("PyCAPTCHA not installed.  Use: easy_install http://pypi.python.org/packages/2.4/P/PyCAPTCHA/PyCAPTCHA-0.4-py2.4.egg")
-        raise
-
 
 def check_login_required(func):
     if settings.LOGIN_REQUIRED:
@@ -45,35 +38,9 @@ def index(request):
 
 @check_login_required
 def show_captcha(request):
-    """Return a captcha image.
-    Can't think of a good way to tie IDs of generated images to the form input field
-    Instead timestamp each and have a timeout checked on submission.  
-    User could potentially have a large array of captcha solutions per session.
-    So will also cull the list here when it gets big.
-    """
+    """Return a captcha image."""
 
-    response = HttpResponse()
-    response['Content-type'] = "image/png"
-    g = PseudoGimpy()
-    i = g.render()
-    i.save(response, "png")
-    safe_solutions = [sha1(s).hexdigest() for s in g.solutions]
-    try:
-        if len(request.session['captcha_solns']) > 100:
-            for (sol,createtime) in request.session['captcha_solns']:
-                if ((datetime.datetime.now()-createtime) > 
-                    datetime.timedelta(seconds=settings.CAPTCHA_WINDOW_SEC)):
-                    request.session['captcha_solns'].remove((sol,createtime))
-
-        settings.LOG.debug("Adding solution:%s to session, number of solutions stored: %s" % 
-                                (safe_solutions,len(request.session['captcha_solns'])))
-        request.session['captcha_solns'].append((safe_solutions,datetime.datetime.now()))
-        #Need explicit save here because we don't add a new element and
-        #SESSION_SAVE_EVERY_REQUEST is false
-        request.session.save()
-    except KeyError:
-        request.session['captcha_solns'] = [(safe_solutions,datetime.datetime.now())]
-    return response
+    return get_captcha_image(request)
 
 def check_safebrowse(domain,url):
     """Check the url and domain in the google safebrowsing blacklist.
@@ -88,6 +55,8 @@ def check_safebrowse(domain,url):
     
     @return: If it is bad, return redirect to appropriate warning page, if not bad return none"""
 
+
+    #TODO: why does this need to be a redirect, why not just render to a template?
     blc = blacklistcache.BlacklistCache(settings.CONFIG)
     settings.LOG.debug("Got %s,%s" % (domain,url))
     for check_string in [url,domain]:
@@ -100,7 +69,8 @@ def check_safebrowse(domain,url):
 
                 return HttpResponseRedirect("%s%s/whitelist/attackdomain=%s" % (settings.SERV_PREFIX,settings.DOMAIN,whitetrash_filters.domain(domain)))
     return None
-    
+
+
 @check_login_required
 def addentry(request):
     """Add an entry to the whitelist.
@@ -123,83 +93,18 @@ def addentry(request):
             if settings.SAFEBROWSING:
                 sbcheck=check_safebrowse(domain,url)
                 if sbcheck:
-                    settings.LOG.critical("****SAFEBROWSING BLACKLIST WHITELISTING ATTEMPT**** from IP:%s for url: %s, domain:%s using protocol:%s" 
-                                                    % (src_ip,url,domain,protocol))
+                    settings.LOG.critical("****SAFEBROWSING BLACKLIST WHITELISTING ATTEMPT**** \
+                                        from IP:%s for url: %s, domain:%s using protocol:%s"
+                                        % (src_ip,url,domain,protocol))
                     return sbcheck
 
-            if ((settings.CAPTCHA_HTTP and protocol == Whitelist.get_protocol_choice('HTTP')) or
-                (settings.CAPTCHA_SSL and protocol == Whitelist.get_protocol_choice('SSL'))):
-
-                captcha_passed = False 
-
-                settings.LOG.debug("CAPTCHA response: %s" % form.cleaned_data['captcha_response'])
-                for (sol,createtime) in request.session['captcha_solns']:
-                    for thissol in sol:
-                        if sha1(form.cleaned_data['captcha_response']).hexdigest() == thissol:
-
-                            if ((datetime.datetime.now()-createtime) < 
-                                datetime.timedelta(seconds=settings.CAPTCHA_WINDOW_SEC)):
-                                request.session['captcha_solns'].remove((sol,createtime))
-                                request.session.save()
-                                captcha_passed = True
-                            else:
-                                settings.LOG.debug("CAPTCHA timediff: %s, window: %s " % 
-                                            (datetime.datetime.now()-createtime,settings.CAPTCHA_WINDOW_SEC))
-                                form._errors["captcha_response"] = ErrorList(["Captcha time window expired."])
-                                return render_to_response('whitelist/whitelist_getform.html', {
-                                    'form': form, 'captcha':True},
-                                    context_instance=RequestContext(request)) 
-                
-                if not captcha_passed:
-                    settings.LOG.debug("CAPTCHA response '%s' incorrect" % form.cleaned_data['captcha_response'])
-                    form._errors["captcha_response"] = ErrorList(["Captcha test failed.  Please try again."])
-                    return render_to_response('whitelist/whitelist_getform.html', {
-                        'form': form, 'captcha':True},
-                        context_instance=RequestContext(request)) 
+            res = check_captcha(form,request)
+            if res:
+            	return res
 
             du = WTDomainUtils()
-            #settings.LOG.debug("Checking dom:%s, proto:%s to see if it has been whitelisted by a wildcard" % (domain,protocol))
-            qs = du.is_whitelisted(domain,protocol)
-            if qs:
-            	i=qs.get()
-                return render_to_response('whitelist/whitelist_already_listed.html', 
-                                    { 'url':url,'domain':i.domain,'client_ip':i.client_ip,
-                                    'prev_user':i.user, 'date_added': i.date_added },
-                                    context_instance=RequestContext(request)) 
-
-            w,created = Whitelist.objects.get_or_create(domain=domain,protocol=protocol, 
-                                defaults={'user':request.user,'url':url,
-                                'comment':comment,'enabled':True,'client_ip':src_ip,
-                                'wildcard':Whitelist.get_wildcard_choice(settings.AUTO_WILDCARD)})
-
-            if not url:
-                #Handle SSL by refreshing to the domain added
-                if protocol == Whitelist.get_protocol_choice('SSL'):
-                    url="https://%s" % domain
-                else:
-                    url="http://%s" % domain
-
-            if not created and w.enabled:
-            	#already in the db, so just redirect,
-            	#show the info in the db but redirect to the new url
-            	#This often happens if people open tabs with links to same domain.
-                return render_to_response('whitelist/whitelist_already_listed.html', 
-                                    { 'url':url,'domain':w.domain,'client_ip':w.client_ip,
-                                    'prev_user':w.user, 'date_added': w.date_added },
-                                    context_instance=RequestContext(request)) 
-                
-            elif not created and not w.enabled:
-                w.user = request.user
-                w.url = url
-                w.comment = comment
-                w.enabled = True
-                w.client_ip = src_ip
-                w.wildcard = Whitelist.get_wildcard_choice(settings.AUTO_WILDCARD)
-                w.save()
-
-            return render_to_response('whitelist/whitelist_added.html', 
-                                    { 'url':url,'protocol':protocol,'domain':domain,'client_ip':src_ip,'comment':comment},
-                                    context_instance=RequestContext(request)) 
+            (template,dict) = du.add_domain(domain,protocol,url,comment,src_ip,request.user)
+            return render_to_response(template,dict,context_instance=RequestContext(request))
 
     else:
         #Pre-populate the form

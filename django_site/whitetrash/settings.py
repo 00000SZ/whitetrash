@@ -14,7 +14,7 @@ if not os.path.exists(CONFIG_FILENAME):
 if not os.path.exists(CONFIG_FILENAME):
     print "Can't find config file in current directory or /etc"
     exit(1)
-CONFIG = ConfigObj("whitetrash.conf")["DEFAULT"]
+CONFIG = ConfigObj(CONFIG_FILENAME)["DEFAULT"]
 
 def conf(config_item):
     return CONFIG[config_item].upper() == "TRUE"

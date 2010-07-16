@@ -34,6 +34,14 @@ from urlparse import urlparse
 from common import RedirectMap
 from django_site.whitetrash.wtdomains import WTDomainUtils
 
+try:
+    import blacklistcache
+except ImportError:
+    if settings.SAFEBROWSING:
+        settings.LOG.error("Couldn't import blacklistcache, not using safebrowsing")
+        raise
+
+
 Request = namedtuple("Request", "url, client_ip, http_method")
 
 log = logging.getLogger(__name__)
@@ -58,12 +66,15 @@ class RedirectHandler(object):
     # This behaviour may be overridden by whitetrash.conf
     non_html_regex = re.compile(".*(jpg|gif|png|css|js|ico|swf)$")
     domain_regex = re.compile("^([a-z0-9-]{1,50}\.){1,6}[a-z]{2,6}$")
+    safebrowsing = False
 
     def __init__(self, input=sys.stdin, output=sys.stdout):
         self.input_stream = input
         self.output_stream = output
         self.redirect = None
         self.dom_util = WTDomainUtils() 
+        if safebrowsing:
+            self.blc = blacklistcache.BlacklistCache(settings.CONFIG)
 
     def __enter__(self):
         """
@@ -132,14 +143,19 @@ class RedirectHandler(object):
         domain is evaluated in this order:
 
         1. Blacklisted
-        2. Whitelisted
-        3. Non-html
-        4. Whitetrash form for adding
+        2. Auto-add
+        3. Whitelisted
+        4. Non-html
+        5. Whitetrash form for adding
         """
         if self.is_blacklisted():
             self.redirect = self.redirect_map.blocked_malicious_url()
             log.debug("Preparing to send user to %s" % self.redirect)
             return
+
+        if self.auto_add:
+        	self.dom_util.add_domain()
+        	return
 
         if self.dom_util.is_whitelisted(self.domain,self.protocol):
         	self.dom_util.update_hitcount()
@@ -158,7 +174,11 @@ class RedirectHandler(object):
         """
         Is this request on the Google safebrowsing blacklists?
         """
-        return False
+        if !self.safebrowsing:
+           return False
+
+        return self.blc.check_url(self.request.url)
+        
 
     def forward_request(self):
         """
