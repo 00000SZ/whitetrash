@@ -29,8 +29,8 @@ from tempfile import TemporaryFile
 
 from configobj import ConfigObj
 
-from whitetrash import squid
-from whitetrash.common import RedirectMap
+from redirector import squid
+from redirector.common import RedirectMap
 
 class RedirectHandlerTests(unittest.TestCase):
     """

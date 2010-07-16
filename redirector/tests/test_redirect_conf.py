@@ -2,7 +2,7 @@
 
 import unittest
 
-from whitetrash.common import RedirectMap
+from redirector.common import RedirectMap
 
 
 class RedirectMapTests(unittest.TestCase):
