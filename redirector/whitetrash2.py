@@ -20,6 +20,12 @@
 #     along with Whitetrash; if not, write to the Free Software
 #     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+#import os
+#print 'ENVIRON START'
+#os.environ['DJANGO_SETTINGS_MODULE'] = "django_site.whitetrash.settings"
+#print os.environ['DJANGO_SETTINGS_MODULE']
+#print 'ENVIRON END'
+
 import sys
 import re
 
@@ -30,6 +36,7 @@ from redirector.squid import RedirectHandler
 from redirector.whitelist import Whitelist
 
 config_file = "/etc/whitetrash.conf"
+
 
 def main():
     start_logging()
