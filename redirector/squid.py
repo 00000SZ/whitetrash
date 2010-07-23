@@ -34,7 +34,7 @@ from urlparse import urlparse
 from common import RedirectMap
 from django_site.whitetrash import settings
 from django_site.whitetrash.wtdomains import WTDomainUtils
-
+from django.contrib.auth.models import User
 try:
     import blacklistcache
 except ImportError:
@@ -143,9 +143,9 @@ class RedirectHandler(object):
 
         domain is evaluated in this order:
 
-        1. Blacklisted
+        1. Blacklisted  -   Means safebrowsing is checked for every url
+        2. Whitelisted
         2. Auto-add
-        3. Whitelisted
         4. Non-html
         5. Whitetrash form for adding
         """
@@ -154,13 +154,24 @@ class RedirectHandler(object):
             log.debug("Preparing to send user to %s" % self.redirect)
             return
 
-        if self.auto_add:
-        	self.dom_util.add_domain()
-        	return
-
         if self.dom_util.is_whitelisted(self.domain,self.protocol):
-        	self.dom_util.update_hitcount()
-        	return
+            self.dom_util.update_hitcount(domain = self.domain, protocol = self.protocol)
+            return
+
+        if self.auto_add:
+            self.dom_util.add_domain(self.domain,
+                                    self.protocol,
+                                    self.request.url,"",
+                                    self.request.client_ip,
+                                    User.objects.filter(username="auto"))
+            return
+
+        w = self.domutil.get_or_create_disabled(self.domain,
+                                            self.protocol,
+                                            self.request.url,
+                                            self.request.client_ip)
+
+        self.domutil.update_hitcount(queryset=w)
 
         if self.non_html_regex.match(self.request.url):
             self.redirect = self.redirect_map.empty_content_url()

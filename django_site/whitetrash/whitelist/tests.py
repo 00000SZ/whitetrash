@@ -424,18 +424,46 @@ class WhitetrashTestWTDomains(TestCase):
 
     def testUpdateHitcount(self):
 
-        self.du.update_hitcount("onelabel.wildcardonelabel.com.au",1) 
+        self.du.update_hitcount(domain = "onelabel.wildcardonelabel.com.au", protocol = 1) 
         self.assertEqual(Whitelist.objects.filter(domain="wildcardonelabel.com.au",protocol=1)[0].hitcount,1)
 
         #check we only incremented "twomatchingrules.com"
-        self.du.update_hitcount("twomatchingrules.com",1) 
+        self.du.update_hitcount(domain = "twomatchingrules.com", protocol = 1) 
         self.assertEqual(Whitelist.objects.filter(domain="twomatchingrules.com",protocol=1)[0].hitcount,1)
         self.assertEqual(Whitelist.objects.filter(domain="label.twomatchingrules.com",protocol=1)[0].hitcount,30)
 
         #check we only incremented "twomatchingrules.com" *and* "label.twomatchingrules.com"
-        self.du.update_hitcount("label.twomatchingrules.com",1) 
+        self.du.update_hitcount(domain = "label.twomatchingrules.com", protocol = 1) 
         self.assertEqual(Whitelist.objects.filter(domain="twomatchingrules.com",protocol=1)[0].hitcount,2)
         self.assertEqual(Whitelist.objects.filter(domain="label.twomatchingrules.com",protocol=1)[0].hitcount,31)
+
+        #try to update non-existent row, check it doesn't exist
+        self.du.update_hitcount(domain = "notinthewhitelist.com.au", protocol = 1) 
+        self.assertFalse(Whitelist.objects.filter(domain="notinthewhitelist.com.au",protocol=1))
+        
+        #pass a queryset, ensure we only update the entry passed.
+        self.du.update_hitcount(queryset = Whitelist.objects.filter(domain="label.twomatchingrules.com",protocol=1) ) 
+        self.assertEqual(Whitelist.objects.filter(domain="label.twomatchingrules.com",protocol=1)[0].hitcount,32)
+        self.assertEqual(Whitelist.objects.filter(domain="twomatchingrules.com",protocol=1)[0].hitcount,2)
+
+    def testGetOrCreateDisabled(self):
+
+        #existing disabled domain
+        w = self.du.get_or_create_disabled("twomatchingrules.com",1,"http://sdflkjs","10.10.10.10")
+        self.assertEqual(w.domain,Whitelist.objects.filter(domain="twomatchingrules.com",protocol=1)[0].domain)
+
+        #new domain
+        self.assertTrue(self.du.get_or_create_disabled("notwhitelisted.com",1,"http://sdflkjs","10.10.10.10"))
+        self.assertEqual(Whitelist.objects.filter(domain="notwhitelisted.com",protocol=1,enabled=False)[0].hitcount,0)
+
+        #existing enabled domain
+        #this shouldn't happen, but in case it does, we want to just increment the hitcount, not create
+        #a disabled entry for a domain that is already enabled.
+        w = self.du.get_or_create_disabled("wildcardall.com.au",1,"http://sdflkjs","10.10.10.10")
+        self.assertEqual(w.hitcount,1)
+        self.assertFalse(Whitelist.objects.filter(domain="wildcardall.com.au",protocol=1,enabled=False))
+
+
 
 
 class WhitetrashTestCertServer(TestCase):

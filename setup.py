@@ -337,7 +337,7 @@ def setup_args():
         'py_modules': ['configobj','blacklistcache'],
         'scripts' : ['whitetrash_cert_server.py',
                      'whitetrash_cleanup.py',
-                     'whitetrash.py'],
+                     'redirector/whitetrash2.py'],
         'classifiers' : [
             'License :: OSI-Approved Open Source :: GNU General Public License (GPL)',
             'Intended Audience :: by End-User Class :: System Administrators',
