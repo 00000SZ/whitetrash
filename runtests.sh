@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TESTENV=test-env
+TESTENV=.virtualenv
 
 # Test environment setup with virtualenv and pip
 if [ -f $TESTENV/bin/activate ]
