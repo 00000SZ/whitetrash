@@ -13,13 +13,13 @@ fi
 
 # Install packages only if necessary
 pip -E $TESTENV freeze > pip-installed.tmp
-diff pip-installed.tmp testing/pip-testing-req.txt > /dev/null
+diff pip-installed.tmp tests/pip-testing-req.txt > /dev/null
 if [ $? -eq 0 ]
 then
     echo Test environment already up to date
 else
     echo Installing packages to test environment
-    pip install -E $TESTENV -r testing/pip-testing-req.txt -q
+    pip install -E $TESTENV -r tests/pip-testing-req.txt -q
 fi
 rm pip-installed.tmp
 
