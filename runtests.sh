@@ -31,4 +31,4 @@ export DJANGO_SETTINGS_MODULE=django_site.whitetrash.settings
 echo Beginnning tests...
 echo
 source $TESTENV/bin/activate
-python -c "import redirector.whitetrash2"; exit $?
+python -c "import redirector.whitetrash"; exit $?

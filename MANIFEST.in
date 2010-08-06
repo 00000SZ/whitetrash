@@ -1,4 +1,9 @@
 include *.txt
 include *.py
 include *.mysql
+recursive-include django_site *.py
+recursive-include redirector *.py
+recursive-include safebrowsing *.py
+include django_site/whitetrash/effective_tld_names.dat
+
 

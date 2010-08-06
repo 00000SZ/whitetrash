@@ -8,6 +8,11 @@ import string
 import random 
 from OpenSSL import crypto
 
+from django.core.management import setup_environ
+import django_site.whitetrash.settings as settings
+setup_environ(settings)
+from django.contrib.auth.models import User,UserManager
+from django.core.management import execute_manager
 
 try:
     from distutils.core import setup
@@ -56,6 +61,7 @@ class WhitetrashInstallData(install):
         execute(self.createCertAuthority,())
         execute(self.createWTApacheCert,())
         execute(self.createDBandUsers,())
+        execute(self.createDjangoUsers,())
         execute(self.createCleanupCron,())
 
     def installPathFile(self):
@@ -71,23 +77,23 @@ class WhitetrashInstallData(install):
 
     def installDjango(self):
         #Need to change our 'working dir' to make sure the django install works properly
-        sys.path[0]=os.path.abspath("django_site/whitetrash")
-        from django.core.management import execute_manager
-        import settings # Assumed to be in the same directory.
         execute_manager(settings,argv=['manage.py','syncdb'])
 
-        from django.contrib.auth.models import User,UserManager
+    def createDjangoUsers(self):
         um=UserManager()
 
-        auto=User(username="auto",password=um.make_random_password(length=15),
-                    is_staff=False,is_active=True,is_superuser=False)
-        auto.set_password(um.make_random_password(length=15))
-        auto.save()
+        (auto,created) = User.objects.get_or_create(username="auto",
+                                          defaults = {'password':um.make_random_password(length=15),
+                                          'is_staff':False,
+                                          'is_active':True,
+                                          'is_superuser':False})
 
-        notwlisted=User(username="notwhitelisted",
-                    is_staff=False,is_active=True,is_superuser=False)
-        notwlisted.set_password(um.make_random_password(length=15))
-        notwlisted.save()
+        (notwlisted,created) = User.objects.get_or_create(username="notwhitelisted",
+                                          defaults = {'password':um.make_random_password(length=15),
+                                          'is_staff':False,
+                                          'is_active':True,
+                                          'is_superuser':False})
+
 
     def createDBUser(self,dbcur,user,passwd):
         try:
@@ -117,7 +123,11 @@ class WhitetrashInstallData(install):
             else:
                 con=MySQLdb.Connect(user="root")
             cur=con.cursor()
-            cur.execute("create database if not exists whitetrash")
+            try:
+                cur.execute("create database if not exists whitetrash")
+            except MySQLdb.Warning,e:
+                print("Got warning:%s, continuing" % e)
+                pass
 
             #This user is for django 
             self.createDBUser(cur,config["DATABASE_DJANGO_USER"],config["DATABASE_DJANGO_PASSWORD"])
@@ -139,6 +149,7 @@ class WhitetrashInstallData(install):
             cur.execute("GRANT SELECT,DELETE,UPDATE on whitetrash.whitelist_whitelist TO %s",(config["DATABASE_CLEANUP_USER"]))
 
         except Exception,e:
+            print e.__class__
             print """Installing database failed (%s). You may need to create database and users manually.""" % e
 
     def copyApacheConfigs(self):
@@ -149,6 +160,7 @@ class WhitetrashInstallData(install):
         if os.path.exists(os.path.join(self.apache_configdir,"sites-available")):
             #Replace the placeholder with our actual code location
             apache_wt_conf=open("example_configs/apache2/whitetrash","r").read()
+            #TODO: fix this to point at install location like /usr/local/lib/python2.6/dist-packages/django_site? 
             open("example_configs/apache2/whitetrash","w").write(apache_wt_conf.replace("directory/where/whitetrash/is",os.path.abspath("django_site")))
 
             copy_file("example_configs/apache2/whitetrash", os.path.join(self.apache_configdir,"sites-available/whitetrash"))
@@ -173,11 +185,17 @@ class WhitetrashInstallData(install):
         for thisfile in glob.glob("example_configs/apache2/www/whitetrash/*.*"):
             copy_file(thisfile,os.path.join(self.web_root,"whitetrash/"))
 
-        if not os.path.exists(os.path.join(self.web_root,"whitetrash/media")):
-            if os.path.exists("/usr/share/python-support/python-django/django/contrib/admin/media/"):
-                os.symlink("/usr/share/pyshared/django/contrib/admin/media", os.path.join(self.web_root,"whitetrash/media"))
+        sym_dest = os.path.join(self.web_root,"whitetrash/media")
+        if not os.path.exists(sym_dest):
+            #Since exists returns false for broken symlinks, remove anything that exists
+            try:
+                os.remove(sym_dest)
+            except:
+                pass
+            if os.path.exists("/usr/share/pyshared/django/contrib/admin/media"):
+                os.symlink("/usr/share/pyshared/django/contrib/admin/media", sym_dest)
             else:
-                os.symlink(os.path.join(get_python_lib(),"django/contrib/admin/media/"), os.path.join(self.web_root,"whitetrash/media"))
+                os.symlink(os.path.join(get_python_lib(),"django/contrib/admin/media/"), sym_dest)
 
     def copySquidConfigs(self):
         if os.path.exists("/etc/squid/squid.conf"):
@@ -333,11 +351,12 @@ def setup_args():
         'author_email': 'gregsfdev@users.sourceforge.net',
         'license': 'GPL',
         'platforms': 'Linux',
-        'packages': ['safebrowsing'],
+        'packages': ['safebrowsing','redirector','django_site','django_site.whitetrash','django_site.whitetrash.whitelist'],
+        'package_data': {'django_site.whitetrash': ['effective_tld_names.dat']},
         'py_modules': ['configobj','blacklistcache'],
         'scripts' : ['whitetrash_cert_server.py',
                      'whitetrash_cleanup.py',
-                     'redirector/whitetrash2.py'],
+                     'redirector/whitetrash.py'],
         'classifiers' : [
             'License :: OSI-Approved Open Source :: GNU General Public License (GPL)',
             'Intended Audience :: by End-User Class :: System Administrators',

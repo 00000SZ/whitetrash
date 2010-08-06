@@ -457,14 +457,10 @@ class WhitetrashTestWTDomains(TestCase):
         self.assertEqual(Whitelist.objects.filter(domain="notwhitelisted.com",protocol=1,enabled=False)[0].hitcount,0)
 
         #existing enabled domain
-        #this shouldn't happen, but in case it does, we want to just increment the hitcount, not create
+        #this shouldn't happen, but in case it does, we want to make sure we don't create
         #a disabled entry for a domain that is already enabled.
         w = self.du.get_or_create_disabled("wildcardall.com.au",1,"http://sdflkjs","10.10.10.10")
-        self.assertEqual(w.hitcount,1)
         self.assertFalse(Whitelist.objects.filter(domain="wildcardall.com.au",protocol=1,enabled=False))
-
-
-
 
 class WhitetrashTestCertServer(TestCase):
 

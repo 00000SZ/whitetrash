@@ -31,8 +31,11 @@ import logging.config
 from collections import namedtuple
 from urlparse import urlparse
 
-from common import RedirectMap
-from django_site.whitetrash import settings
+from django.core.management import setup_environ
+import django_site.whitetrash.settings as settings
+setup_environ(settings)
+
+from redirector.common import RedirectMap
 from django_site.whitetrash.wtdomains import WTDomainUtils
 from django.contrib.auth.models import User
 try:
