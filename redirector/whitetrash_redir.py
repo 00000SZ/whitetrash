@@ -44,7 +44,8 @@ def main():
     run()
 
 def start_logging():
-    logging.fileConfig(config_file)
+    #logging.fileConfig(config_file)
+    pass
 
 def open_config():
     """

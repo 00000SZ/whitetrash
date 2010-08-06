@@ -77,7 +77,7 @@ class RedirectHandler(object):
         self.output_stream = output
         self.redirect = None
         self.dom_util = WTDomainUtils() 
-        if safebrowsing:
+        if self.safebrowsing:
             self.blc = blacklistcache.BlacklistCache(settings.CONFIG)
 
     def __enter__(self):
