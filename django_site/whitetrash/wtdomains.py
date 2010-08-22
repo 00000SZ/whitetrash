@@ -65,7 +65,7 @@ class WTDomainUtils():
         Returning an enabled object is not a big problem since we only use this for updating
         the hit count.  If an entry is created, it is created disabled."""
 
-        user = User.objects.filter(username="auto").get()
+        user = User.objects.filter(username="notwhitelisted").get()
         w,created = Whitelist.objects.get_or_create(domain=domain,protocol=protocol, 
                             defaults={'user':user,'url':url,
                             'comment':"",'enabled':False,'client_ip':src_ip,
