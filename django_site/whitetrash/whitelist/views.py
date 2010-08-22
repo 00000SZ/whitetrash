@@ -15,8 +15,8 @@ from hashlib import sha1
 import datetime
 import re
 from urllib import unquote
-from wtdomains import WTDomainUtils
-from wtcaptcha import get_captcha_image,check_captcha 
+from django_site.whitetrash.wtdomains import WTDomainUtils
+from django_site.whitetrash.wtcaptcha import get_captcha_image,check_captcha 
     
 try:
     import blacklistcache
