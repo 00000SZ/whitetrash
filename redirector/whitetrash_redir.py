@@ -31,10 +31,15 @@ import re
 
 from configobj import ConfigObj
 
+import logging
+import logging.config
+
 from redirector.common import RedirectMap
-from redirector.squid import RedirectHandler
+from redirector.squid import RedirectHandler,RedirectError
 
 config_file = "/etc/whitetrash.conf"
+logging.config.fileConfig(config_file)
+log = logging.getLogger("squidredir")
 
 
 def main():
@@ -115,9 +120,14 @@ def get_option(option, default):
 def run():
     while True:
         with RedirectHandler() as redirect:
-            redirect.read_request()
-            redirect.evaluate_request()
-            redirect.forward_request()
+            try:
+                redirect.read_request()
+                redirect.evaluate_request()
+                redirect.forward_request()
+            except Exception,e:
+                log.debug("Redirector error: %s" % e)
+                pass
+                
 
 
 if __name__=="__main__":

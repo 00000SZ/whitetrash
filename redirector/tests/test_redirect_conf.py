@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
 import unittest
+import sys
+from os.path import join,realpath,dirname
+sys.path.append(join(dirname(realpath(__file__)),"../../"))
 
 from redirector.common import RedirectMap
 

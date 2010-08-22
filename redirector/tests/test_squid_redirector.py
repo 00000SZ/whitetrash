@@ -28,9 +28,14 @@ from contextlib import nested
 from tempfile import TemporaryFile
 
 from configobj import ConfigObj
+from nose.plugins.attrib import attr
 
+import sys
+from os.path import join,realpath,dirname
+sys.path.append(join(dirname(realpath(__file__)),"../../"))
 from redirector import squid
 from redirector.common import RedirectMap
+from django_site.whitetrash.whitelist.models import Whitelist
 
 class RedirectHandlerTests(unittest.TestCase):
     """
@@ -41,7 +46,7 @@ class RedirectHandlerTests(unittest.TestCase):
     stdout_file = "/tmp/whitetrash-testing-stdout"
 
     def setUp(self):
-        squid.whitetrash_config = ConfigObj("../whitetrash.conf")["DEFAULT"]
+        squid.whitetrash_config = ConfigObj("../../whitetrash.conf")["DEFAULT"]
         self.stdin = TemporaryFile()
         self.stdout = TemporaryFile()
 
@@ -58,6 +63,7 @@ class RedirectHandlerTests(unittest.TestCase):
         url = "http://whitetrash.sf.net/"
         client_ip = "10.10.9.60"
         http_method = "GET"
+        protocol = Whitelist.get_protocol_choice("HTTP")
 
         self.write_stdin(input)
         with squid.RedirectHandler(self.stdin, self.stdout) as redirect:
@@ -65,6 +71,7 @@ class RedirectHandlerTests(unittest.TestCase):
             self.assertEqual(redirect.request.url, url, "Parsing URL from squid input failed")
             self.assertEqual(redirect.request.client_ip, client_ip, "Parsing IP address from squid input failed")
             self.assertEqual(redirect.request.http_method, http_method, "Parsing HTTP method from squid input failed")
+            self.assertEqual(redirect.protocol, protocol, "Parsing protocol from squid input failed")
 
     def test_invalid_url_in_request(self):
         """
@@ -120,6 +127,7 @@ class RedirectHandlerTests(unittest.TestCase):
                 num_tests += 1
             self.assertEqual(num_tests, len(redirects), "%s tests expected, only %s ran" % (len(redirects), num_tests))
 
+    @attr("database")
     def test_should_allow_whitelisted_domains(self):
         expected = {"http://whitetrash.sf.net/ 10.133.9.60/- greg GET": "http://whitetrash.sf.net/",
                     "http://www.google.com/ 10.133.9.60/- greg ": "http://www.google.com/"}

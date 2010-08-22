@@ -114,7 +114,7 @@ class BlacklistCacheError(Exception): pass
 
 def main():
     import configobj
-    config = configobj.ConfigObj("whitetrash.conf")["DEFAULT"]
+    config = configobj.ConfigObj("../whitetrash.conf")["DEFAULT"]
     if config["use_memcached"].upper()=="TRUE":
         update_safebrowsing_blacklist(config)
     else:

@@ -12,8 +12,6 @@ from os.path import join
 import os
 
 sys.path.append(join(settings.ROOT,"../../"))
-from whitetrash_redir import WTSquidRedirector
-from whitetrash_redir import WTSquidRedirectorCached
 from whitetrash_cert_server import get_domain,get_cert,get_certfilepath
 try:
     import blacklistcache
@@ -442,7 +440,7 @@ class WhitetrashTestWTDomains(TestCase):
         self.assertFalse(Whitelist.objects.filter(domain="notinthewhitelist.com.au",protocol=1))
         
         #pass a queryset, ensure we only update the entry passed.
-        self.du.update_hitcount(queryset = Whitelist.objects.filter(domain="label.twomatchingrules.com",protocol=1) ) 
+        self.du.update_hitcount(whitelistobj = Whitelist.objects.filter(domain="label.twomatchingrules.com",protocol=1)[0] ) 
         self.assertEqual(Whitelist.objects.filter(domain="label.twomatchingrules.com",protocol=1)[0].hitcount,32)
         self.assertEqual(Whitelist.objects.filter(domain="twomatchingrules.com",protocol=1)[0].hitcount,2)
 

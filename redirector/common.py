@@ -81,11 +81,12 @@ class RedirectMap(object):
         """
         The redirect to use when a domain does not appear on the whitelist
         """
-        if self.redirect_to_ssl:
-            return self._frame_response("{protocol}://{domain}.ssl{hostname}:{ssl_port}" \
-                                        "/addentry?".format(**self._formatdict()))
-        else:
-            return self._frame_response("{protocol}://{hostname}/addentry?url={url}&" \
+        #This is wrong.  Want to send to .sslwhitetrash when the *request* is SSL.
+#        if self.redirect_to_ssl:
+#            return self._frame_response("{protocol}://{domain}.ssl{hostname}:{ssl_port}" \
+#                                        "/addentry?".format(**self._formatdict()))
+#        else:
+        return self._frame_response("{protocol}://{hostname}/whitelist/addentry?url={url}&" \
                                         "domain={domain}".format(**self._formatdict()))
 
     def blocked_phishing_url(self):
@@ -114,7 +115,7 @@ class RedirectMap(object):
         The redirect to use when you need to send an error to the user
         """
         formatdict = self._formatdict().update({"msg": msg})
-        return self._frame_response("{protocol}://{hostname}/error?" \
+        return self._frame_response("{protocol}://{hostname}/whitelist/error?" \
                                     "msg={msg}" % formatdict)
 
     # TODO: rewrite frame_response as a decorator

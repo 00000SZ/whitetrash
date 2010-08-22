@@ -29,7 +29,7 @@ class Whitelist(models.Model):
     	    if proto_string == this_string:
     		    return num
         settings.LOG.debug("No such protocol: %s" % this_string)
-    	raise ValueError("No such protocol")
+    	raise ValueError("No such protocol %s" % this_string)
 
     def get_wildcard_choice(cls,this_string):
         """Return the database short version of the wildcard string."""

@@ -72,7 +72,7 @@ class WTDomainUtils():
                             'wildcard':Whitelist.get_wildcard_choice("NONE"),'hitcount':0})
         return w
 
-    def update_hitcount(self,domain=None,protocol=None,queryset=None):
+    def update_hitcount(self,domain=None,protocol=None,whitelistobj=None):
         """Look for matching domains and update all matching entries regardless
         of whether they are enabled or not.
 
@@ -82,8 +82,9 @@ class WTDomainUtils():
         images.slashdot.org and *.slashdot.org could both be in the database.
         Hitcount will updated on both entries for the images.slashdot.org domain."""
 
-        if queryset:
-            queryset.update(hitcount = F('hitcount')+1)
+        if whitelistobj:
+            whitelistobj.hitcount = F('hitcount')+1
+            whitelistobj.save()
 
         else:
             lall = Whitelist.get_wildcard_choice("ALL")

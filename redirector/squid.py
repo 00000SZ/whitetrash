@@ -35,6 +35,8 @@ from django.core.management import setup_environ
 import django_site.whitetrash.settings as settings
 setup_environ(settings)
 
+from django_site.whitetrash.whitelist.models import Whitelist
+
 from redirector.common import RedirectMap
 from django_site.whitetrash.wtdomains import WTDomainUtils
 from django.contrib.auth.models import User
@@ -122,12 +124,12 @@ class RedirectHandler(object):
         if not self.domain_regex.match(self.domain):
             raise RedirectError("Invalid URL in request. Hostname %s does not " \
                                 "match domain_regex in whitetrash.conf" % self.domain)
-        self.protocol = url_parts.scheme.upper()
+        proto_str = url_parts.scheme.upper()
+
         # TODO: Decide if FTP should work and will be included
         # Does FTP from the browser go via HTTP and via the Redirector even?
-        if not self.protocol in ["HTTP", "HTTPS"]:
-            raise RedirectError("Invalid URL in request. Protocol %s is not " \
-                                "supported" % self.protocol)
+        self.protocol = Whitelist.get_protocol_choice(proto_str)
+
         # Check the client IP
         try:
             socket.inet_aton(self.request.client_ip)
@@ -139,6 +141,8 @@ class RedirectHandler(object):
             assert self.request.http_method in allowed_methods
         except AssertionError as err:
             raise RedirectError("Invalid HTTP method in request")
+
+        log.debug("Request validated: (%s, %s)" % (self.domain, self.protocol))
 
     def evaluate_request(self):
         """
@@ -152,13 +156,16 @@ class RedirectHandler(object):
         4. Non-html
         5. Whitetrash form for adding
         """
+        log.debug("Evaluating request for %s" % (self.domain))
+
         if self.is_blacklisted():
             self.redirect = self.redirect_map.blocked_malicious_url()
-            log.debug("Preparing to send user to %s" % self.redirect)
+            log.debug("%s is blacklisted.  Preparing to send user to %s" % (self.domain,self.redirect))
             return
 
         if self.dom_util.is_whitelisted(self.domain,self.protocol):
             self.dom_util.update_hitcount(domain = self.domain, protocol = self.protocol)
+            log.debug("%s is whitelisted." % self.domain)
             return
 
         if self.auto_add:
@@ -167,22 +174,23 @@ class RedirectHandler(object):
                                     self.request.url,"",
                                     self.request.client_ip,
                                     User.objects.filter(username="auto"))
+            log.debug("Auto adding %s." % self.domain)
             return
 
-        w = self.domutil.get_or_create_disabled(self.domain,
+        w = self.dom_util.get_or_create_disabled(self.domain,
                                             self.protocol,
                                             self.request.url,
                                             self.request.client_ip)
 
-        self.domutil.update_hitcount(queryset=w)
+        self.dom_util.update_hitcount(whitelistobj=w)
 
         if self.non_html_regex.match(self.request.url):
             self.redirect = self.redirect_map.empty_content_url()
-            log.debug("Preparing to send user to %s" % self.redirect)
+            log.debug("Not HTML.  Preparing to send user to %s" % self.redirect)
             return
 
         self.redirect = self.redirect_map.add_site_url()
-        log.debug("Preparing to send user to %s" % self.redirect)
+        log.debug("Not whitelisted.  Preparing to send user to %s" % self.redirect)
         return
 
     def is_blacklisted(self):
