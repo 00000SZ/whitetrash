@@ -11,17 +11,18 @@ Alias /media "/var/www/whitetrash/media"
 MaxRequestsPerChild 1
 
 <Location "/">
-SetHandler mod_python
-PythonHandler django.core.handlers.modpython
-PythonPath "['directory/where/whitetrash/is'] + sys.path"
-SetEnv DJANGO_SETTINGS_MODULE whitetrash.settings
-PythonDebug On
+    Options -Indexes -Includes -Multiviews SymLinksIfOwnerMatch
+    SetHandler mod_python
+    PythonHandler django.core.handlers.modpython
+    PythonPath "['directory/where/whitetrash/is'] + sys.path"
+    SetEnv DJANGO_SETTINGS_MODULE whitetrash.settings
+    PythonDebug On
 
-RewriteEngine On
-RewriteCond %{HTTPS} off
-#Don't want to rewrite CONNECT, because it will break ssl whitelisting
-RewriteCond %{REQUEST_METHOD} GET
-RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
+    RewriteEngine On
+    RewriteCond %{HTTPS} off
+    #Don't want to rewrite CONNECT, because it will break ssl whitelisting
+    RewriteCond %{REQUEST_METHOD} GET
+    RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
 
 </Location>
 

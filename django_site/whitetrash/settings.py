@@ -66,13 +66,13 @@ ADMINS = (
 
 MANAGERS = ADMINS
 
-DATABASE_ENGINE = 'sqlite3'           # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'ado_mssql'.
-DATABASE_NAME = 'whitetrash.db'             # Or path to database file if using sqlite3.
-#DATABASE_NAME = CONFIG['DATABASE_NAME']             # Or path to database file if using sqlite3.
-#DATABASE_USER = CONFIG['DATABASE_DJANGO_USER']             # Not used with sqlite3.
-#DATABASE_PASSWORD = CONFIG['DATABASE_DJANGO_PASSWORD']         # Not used with sqlite3.
-#DATABASE_HOST = CONFIG['DATABASE_HOST']      # Set to empty string for localhost. Not used with sqlite3.
-#DATABASE_PORT = CONFIG['DATABASE_PORT']      # Set to empty string for default. Not used with sqlite3.
+DATABASE_ENGINE = 'mysql'           # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'ado_mssql'.
+DATABASE_NAME = 'whitetrash'             # Or path to database file if using sqlite5.
+DATABASE_NAME = CONFIG['DATABASE_NAME']             # Or path to database file if using sqlite3.
+DATABASE_USER = CONFIG['DATABASE_DJANGO_USER']             # Not used with sqlite3.
+DATABASE_PASSWORD = CONFIG['DATABASE_DJANGO_PASSWORD']         # Not used with sqlite3.
+DATABASE_HOST = CONFIG['DATABASE_HOST']      # Set to empty string for localhost. Not used with sqlite3.
+DATABASE_PORT = CONFIG['DATABASE_PORT']      # Set to empty string for default. Not used with sqlite3.
 
 # Local time zone for this installation. Choices can be found here:
 # http://www.postgresql.org/docs/8.1/static/datetime-keywords.html#DATETIME-TIMEZONE-SET-TABLE

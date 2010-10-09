@@ -81,6 +81,7 @@ class RedirectMap(object):
         """
         The redirect to use when a domain does not appear on the whitelist
         """
+        #TODO handle ssl properly.
         #This is wrong.  Want to send to .sslwhitetrash when the *request* is SSL.
 #        if self.redirect_to_ssl:
 #            return self._frame_response("{protocol}://{domain}.ssl{hostname}:{ssl_port}" \

@@ -87,10 +87,10 @@ class WhitetrashTestSafeBrowsing(TestCase):
             #Same for SSL
             response = self.client.post("/whitelist/addentry/", {"url":"https://malware.testing.google.test/testing/malware/",
                             "domain":"malware.testing.google.test",
-                            "protocol":Whitelist.get_protocol_choice("SSL"),"comment":"testing"} )
+                            "protocol":Whitelist.get_protocol_choice("HTTPS"),"comment":"testing"} )
             self.assertRedirects(response, "%s%s/whitelist/attackdomain=malware.testing.google.test" % (settings.SERV_PREFIX,settings.DOMAIN),
                 status_code=302, target_status_code=200)
-            self.assertFalse(Whitelist.objects.filter(domain="malware.testing.google.test",protocol=Whitelist.get_protocol_choice("SSL")))
+            self.assertFalse(Whitelist.objects.filter(domain="malware.testing.google.test",protocol=Whitelist.get_protocol_choice("HTTPS")))
 
 class WhitetrashTestGetForm(TestCase):
     fixtures = ["testing.json"]
@@ -158,11 +158,11 @@ class WhitetrashTestAddEntry(TestCase):
     def testAddSSL(self):
         response = self.client.post("/whitelist/addentry/", {"url":"",
                         "domain":"test1.com",
-                        "protocol":Whitelist.get_protocol_choice("SSL"),"comment":"testing"} )
+                        "protocol":Whitelist.get_protocol_choice("HTTPS"),"comment":"testing"} )
         self.assertTemplateUsed(response, 'whitelist/whitelist_added.html')
         self.assertContains(response, "Whitetrash: Access Granted", status_code=200)
         self.assertContains(response, "Thank you whitetrashtestuser", status_code=200)
-        self.assertTrue(Whitelist.objects.filter(domain="test1.com",protocol=Whitelist.get_protocol_choice("SSL")))
+        self.assertTrue(Whitelist.objects.filter(domain="test1.com",protocol=Whitelist.get_protocol_choice("HTTPS")))
 
     def testEnableDomain(self):
         response = self.client.post("/whitelist/addentry/", {"url":"",
@@ -621,7 +621,7 @@ class WhitetrashTestSquidRedirector(TestCase):
             dom="malware.testing.google.test"
             self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),
                                         (False,'302:https://whitetrash/whitelist/attackdomain=malware.testing.google.test\n'))
-            proto=self.wt_redir.PROTOCOL_CHOICES["SSL"]
+            proto=self.wt_redir.PROTOCOL_CHOICES["HTTPS"]
             self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),
                                         (False,'302:https://whitetrash/whitelist/attackdomain=malware.testing.google.test\n'))
 
@@ -668,7 +668,7 @@ class WhitetrashTestSquidRedirector(TestCase):
         self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(False,self.wt_redir.dummy_content_url+"\n"),
                         "The orig_url ends in known non-html content so give back dummy url")
 
-        proto=self.wt_redir.PROTOCOL_CHOICES["SSL"]
+        proto=self.wt_redir.PROTOCOL_CHOICES["HTTPS"]
         self.wt_redir.fail_url=self.wt_redir.ssl_fail_url
         form=self.wt_redir.ssl_fail_url+"\n"
         self.assertEqual(self.wt_redir.check_whitelist_db(dom,proto,method,url,orig_url,ip),(False,form),

@@ -41,6 +41,8 @@ config_file = "/etc/whitetrash.conf"
 logging.config.fileConfig(config_file)
 log = logging.getLogger("squidredir")
 
+import traceback
+
 
 def main():
     start_logging()
@@ -125,7 +127,7 @@ def run():
                 redirect.evaluate_request()
                 redirect.forward_request()
             except Exception,e:
-                log.debug("Redirector error: %s" % e)
+                log.debug(traceback.format_exc())
                 pass
                 
 

@@ -13,7 +13,7 @@ class Whitelist(models.Model):
 
     PROTOCOL_CHOICES = (
         (1,'HTTP'),
-        (2,'SSL'),
+        (2,'HTTPS'),
     )
 
     WILDCARD_CHOICES = (

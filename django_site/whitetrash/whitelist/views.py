@@ -120,7 +120,7 @@ def addentry(request):
         #If this is SSL, it will come with proto set.  Otherwise assume HTTP.
         try:
             proto=int(request.GET["protocol"])
-            if not (proto == Whitelist.get_protocol_choice('HTTP') or proto == Whitelist.get_protocol_choice('SSL')):
+            if not (proto == Whitelist.get_protocol_choice('HTTP') or proto == Whitelist.get_protocol_choice('HTTPS')):
                 proto=Whitelist.get_protocol_choice('HTTP')
         except KeyError:
             proto = Whitelist.get_protocol_choice('HTTP')
@@ -130,7 +130,7 @@ def addentry(request):
                             'domain':domain})
         
         if (proto==Whitelist.get_protocol_choice('HTTP') and settings.CAPTCHA_HTTP) or \
-            (proto==Whitelist.get_protocol_choice('SSL') and settings.CAPTCHA_SSL):
+            (proto==Whitelist.get_protocol_choice('HTTPS') and settings.CAPTCHA_SSL):
             show_captcha=True
         else:
             show_captcha=False
