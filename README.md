@@ -1,8 +1,7 @@
-# NOTE
-This repository is a clone of the sourceforge repository, one day I hope to have time to do some work on this project
-...
 
 # Whitetrash - Dynamic Web Whitelisting for Squid
+## NOTE
+> This repository is a clone of the sourceforge repository, one day I hope to have time to do some work on this project
 
 The goal of Whitetrash is to provide a user-friendly and sysadmin-friendly proxy that makes it **significantly** harder for malware to use HTTP and SSL for:
 
